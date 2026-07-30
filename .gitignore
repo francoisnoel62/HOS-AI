@@ -1,0 +1,22 @@
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+
+# Next.js
+/.next/
+/out/
+
+# test output
+/coverage/
+/playwright-report/
+/test-results/
+
+# local form mail and runtime data
+/data/outbox/
+
+# environment and editor state
+.env*
+!.env.example
+.DS_Store
+*.tsbuildinfo

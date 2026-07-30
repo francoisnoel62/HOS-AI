@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: hos-ai-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: hos_ai
+      POSTGRES_USER: hos
+      POSTGRES_PASSWORD: hos
+    ports:
+      - "5432:5432"
+    volumes:
+      - hos_ai_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hos -d hos_ai"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  hos_ai_postgres_data:
