@@ -37,3 +37,17 @@ test("contact and confirmation routes are not indexable", async ({ page }) => {
   await page.goto("/thanks/pilot");
   await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
 });
+
+test("mobile menu covers the viewport instead of overlapping page content", async ({ page, isMobile }) => {
+  test.skip(!isMobile, "The menu button is only rendered below the md breakpoint.");
+  await page.goto("/");
+  await page.getByRole("button", { name: "Open menu" }).click();
+  const dialog = page.getByRole("dialog", { name: "Navigation menu" });
+  await expect(dialog).toBeVisible();
+  const box = await dialog.boundingBox();
+  const viewport = page.viewportSize();
+  expect(box?.height).toBe(viewport?.height);
+  await dialog.getByRole("link", { name: "Roadmap" }).click();
+  await expect(page).toHaveURL(/\/roadmap$/);
+  await expect(dialog).toBeHidden();
+});
