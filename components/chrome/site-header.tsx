@@ -8,7 +8,7 @@ import { navigation } from "@/lib/site";
 
 export function SiteHeader() {
   return (
-    <header className="sticky top-0 z-40 border-b border-[var(--border)] bg-[color:var(--background)/0.93] backdrop-blur-sm">
+    <header className="sticky top-0 z-40 border-b border-[var(--border)] bg-[var(--background)]/93 backdrop-blur-sm">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5 lg:px-8">
         <Link aria-label="HOS AI home" href="/">
           <Wordmark />

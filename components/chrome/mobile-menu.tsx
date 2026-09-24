@@ -3,6 +3,7 @@
 import { Menu, X } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
+import { createPortal } from "react-dom";
 
 import { Wordmark } from "@/components/brand/hos-mark";
 import { Button } from "@/components/ui/button";
@@ -17,7 +18,7 @@ export function MobileMenu() {
       <Button aria-expanded={open} aria-label={open ? "Close menu" : "Open menu"} onClick={() => setOpen(!open)} size="sm" variant="ghost">
         {open ? <X aria-hidden="true" size={18} /> : <Menu aria-hidden="true" size={18} />}
       </Button>
-      {open ? (
+      {open ? createPortal(
         <div className="fixed inset-0 z-50 bg-[var(--background)] px-6 py-6" role="dialog" aria-modal="true" aria-label="Navigation menu">
           <div className="mx-auto flex max-w-6xl items-center justify-between">
             <Wordmark />
@@ -41,7 +42,9 @@ export function MobileMenu() {
               <Button className="w-full" size="lg">Participate</Button>
             </Link>
           </nav>
-        </div>
+        </div>,
+        // Portal to body: the header's backdrop-filter would otherwise clip this fixed overlay to the header box.
+        document.body,
       ) : null}
     </div>
   );
