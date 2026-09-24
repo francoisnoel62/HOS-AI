@@ -1,0 +1,20 @@
+{
+  "unit_id": "unit_204",
+  "property_id": "prop_demo",
+  "label": "204",
+  "unit_type": "double_room",
+  "statuses": {
+    "occupancy": "vacant",
+    "housekeeping": "inspected",
+    "maintenance": "operational",
+    "commercial": "sellable"
+  },
+  "external_refs": [
+    {
+      "source_system": "urn:hos:pms:demo",
+      "id_type": "room_number",
+      "source_id": "204",
+      "verification": "verified"
+    }
+  ]
+}

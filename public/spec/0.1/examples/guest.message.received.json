@@ -1,0 +1,29 @@
+{
+  "specversion": "1.0",
+  "id": "msg-000977",
+  "source": "urn:hos:messaging:demo",
+  "type": "guest.message.received",
+  "time": "2026-07-30T09:40:00Z",
+  "datacontenttype": "application/json",
+  "hosschemaversion": "0.1",
+  "hosrecordedat": "2026-07-30T09:40:04Z",
+  "hostenant": "tenant_demo",
+  "hosproperty": "prop_demo",
+  "hospropertytimezone": "Europe/Paris",
+  "hosbusinessdate": "2026-07-30",
+  "hossubjects": "message:msg_51_2 stay:stay_1042 guest:guest_7q2k",
+  "data": {
+    "message_id": "msg_51_2",
+    "channel": "messaging_app",
+    "guest_id": "guest_7q2k",
+    "stay_id": "stay_1042",
+    "sensitivity": "confidential",
+    "signals": [
+      {
+        "kind": "early_arrival",
+        "expected_arrival_at": "2026-07-30T10:30:00Z",
+        "confidence": 0.92
+      }
+    ]
+  }
+}

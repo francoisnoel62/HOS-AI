@@ -1,0 +1,286 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:hos:schema:0.1:reference:arrival-readiness",
+  "title": "Arrival-readiness reference situations",
+  "description": "Non-normative. Situations produced by the reference arrival-readiness projection. They use the HOS Events envelope so they can be replayed and audited, but they are not part of the HOS Events 0.1 catalogue and may change without a HIP.",
+  "allOf": [
+    {
+      "$ref": "urn:hos:schema:0.1:event-envelope"
+    },
+    {
+      "properties": {
+        "type": {
+          "enum": ["arrival.room_readiness_at_risk", "arrival.room_readiness_resolved"]
+        }
+      }
+    },
+    {
+      "if": {
+        "required": ["type"],
+        "properties": {
+          "type": {
+            "const": "arrival.room_readiness_at_risk"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "$ref": "#/$defs/arrival.room_readiness_at_risk"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": ["type"],
+        "properties": {
+          "type": {
+            "const": "arrival.room_readiness_resolved"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "$ref": "#/$defs/arrival.room_readiness_resolved"
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "factRef": {
+      "type": "object",
+      "required": ["value", "source", "event_id", "time"],
+      "properties": {
+        "value": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string",
+          "format": "uri"
+        },
+        "event_id": {
+          "type": "string"
+        },
+        "time": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "additionalProperties": false,
+      "description": "A value together with the fact it comes from."
+    },
+    "conflictRef": {
+      "type": "object",
+      "description": "A non-authoritative value that disagrees with the authoritative value and is not older than it.",
+      "required": ["dimension", "value", "source", "event_id", "time"],
+      "properties": {
+        "dimension": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/unitStatusDimension"
+        },
+        "value": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string",
+          "format": "uri"
+        },
+        "event_id": {
+          "type": "string"
+        },
+        "time": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "additionalProperties": false
+    },
+    "eventRef": {
+      "type": "object",
+      "required": ["source", "id"],
+      "properties": {
+        "source": {
+          "type": "string",
+          "format": "uri"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "taskRef": {
+      "type": "object",
+      "required": ["task_id", "task_type", "status", "source", "event_id", "time"],
+      "properties": {
+        "task_id": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/hosId"
+        },
+        "task_type": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/taskType"
+        },
+        "status": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/taskStatus"
+        },
+        "source": {
+          "type": "string",
+          "format": "uri"
+        },
+        "event_id": {
+          "type": "string"
+        },
+        "time": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "additionalProperties": false
+    },
+    "arrival.room_readiness_at_risk": {
+      "title": "arrival.room_readiness_at_risk",
+      "description": "A guest is expected before the planned check-in time and the assigned unit is not ready according to its authoritative housekeeping status. Observation only.",
+      "type": "object",
+      "required": [
+        "stay_id",
+        "reservation_id",
+        "unit_id",
+        "planned_arrival_at",
+        "expected_arrival_at",
+        "housekeeping",
+        "conflicts",
+        "latest_task",
+        "evidence"
+      ],
+      "properties": {
+        "stay_id": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/hosId"
+        },
+        "reservation_id": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/hosId"
+        },
+        "unit_id": {
+          "oneOf": [
+            {
+              "$ref": "urn:hos:schema:0.1:core#/$defs/hosId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "planned_arrival_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "expected_arrival_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "housekeeping": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/factRef"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "conflicts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/conflictRef"
+          }
+        },
+        "latest_task": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/taskRef"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "evidence": {
+          "type": "array",
+          "description": "Facts the situation is derived from, sorted by occurrence time, then source, then id.",
+          "items": {
+            "$ref": "#/$defs/eventRef"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "arrival.room_readiness_resolved": {
+      "title": "arrival.room_readiness_resolved",
+      "description": "A previously raised room-readiness risk no longer applies.",
+      "type": "object",
+      "required": [
+        "stay_id",
+        "reservation_id",
+        "unit_id",
+        "reason",
+        "planned_arrival_at",
+        "expected_arrival_at",
+        "housekeeping",
+        "evidence"
+      ],
+      "properties": {
+        "stay_id": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/hosId"
+        },
+        "reservation_id": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/hosId"
+        },
+        "unit_id": {
+          "oneOf": [
+            {
+              "$ref": "urn:hos:schema:0.1:core#/$defs/hosId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reason": {
+          "enum": ["unit_ready", "arrival_not_early", "reservation_inactive", "stay_started"]
+        },
+        "planned_arrival_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "expected_arrival_at": {
+          "oneOf": [
+            {
+              "type": "string",
+              "format": "date-time"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "housekeeping": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/factRef"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/eventRef"
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

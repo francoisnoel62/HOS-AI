@@ -18,8 +18,10 @@ const dispositionLabels: Record<Disposition, { label: string; tone: BadgeTone }>
   duplicate: { label: "Duplicate · ignored", tone: "default" },
   superseded: { label: "Older · not applied", tone: "default" },
   non_authoritative: { label: "Not authoritative", tone: "warning" },
-  undeclared_producer: { label: "Undeclared producer", tone: "warning" },
+  undeclared_capability: { label: "Undeclared · denied", tone: "warning" },
 };
+
+const stayLabels: Record<StayView["stay_status"], string> = { expected: "Expected", in_house: "In house", departed: "Departed", cancelled: "Cancelled" };
 
 const situationLabels: Record<SituationStatus, { label: string; tone: BadgeTone }> = {
   none: { label: "No situation", tone: "default" },
@@ -32,6 +34,10 @@ export function ArrivalReplay({ steps, notes, timezone, stayId, producerLabels }
   const [playing, setPlaying] = useState(false);
   const clock = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: timezone });
   const localTime = (iso: string) => clock.format(new Date(iso));
+  const day = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: timezone });
+  const scenarioDay = steps.length ? day.format(new Date(steps[steps.length - 1].event.time)) : "";
+  // Facts from another day, such as the original booking, show their date as well.
+  const occurred = (iso: string) => (day.format(new Date(iso)) === scenarioDay ? localTime(iso) : `${day.format(new Date(iso))}, ${localTime(iso)}`);
   const producer = (source: string) => producerLabels[source] ?? source;
 
   const step = position > 0 ? steps[position - 1] : undefined;
@@ -84,9 +90,12 @@ export function ArrivalReplay({ steps, notes, timezone, stayId, producerLabels }
                 >
                   <span className="mt-0.5 font-mono text-xs text-[var(--muted-foreground)]">#{item.delivery}</span>
                   <span className="min-w-0">
-                    <span className={cn("block truncate font-mono text-[0.8rem]", !delivered && "text-[var(--muted-foreground)]")}>{item.event.type}</span>
+                    <span className={cn("block truncate font-mono text-[0.8rem]", !delivered && "text-[var(--muted-foreground)]")}>
+                      {item.event.type}
+                      {item.event.hosdatamode === "snapshot" ? <span className="text-[var(--muted-foreground)]"> · snapshot</span> : null}
+                    </span>
                     <span className="mt-1 block text-xs text-[var(--muted-foreground)]">
-                      {producer(item.event.source)} · occurred {localTime(item.event.time)}
+                      {producer(item.event.source)} · occurred {occurred(item.event.time)}
                     </span>
                   </span>
                   <span className="min-h-5">{delivered ? <Badge variant={disposition.tone}>{disposition.label}</Badge> : <span className="font-mono text-[0.68rem] uppercase tracking-[0.08em] text-[var(--muted-foreground)]">Pending</span>}</span>
@@ -145,7 +154,7 @@ export function ArrivalReplay({ steps, notes, timezone, stayId, producerLabels }
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <p className="eyebrow">Arrival-readiness projection</p>
-              <h3 className="mt-2 font-mono text-lg">{stay ? `${stay.stay_id} · ${stay.unit_id ?? "unit not assigned"}` : "Waiting for facts"}</h3>
+              <h3 className="mt-2 font-mono text-lg">{stay ? `${stay.stay_id} · ${stay.unit_id ?? "no unit assigned"}` : "Waiting for facts"}</h3>
             </div>
             <div aria-live="polite">
               <Badge className="text-[0.75rem]" variant={situation.tone}>
@@ -155,13 +164,14 @@ export function ArrivalReplay({ steps, notes, timezone, stayId, producerLabels }
           </div>
           {stay ? (
             <dl className="mt-5 grid gap-x-6 gap-y-4 text-sm sm:grid-cols-2">
-              <Row label="Planned check-in">{localTime(stay.planned_checkin_at)}</Row>
+              <Row label="Planned check-in">{localTime(stay.planned_arrival_at)}</Row>
               <Row label="Guest expected">
                 {stay.arrival ? (
                   <>
                     <span className={cn(stay.early && "font-semibold text-[var(--warning)]")}>{localTime(stay.arrival.value)}</span>
                     <Source>
                       message at {localTime(stay.arrival.time)} · {producer(stay.arrival.source)}
+                      {stay.arrival.confidence === undefined ? null : ` · confidence ${Math.round(stay.arrival.confidence * 100)}%`}
                     </Source>
                   </>
                 ) : (
@@ -197,7 +207,9 @@ export function ArrivalReplay({ steps, notes, timezone, stayId, producerLabels }
               <Row label="Latest task">
                 {stay.latest_task ? (
                   <>
-                    <span>{stay.latest_task.task_type} completed</span>
+                    <span>
+                      {stay.latest_task.task_type} · {stay.latest_task.status}
+                    </span>
                     <Source>
                       {producer(stay.latest_task.source)} · {localTime(stay.latest_task.time)}
                     </Source>
@@ -206,7 +218,10 @@ export function ArrivalReplay({ steps, notes, timezone, stayId, producerLabels }
                   <Muted>None</Muted>
                 )}
               </Row>
-              <Row label="Readiness">{stay.readiness === "not_ready" ? "Not ready" : stay.readiness === "ready" ? "Ready" : "Unknown"}</Row>
+              <Row label="Readiness · stay">
+                {stay.readiness === "not_ready" ? "Not ready" : stay.readiness === "ready" ? "Ready" : "Unknown"}
+                <Source>Stay {stayLabels[stay.stay_status].toLowerCase()}</Source>
+              </Row>
             </dl>
           ) : (
             <p className="mt-4 text-sm leading-6 text-[var(--muted-foreground)]">

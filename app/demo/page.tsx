@@ -12,7 +12,7 @@ import { replayArrivalReadiness } from "@/lib/hos/projection";
 
 export const metadata: Metadata = {
   title: "Live demo: arrival readiness",
-  description: "Replay nine synthetic facts from a PMS, a housekeeping system and guest messaging, and watch HOS 0.1 detect, then resolve, an early-arrival room-readiness risk.",
+  description: "Replay thirteen synthetic HOS Events 0.1 facts from a PMS, a housekeeping system and guest messaging, and watch the reference projection detect, then resolve, an early-arrival room-readiness risk.",
 };
 
 const roleLabels: Record<string, string> = { pms: "PMS", housekeeping: "Housekeeping", messaging: "Messaging", maintenance: "Maintenance", other: "Other" };
@@ -22,11 +22,12 @@ export default function DemoPage() {
   const steps = replayArrivalReadiness(events, manifests, scenario.projection);
   const producerLabels = Object.fromEntries(manifests.map((manifest) => [manifest.producer, roleLabels[manifest.system_role]]));
   const downloads = [
-    { href: `${scenarioPath}/${scenario.files.events}`, label: "events.jsonl", text: "The nine deliveries, in delivery order, one CloudEvent per line." },
+    { href: `${scenarioPath}/${scenario.files.events}`, label: "events.jsonl", text: `The ${events.length} deliveries, in delivery order, one CloudEvent per line.` },
     { href: `${scenarioPath}/${scenario.files.expected}`, label: "expected.json", text: "Dispositions, readiness and situations your implementation must reproduce." },
-    { href: `${scenarioPath}/scenario.json`, label: "scenario.json", text: "Property profile, readiness rule and what each delivery checks." },
+    { href: `${scenarioPath}/scenario.json`, label: "scenario.json", text: "Tenant and property profile, readiness rule, the cases covered and what each delivery checks." },
     ...scenario.files.producers.map((file) => ({ href: `${scenarioPath}/${file}`, label: file, text: "Event Producer manifest: declared events, authority, delivery, replay and retention." })),
-    { href: `${specVersionPath}/schemas/hos-event.schema.json`, label: "hos-event.schema.json", text: "JSON Schema (2020-12) for every HOS 0.1 event and situation." },
+    { href: `${specVersionPath}/schemas/events.schema.json`, label: "events.schema.json", text: "JSON Schema (2020-12) for the eleven HOS Events 0.1 types, with the envelope and Core schemas it references." },
+    { href: `${specVersionPath}/schemas/reference/arrival-readiness.schema.json`, label: "reference/arrival-readiness.schema.json", text: "Non-normative schema of the two reference situations." },
   ];
 
   return (
@@ -34,13 +35,13 @@ export default function DemoPage() {
       <PageHero
         eyebrow="Live demo"
         title="Replay an early arrival, one fact at a time."
-        description="A PMS, a housekeeping system and a guest messaging platform send nine facts about one stay. Watch HOS ignore a duplicate, keep a conflicting status visible, set aside a late message, and raise a room-readiness risk before the guest walks in."
-        badge="HOS 0.1 · Observe · Synthetic data"
+        description="A PMS, a housekeeping system and a guest messaging platform send thirteen facts about one stay. Watch HOS ignore a duplicate, deny an undeclared capability, keep a conflicting status visible, set aside a late message, recover from a snapshot, and raise a room-readiness risk before the guest walks in."
+        badge="HOS Events 0.1 · Observe · Synthetic data"
       />
       <section className="mx-auto max-w-6xl px-5 pb-16 lg:px-8">
         <ArrivalReplay notes={scenario.deliveries} producerLabels={producerLabels} stayId="stay_1042" steps={steps} timezone={scenario.property.timezone} />
         <p className="mt-6 max-w-3xl text-sm leading-6 text-[var(--muted-foreground)]">
-          Times are shown in the property time zone ({scenario.property.timezone}). HOS 0.1 only observes: it does not reassign the room, message the guest or change the booking. The projection on this page is the reference implementation run against the published files below.
+          Times are shown in the property time zone ({scenario.property.timezone}). HOS 0.1 only observes: it does not reassign the room, message the guest or change the booking. The projection on this page is the non-normative reference implementation, run against the published files below.
         </p>
       </section>
       <SectionFrame
@@ -62,8 +63,8 @@ export default function DemoPage() {
           ))}
         </div>
         <div className="mt-8 flex flex-wrap gap-3">
-          <Link href="/docs/core">
-            <Button>Read HOS Core 0.1</Button>
+          <Link href="/docs/events">
+            <Button>Read HOS Events 0.1</Button>
           </Link>
           <Link href="/participate/pilot">
             <Button variant="secondary">Run this scenario with your systems</Button>

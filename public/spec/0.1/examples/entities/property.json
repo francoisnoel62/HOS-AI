@@ -1,0 +1,15 @@
+{
+  "property_id": "prop_demo",
+  "tenant_id": "tenant_demo",
+  "timezone": "Europe/Paris",
+  "country": "FR",
+  "business_date_policy": { "rollover_local_time": "04:00" },
+  "external_refs": [
+    {
+      "source_system": "urn:hos:pms:demo",
+      "id_type": "property_code",
+      "source_id": "DEMO-PAR-01",
+      "verification": "verified"
+    }
+  ]
+}

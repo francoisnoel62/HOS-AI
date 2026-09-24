@@ -1,0 +1,22 @@
+{
+  "specversion": "1.0",
+  "id": "pms-000421",
+  "source": "urn:hos:pms:demo",
+  "type": "stay.expected",
+  "time": "2026-07-30T06:05:00Z",
+  "datacontenttype": "application/json",
+  "hosschemaversion": "0.1",
+  "hosrecordedat": "2026-07-30T06:05:01Z",
+  "hostenant": "tenant_demo",
+  "hosproperty": "prop_demo",
+  "hospropertytimezone": "Europe/Paris",
+  "hosbusinessdate": "2026-07-30",
+  "hossubjects": "stay:stay_1042 reservation:res_1042 guest:guest_7q2k",
+  "data": {
+    "stay_id": "stay_1042",
+    "reservation_id": "res_1042",
+    "guest_id": "guest_7q2k",
+    "planned_arrival_at": "2026-07-30T13:00:00Z",
+    "planned_departure_at": "2026-08-01T09:00:00Z"
+  }
+}

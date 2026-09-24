@@ -1,0 +1,19 @@
+{
+  "specversion": "1.0",
+  "id": "pms-000502",
+  "source": "urn:hos:pms:demo",
+  "type": "reservation.cancelled",
+  "time": "2026-07-30T08:00:00Z",
+  "datacontenttype": "application/json",
+  "hosschemaversion": "0.1",
+  "hosrecordedat": "2026-07-30T08:00:00.500Z",
+  "hostenant": "tenant_demo",
+  "hosproperty": "prop_demo",
+  "hospropertytimezone": "Europe/Paris",
+  "hosbusinessdate": "2026-07-30",
+  "hossubjects": "reservation:res_2211",
+  "data": {
+    "reservation_id": "res_2211",
+    "reason": "guest_request"
+  }
+}

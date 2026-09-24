@@ -49,18 +49,18 @@ flowchart LR
 
 The illustrative output is `arrival.room_readiness_at_risk`. Conflicting facts retain their provenance. This first phase observes; booking changes and check-in actions remain outside its scope.
 
-The website presents this scenario as an illustration. A running event processor, executable conformance suite and live PMS connectors are future work.
+The website replays this scenario at `/demo` with a small, non-normative reference projection run against a synthetic conformance corpus. A validator CLI, SDKs, a production event processor and live PMS connectors are future work.
 
 ## Project status
 
-**Early-stage initiative · HOS Core 0.1 draft · Website under local development**
+**Early-stage initiative · HOS Core 0.1 and HOS Events 0.1 drafts · Website under local development**
 
 | Area                                       | Where it stands                                                                                                       |
 | :----------------------------------------- | :-------------------------------------------------------------------------------------------------------------------- |
 | Website                                    | Implemented locally: standard overview, manifesto, governance, roadmap, documentation status and participation pages. |
 | Participation forms                        | Local PostgreSQL persistence, encrypted payloads and filesystem notification records.                                 |
-| HOS Core and event model                   | Described as draft material on the site. Versioned schemas and an operational runtime are not included here.          |
-| Producer manifests and arrival conformance | Marked in progress in the site's documentation catalogue; executable artefacts are not included here.                 |
+| HOS Core and event model                   | Draft JSON Schemas in [`public/spec/0.1`](public/spec/0.1), documented at `/docs/core` and `/docs/events`.            |
+| Producer manifests and arrival conformance | Draft manifest schema (signing in progress) and a synthetic arrival corpus, checked by the unit tests.                |
 | Mappings and certification                 | Planned. No certified integrations are claimed.                                                                       |
 | Independent stewardship                    | An objective. HOS AI is working toward an independent HOS Foundation; no established foundation is claimed.           |
 | Data Cooperative                           | A future, optional programme, separate from HOS Core. Not active.                                                     |
@@ -100,8 +100,10 @@ components/          Brand, navigation, UI, diagrams and participation forms
 lib/content/         Audience messaging and documentation status
 lib/forms/           Validation, encryption, persistence and local outbox
 lib/analytics/       Allowlisted, payload-free browser event signals
+lib/hos/             Reference arrival-readiness projection and spec loaders
 database/migrations/ PostgreSQL schema migrations
 scripts/             Migration and seed utilities
+public/spec/0.1/     Draft HOS schemas, examples and conformance corpus
 tests/               Vitest unit tests and Playwright browser/accessibility checks
 docs/operations/     Local operating procedures
 ```

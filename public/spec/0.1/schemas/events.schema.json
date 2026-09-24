@@ -1,0 +1,823 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:hos:schema:0.1:events",
+  "title": "HOS Events 0.1",
+  "description": "Draft. The initial HOS event catalogue: eleven immutable fact types in five families, on the HOS Events envelope profile. Data objects are closed so that personal or commercial data cannot travel unnoticed. Snapshot mode is allowed for unit.status_changed only.",
+  "allOf": [
+    {
+      "$ref": "urn:hos:schema:0.1:event-envelope"
+    },
+    {
+      "properties": {
+        "type": {
+          "enum": [
+            "reservation.created",
+            "reservation.updated",
+            "reservation.cancelled",
+            "stay.expected",
+            "stay.checked_in",
+            "stay.checked_out",
+            "stay.unit_assigned",
+            "unit.status_changed",
+            "housekeeping.task.created",
+            "housekeeping.task.completed",
+            "guest.message.received"
+          ]
+        }
+      }
+    },
+    {
+      "if": {
+        "required": ["type"],
+        "properties": {
+          "type": {
+            "const": "reservation.created"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "$ref": "#/$defs/reservation.created"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": ["type"],
+        "properties": {
+          "type": {
+            "const": "reservation.updated"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "$ref": "#/$defs/reservation.updated"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": ["type"],
+        "properties": {
+          "type": {
+            "const": "reservation.cancelled"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "$ref": "#/$defs/reservation.cancelled"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": ["type"],
+        "properties": {
+          "type": {
+            "const": "stay.expected"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "$ref": "#/$defs/stay.expected"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": ["type"],
+        "properties": {
+          "type": {
+            "const": "stay.checked_in"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "$ref": "#/$defs/stay.checked_in"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": ["type"],
+        "properties": {
+          "type": {
+            "const": "stay.checked_out"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "$ref": "#/$defs/stay.checked_out"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": ["type"],
+        "properties": {
+          "type": {
+            "const": "stay.unit_assigned"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "$ref": "#/$defs/stay.unit_assigned"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": ["type"],
+        "properties": {
+          "type": {
+            "const": "unit.status_changed"
+          }
+        }
+      },
+      "then": {
+        "if": {
+          "required": ["hosdatamode"],
+          "properties": {
+            "hosdatamode": {
+              "const": "snapshot"
+            }
+          }
+        },
+        "then": {
+          "properties": {
+            "data": {
+              "$ref": "#/$defs/unit.status_changed.snapshot"
+            }
+          }
+        },
+        "else": {
+          "properties": {
+            "data": {
+              "$ref": "#/$defs/unit.status_changed"
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": ["type"],
+        "properties": {
+          "type": {
+            "const": "housekeeping.task.created"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "$ref": "#/$defs/housekeeping.task.created"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": ["type"],
+        "properties": {
+          "type": {
+            "const": "housekeeping.task.completed"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "$ref": "#/$defs/housekeeping.task.completed"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": ["type"],
+        "properties": {
+          "type": {
+            "const": "guest.message.received"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "$ref": "#/$defs/guest.message.received"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": ["type"],
+        "properties": {
+          "type": {
+            "not": {
+              "const": "unit.status_changed"
+            }
+          }
+        }
+      },
+      "then": {
+        "not": {
+          "required": ["hosdatamode"],
+          "properties": {
+            "hosdatamode": {
+              "const": "snapshot"
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "reservation.created": {
+      "title": "reservation.created",
+      "description": "A reservation was created.",
+      "x-hos-family": "Reservation",
+      "x-hos-authority": "Reservation system (PMS)",
+      "type": "object",
+      "required": ["reservation_id", "status", "planned_arrival_date", "planned_departure_date"],
+      "properties": {
+        "reservation_id": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/hosId"
+        },
+        "status": {
+          "enum": ["tentative", "confirmed"]
+        },
+        "planned_arrival_date": {
+          "type": "string",
+          "format": "date"
+        },
+        "planned_departure_date": {
+          "type": "string",
+          "format": "date"
+        },
+        "guest_id": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/hosId"
+        },
+        "external_refs": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/externalRefs"
+        },
+        "extensions": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/extensions"
+        }
+      },
+      "additionalProperties": false
+    },
+    "reservation.updated": {
+      "title": "reservation.updated",
+      "description": "A reservation changed. changed_fields lists what changed; only those fields are carried, with their new values.",
+      "x-hos-family": "Reservation",
+      "x-hos-authority": "Reservation system (PMS)",
+      "type": "object",
+      "required": ["reservation_id", "changed_fields"],
+      "properties": {
+        "reservation_id": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/hosId"
+        },
+        "changed_fields": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "status",
+              "planned_arrival_date",
+              "planned_departure_date",
+              "guest_id",
+              "external_refs"
+            ]
+          }
+        },
+        "status": {
+          "enum": ["tentative", "confirmed", "no_show"]
+        },
+        "planned_arrival_date": {
+          "type": "string",
+          "format": "date"
+        },
+        "planned_departure_date": {
+          "type": "string",
+          "format": "date"
+        },
+        "guest_id": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/hosId"
+        },
+        "external_refs": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/externalRefs"
+        },
+        "extensions": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/extensions"
+        }
+      },
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "changed_fields": {
+                "contains": {
+                  "const": "status"
+                }
+              }
+            }
+          },
+          "then": {
+            "required": ["status"]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "changed_fields": {
+                "contains": {
+                  "const": "planned_arrival_date"
+                }
+              }
+            }
+          },
+          "then": {
+            "required": ["planned_arrival_date"]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "changed_fields": {
+                "contains": {
+                  "const": "planned_departure_date"
+                }
+              }
+            }
+          },
+          "then": {
+            "required": ["planned_departure_date"]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "changed_fields": {
+                "contains": {
+                  "const": "guest_id"
+                }
+              }
+            }
+          },
+          "then": {
+            "required": ["guest_id"]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "changed_fields": {
+                "contains": {
+                  "const": "external_refs"
+                }
+              }
+            }
+          },
+          "then": {
+            "required": ["external_refs"]
+          }
+        }
+      ]
+    },
+    "reservation.cancelled": {
+      "title": "reservation.cancelled",
+      "description": "A reservation was cancelled.",
+      "x-hos-family": "Reservation",
+      "x-hos-authority": "Reservation system (PMS)",
+      "type": "object",
+      "required": ["reservation_id"],
+      "properties": {
+        "reservation_id": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/hosId"
+        },
+        "reason": {
+          "enum": ["guest_request", "property_request", "payment_issue", "other"]
+        },
+        "extensions": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/extensions"
+        }
+      },
+      "additionalProperties": false
+    },
+    "stay.expected": {
+      "title": "stay.expected",
+      "description": "A stay is expected: the operational visit that fulfils a reservation. Unit assignment is a separate fact.",
+      "x-hos-family": "Stay",
+      "x-hos-authority": "PMS",
+      "type": "object",
+      "required": ["stay_id", "reservation_id", "planned_arrival_at", "planned_departure_at"],
+      "properties": {
+        "stay_id": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/hosId"
+        },
+        "reservation_id": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/hosId"
+        },
+        "guest_id": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/hosId"
+        },
+        "planned_arrival_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Planned check-in time."
+        },
+        "planned_departure_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "extensions": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/extensions"
+        }
+      },
+      "additionalProperties": false
+    },
+    "stay.checked_in": {
+      "title": "stay.checked_in",
+      "description": "The guest checked in. time is the actual arrival.",
+      "x-hos-family": "Stay",
+      "x-hos-authority": "PMS",
+      "type": "object",
+      "required": ["stay_id", "unit_id"],
+      "properties": {
+        "stay_id": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/hosId"
+        },
+        "unit_id": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/hosId"
+        },
+        "extensions": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/extensions"
+        }
+      },
+      "additionalProperties": false
+    },
+    "stay.checked_out": {
+      "title": "stay.checked_out",
+      "description": "The guest checked out. time is the actual departure.",
+      "x-hos-family": "Stay",
+      "x-hos-authority": "PMS",
+      "type": "object",
+      "required": ["stay_id", "unit_id"],
+      "properties": {
+        "stay_id": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/hosId"
+        },
+        "unit_id": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/hosId"
+        },
+        "extensions": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/extensions"
+        }
+      },
+      "additionalProperties": false
+    },
+    "stay.unit_assigned": {
+      "title": "stay.unit_assigned",
+      "description": "A unit was assigned to a stay. Successive assignments form the stay's assignment history.",
+      "x-hos-family": "Stay",
+      "x-hos-authority": "PMS",
+      "type": "object",
+      "required": ["stay_id", "unit_id", "previous_unit_id"],
+      "properties": {
+        "stay_id": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/hosId"
+        },
+        "unit_id": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/hosId"
+        },
+        "previous_unit_id": {
+          "oneOf": [
+            {
+              "$ref": "urn:hos:schema:0.1:core#/$defs/hosId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reason": {
+          "enum": ["initial_assignment", "upgrade", "room_move", "readiness", "other"]
+        },
+        "extensions": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/extensions"
+        }
+      },
+      "additionalProperties": false
+    },
+    "unit.status_changed": {
+      "title": "unit.status_changed",
+      "description": "One dimension of a unit changed. The event states only that dimension, the previous value when known, the new value, the authority source and an optional reason; it never alters the other dimensions.",
+      "x-hos-family": "Unit",
+      "x-hos-authority": "Declared per dimension (housekeeping system, PMS, maintenance)",
+      "type": "object",
+      "required": ["unit_id", "dimension", "current", "authority_source"],
+      "properties": {
+        "unit_id": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/hosId"
+        },
+        "dimension": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/unitStatusDimension"
+        },
+        "previous": {
+          "type": "string"
+        },
+        "current": {
+          "type": "string"
+        },
+        "authority_source": {
+          "type": "string",
+          "format": "uri",
+          "description": "System of record for this value, as asserted by the producer. Informative: the manifests decide what HOS treats as authoritative."
+        },
+        "reason": {
+          "enum": [
+            "departure",
+            "arrival",
+            "cleaning_completed",
+            "inspection",
+            "maintenance",
+            "commercial_decision",
+            "manual_override",
+            "other"
+          ]
+        },
+        "extensions": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/extensions"
+        }
+      },
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "dimension": {
+                "const": "occupancy"
+              }
+            },
+            "required": ["dimension"]
+          },
+          "then": {
+            "properties": {
+              "previous": {
+                "$ref": "urn:hos:schema:0.1:core#/$defs/occupancyStatus"
+              },
+              "current": {
+                "$ref": "urn:hos:schema:0.1:core#/$defs/occupancyStatus"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "dimension": {
+                "const": "housekeeping"
+              }
+            },
+            "required": ["dimension"]
+          },
+          "then": {
+            "properties": {
+              "previous": {
+                "$ref": "urn:hos:schema:0.1:core#/$defs/housekeepingStatus"
+              },
+              "current": {
+                "$ref": "urn:hos:schema:0.1:core#/$defs/housekeepingStatus"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "dimension": {
+                "const": "maintenance"
+              }
+            },
+            "required": ["dimension"]
+          },
+          "then": {
+            "properties": {
+              "previous": {
+                "$ref": "urn:hos:schema:0.1:core#/$defs/maintenanceStatus"
+              },
+              "current": {
+                "$ref": "urn:hos:schema:0.1:core#/$defs/maintenanceStatus"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "dimension": {
+                "const": "commercial"
+              }
+            },
+            "required": ["dimension"]
+          },
+          "then": {
+            "properties": {
+              "previous": {
+                "$ref": "urn:hos:schema:0.1:core#/$defs/commercialStatus"
+              },
+              "current": {
+                "$ref": "urn:hos:schema:0.1:core#/$defs/commercialStatus"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "unit.status_changed.snapshot": {
+      "title": "unit.status_changed (snapshot)",
+      "description": "Snapshot mode, only with hosdatamode = snapshot and when the producer declares snapshots: the current value of each dimension the producer reports, sent when deltas cannot recover the state, for example after an outage.",
+      "x-hos-family": "Unit",
+      "x-hos-authority": "Declared per dimension",
+      "type": "object",
+      "required": ["unit_id", "statuses", "authority_source", "reason"],
+      "properties": {
+        "unit_id": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/hosId"
+        },
+        "statuses": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/unitStatuses"
+        },
+        "authority_source": {
+          "type": "string",
+          "format": "uri"
+        },
+        "reason": {
+          "enum": ["recovery", "resynchronisation", "initial_load"]
+        },
+        "extensions": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/extensions"
+        }
+      },
+      "additionalProperties": false
+    },
+    "housekeeping.task.created": {
+      "title": "housekeeping.task.created",
+      "description": "A housekeeping task was created for a unit or a stay.",
+      "x-hos-family": "Housekeeping",
+      "x-hos-authority": "Housekeeping system",
+      "type": "object",
+      "required": ["task_id", "task_type", "priority"],
+      "properties": {
+        "task_id": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/hosId"
+        },
+        "unit_id": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/hosId"
+        },
+        "stay_id": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/hosId"
+        },
+        "task_type": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/taskType"
+        },
+        "priority": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/taskPriority"
+        },
+        "due_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "extensions": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/extensions"
+        }
+      },
+      "additionalProperties": false,
+      "anyOf": [
+        {
+          "required": ["unit_id"]
+        },
+        {
+          "required": ["stay_id"]
+        }
+      ]
+    },
+    "housekeeping.task.completed": {
+      "title": "housekeeping.task.completed",
+      "description": "A housekeeping task was reported complete. Completing a task does not change a unit status by itself.",
+      "x-hos-family": "Housekeeping",
+      "x-hos-authority": "Housekeeping system",
+      "type": "object",
+      "required": ["task_id", "task_type"],
+      "properties": {
+        "task_id": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/hosId"
+        },
+        "unit_id": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/hosId"
+        },
+        "stay_id": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/hosId"
+        },
+        "task_type": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/taskType"
+        },
+        "completed_by_ref": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Pseudonymous staff reference."
+        },
+        "extensions": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/extensions"
+        }
+      },
+      "additionalProperties": false,
+      "anyOf": [
+        {
+          "required": ["unit_id"]
+        },
+        {
+          "required": ["stay_id"]
+        }
+      ]
+    },
+    "guest.message.received": {
+      "title": "guest.message.received",
+      "description": "An inbound guest message was received. Only metadata and extracted signals travel; the content stays in the messaging system.",
+      "x-hos-family": "Guest communication",
+      "x-hos-authority": "Guest messaging system",
+      "type": "object",
+      "required": ["message_id", "channel", "sensitivity"],
+      "properties": {
+        "message_id": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/hosId"
+        },
+        "channel": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/messageChannel"
+        },
+        "guest_id": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/hosId"
+        },
+        "stay_id": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/hosId"
+        },
+        "sensitivity": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/sensitivityClass",
+          "description": "Sensitivity class of the original message content."
+        },
+        "signals": {
+          "type": "array",
+          "description": "Operational signals extracted from the message.",
+          "items": {
+            "type": "object",
+            "required": ["kind", "expected_arrival_at"],
+            "properties": {
+              "kind": {
+                "enum": ["early_arrival", "late_arrival"]
+              },
+              "expected_arrival_at": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "confidence": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1,
+                "description": "Confidence of the extraction, when the signal was inferred from free text."
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "extensions": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/extensions"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

@@ -2,10 +2,31 @@
   "hosmanifestversion": "0.1",
   "producer": "urn:hos:messaging:demo",
   "name": "Synthetic guest messaging platform",
+  "organization": {
+    "name": "HOS AI synthetic corpus"
+  },
   "system_role": "messaging",
   "property_ids": ["prop_demo"],
-  "events": [{ "type": "stay.arrival_signaled", "authoritative": true }],
-  "delivery": { "guarantee": "at-least-once", "ordering": "none" },
-  "replay": { "supported": false },
-  "retention": { "event_days": 7 }
+  "entities": ["Message", "Guest"],
+  "events": [
+    {
+      "type": "guest.message.received",
+      "authoritative": true
+    }
+  ],
+  "delivery": {
+    "mechanisms": ["webhook"],
+    "guarantee": "at-least-once",
+    "ordering": "none"
+  },
+  "replay": {
+    "supported": false
+  },
+  "retention": {
+    "event_days": 7
+  },
+  "limitations": [
+    "Signals are extracted automatically from free text and carry a confidence.",
+    "Replay is not available; a certified Event Producer profile requires at least 30 days."
+  ]
 }

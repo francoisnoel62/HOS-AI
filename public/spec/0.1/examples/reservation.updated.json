@@ -1,0 +1,20 @@
+{
+  "specversion": "1.0",
+  "id": "pms-000501",
+  "source": "urn:hos:pms:demo",
+  "type": "reservation.updated",
+  "time": "2026-07-30T08:00:00Z",
+  "datacontenttype": "application/json",
+  "hosschemaversion": "0.1",
+  "hosrecordedat": "2026-07-30T08:00:00.500Z",
+  "hostenant": "tenant_demo",
+  "hosproperty": "prop_demo",
+  "hospropertytimezone": "Europe/Paris",
+  "hosbusinessdate": "2026-07-30",
+  "hossubjects": "reservation:res_2210",
+  "data": {
+    "reservation_id": "res_2210",
+    "changed_fields": ["planned_departure_date"],
+    "planned_departure_date": "2026-08-03"
+  }
+}

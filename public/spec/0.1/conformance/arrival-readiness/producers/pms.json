@@ -2,12 +2,46 @@
   "hosmanifestversion": "0.1",
   "producer": "urn:hos:pms:demo",
   "name": "Synthetic PMS",
+  "organization": {
+    "name": "HOS AI synthetic corpus"
+  },
   "system_role": "pms",
   "property_ids": ["prop_demo"],
+  "entities": ["Reservation", "Stay", "Unit", "Guest"],
   "events": [
-    { "type": "reservation.updated", "authoritative": true },
-    { "type": "stay.expected", "authoritative": true },
-    { "type": "unit.status_changed", "dimensions": ["occupancy"], "authoritative": true },
+    {
+      "type": "reservation.created",
+      "authoritative": true
+    },
+    {
+      "type": "reservation.updated",
+      "authoritative": true
+    },
+    {
+      "type": "reservation.cancelled",
+      "authoritative": true
+    },
+    {
+      "type": "stay.expected",
+      "authoritative": true
+    },
+    {
+      "type": "stay.unit_assigned",
+      "authoritative": true
+    },
+    {
+      "type": "stay.checked_in",
+      "authoritative": true
+    },
+    {
+      "type": "stay.checked_out",
+      "authoritative": true
+    },
+    {
+      "type": "unit.status_changed",
+      "dimensions": ["occupancy", "commercial"],
+      "authoritative": true
+    },
     {
       "type": "unit.status_changed",
       "dimensions": ["housekeeping"],
@@ -15,7 +49,21 @@
       "note": "The PMS mirrors housekeeping status; at this property the housekeeping system is the authority."
     }
   ],
-  "delivery": { "guarantee": "at-least-once", "ordering": "per-subject" },
-  "replay": { "supported": true, "window_hours": 72 },
-  "retention": { "event_days": 30 }
+  "delivery": {
+    "mechanisms": ["webhook"],
+    "guarantee": "at-least-once",
+    "ordering": "per-subject"
+  },
+  "replay": {
+    "supported": true,
+    "window_days": 30,
+    "format": "jsonl"
+  },
+  "retention": {
+    "event_days": 90
+  },
+  "limitations": [
+    "The PMS task module is not a declared source of housekeeping tasks at this property.",
+    "Guest messages are not exposed."
+  ]
 }
