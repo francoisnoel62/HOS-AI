@@ -13,7 +13,7 @@ export function SiteHeader() {
         <Link aria-label="HOS AI home" href="/">
           <Wordmark />
         </Link>
-        <nav aria-label="Primary navigation" className="hidden items-center gap-5 md:flex">
+        <nav aria-label="Primary navigation" className="hidden items-center gap-5 lg:flex">
           {navigation.map((item) => (
             <Link className="text-sm text-[var(--muted-foreground)] transition-colors hover:text-[var(--foreground)]" href={item.href} key={item.href}>
               {item.label}
@@ -27,7 +27,7 @@ export function SiteHeader() {
             <Button size="sm">Participate</Button>
           </Link>
         </nav>
-        <div className="flex items-center gap-1 md:hidden">
+        <div className="flex items-center gap-1 lg:hidden">
           <ThemeToggle />
           <MobileMenu />
         </div>

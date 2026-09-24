@@ -14,6 +14,7 @@ export const siteConfig = {
 
 export const navigation = [
   { href: "/standard", label: "The Standard" },
+  { href: "/demo", label: "Live demo" },
   { href: "/roadmap", label: "Roadmap" },
   { href: "/governance", label: "Governance" },
   { href: "/data-cooperative", label: "Data Cooperative" },

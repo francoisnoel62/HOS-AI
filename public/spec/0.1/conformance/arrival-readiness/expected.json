@@ -1,0 +1,237 @@
+{
+  "scenario": "arrival-readiness",
+  "hosschemaversion": "0.1",
+  "compare": "Replay events.jsonl in file order. For every delivery compare the disposition and, for every known stay, its readiness and situation. For situations compare every attribute except id and hosrecordedat, which are implementation-defined.",
+  "deliveries": [
+    {
+      "delivery": 1,
+      "source": "urn:hos:pms:demo",
+      "id": "pms-000418",
+      "disposition": "applied",
+      "stays": {}
+    },
+    {
+      "delivery": 2,
+      "source": "urn:hos:pms:demo",
+      "id": "pms-000421",
+      "disposition": "applied",
+      "stays": {
+        "stay_1042": {
+          "readiness": "unknown",
+          "situation": "none"
+        }
+      }
+    },
+    {
+      "delivery": 3,
+      "source": "urn:hos:housekeeping:demo",
+      "id": "hk-002231",
+      "disposition": "applied",
+      "stays": {
+        "stay_1042": {
+          "readiness": "not_ready",
+          "situation": "none"
+        }
+      }
+    },
+    {
+      "delivery": 4,
+      "source": "urn:hos:housekeeping:demo",
+      "id": "hk-002231",
+      "disposition": "duplicate",
+      "stays": {
+        "stay_1042": {
+          "readiness": "not_ready",
+          "situation": "none"
+        }
+      }
+    },
+    {
+      "delivery": 5,
+      "source": "urn:hos:housekeeping:demo",
+      "id": "hk-002260",
+      "disposition": "applied",
+      "stays": {
+        "stay_1042": {
+          "readiness": "not_ready",
+          "situation": "none"
+        }
+      }
+    },
+    {
+      "delivery": 6,
+      "source": "urn:hos:pms:demo",
+      "id": "pms-000455",
+      "disposition": "non_authoritative",
+      "stays": {
+        "stay_1042": {
+          "readiness": "not_ready",
+          "situation": "none"
+        }
+      }
+    },
+    {
+      "delivery": 7,
+      "source": "urn:hos:messaging:demo",
+      "id": "msg-000977",
+      "disposition": "applied",
+      "stays": {
+        "stay_1042": {
+          "readiness": "not_ready",
+          "situation": "at_risk"
+        }
+      }
+    },
+    {
+      "delivery": 8,
+      "source": "urn:hos:messaging:demo",
+      "id": "msg-000971",
+      "disposition": "superseded",
+      "stays": {
+        "stay_1042": {
+          "readiness": "not_ready",
+          "situation": "at_risk"
+        }
+      }
+    },
+    {
+      "delivery": 9,
+      "source": "urn:hos:housekeeping:demo",
+      "id": "hk-002297",
+      "disposition": "applied",
+      "stays": {
+        "stay_1042": {
+          "readiness": "ready",
+          "situation": "resolved"
+        }
+      }
+    }
+  ],
+  "situations": [
+    {
+      "delivery": 7,
+      "event": {
+        "specversion": "1.0",
+        "type": "arrival.room_readiness_at_risk",
+        "source": "urn:hos:projection:arrival-readiness",
+        "time": "2026-07-30T09:40:00Z",
+        "subject": "stay_1042",
+        "datacontenttype": "application/json",
+        "hosschemaversion": "0.1",
+        "hosbusinessdate": "2026-07-30",
+        "hostimezone": "Europe/Paris",
+        "hospropertyid": "prop_demo",
+        "hoscausationsource": "urn:hos:messaging:demo",
+        "hoscausationid": "msg-000977",
+        "data": {
+          "stay_id": "stay_1042",
+          "reservation_id": "res_1042",
+          "unit_id": "unit_204",
+          "planned_checkin_at": "2026-07-30T13:00:00Z",
+          "expected_arrival_at": "2026-07-30T10:30:00Z",
+          "housekeeping": {
+            "value": "dirty",
+            "source": "urn:hos:housekeeping:demo",
+            "event_id": "hk-002231",
+            "time": "2026-07-30T06:40:00Z"
+          },
+          "conflicts": [
+            {
+              "dimension": "housekeeping",
+              "value": "clean",
+              "source": "urn:hos:pms:demo",
+              "event_id": "pms-000455",
+              "time": "2026-07-30T08:21:00Z"
+            }
+          ],
+          "latest_task": {
+            "task_id": "task_88",
+            "task_type": "cleaning",
+            "source": "urn:hos:housekeeping:demo",
+            "event_id": "hk-002260",
+            "time": "2026-07-30T08:20:00Z"
+          },
+          "evidence": [
+            {
+              "source": "urn:hos:pms:demo",
+              "id": "pms-000418"
+            },
+            {
+              "source": "urn:hos:pms:demo",
+              "id": "pms-000421"
+            },
+            {
+              "source": "urn:hos:housekeeping:demo",
+              "id": "hk-002231"
+            },
+            {
+              "source": "urn:hos:housekeeping:demo",
+              "id": "hk-002260"
+            },
+            {
+              "source": "urn:hos:pms:demo",
+              "id": "pms-000455"
+            },
+            {
+              "source": "urn:hos:messaging:demo",
+              "id": "msg-000977"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "delivery": 9,
+      "event": {
+        "specversion": "1.0",
+        "type": "arrival.room_readiness_resolved",
+        "source": "urn:hos:projection:arrival-readiness",
+        "time": "2026-07-30T10:10:00Z",
+        "subject": "stay_1042",
+        "datacontenttype": "application/json",
+        "hosschemaversion": "0.1",
+        "hosbusinessdate": "2026-07-30",
+        "hostimezone": "Europe/Paris",
+        "hospropertyid": "prop_demo",
+        "hoscausationsource": "urn:hos:housekeeping:demo",
+        "hoscausationid": "hk-002297",
+        "data": {
+          "stay_id": "stay_1042",
+          "reservation_id": "res_1042",
+          "unit_id": "unit_204",
+          "reason": "unit_ready",
+          "planned_checkin_at": "2026-07-30T13:00:00Z",
+          "expected_arrival_at": "2026-07-30T10:30:00Z",
+          "housekeeping": {
+            "value": "inspected",
+            "source": "urn:hos:housekeeping:demo",
+            "event_id": "hk-002297",
+            "time": "2026-07-30T10:10:00Z"
+          },
+          "evidence": [
+            {
+              "source": "urn:hos:pms:demo",
+              "id": "pms-000418"
+            },
+            {
+              "source": "urn:hos:pms:demo",
+              "id": "pms-000421"
+            },
+            {
+              "source": "urn:hos:housekeeping:demo",
+              "id": "hk-002260"
+            },
+            {
+              "source": "urn:hos:messaging:demo",
+              "id": "msg-000977"
+            },
+            {
+              "source": "urn:hos:housekeeping:demo",
+              "id": "hk-002297"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

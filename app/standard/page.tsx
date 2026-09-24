@@ -7,28 +7,13 @@ import { SectionFrame } from "@/components/content/section-frame";
 import { RoadmapTrack } from "@/components/content/roadmap-track";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { loadArrivalScenario } from "@/lib/hos/conformance";
 import { siteConfig } from "@/lib/site";
 
 export const metadata: Metadata = { title: "The Standard", description: "Why HOS exists, how its operating contract works and what can be inspected today." };
 
-const eventExample = `{
-  "specversion": "1.0",
-  "type": "unit.status_changed",
-  "source": "urn:hos:pms:example",
-  "id": "0190f6d0-…",
-  "time": "2026-07-30T09:15:00Z",
-  "hosrecordedat": "2026-07-30T09:15:02Z",
-  "hosbusinessdate": "2026-07-30",
-  "data": {
-    "unit_id": "unit_01H…",
-    "dimension": "housekeeping",
-    "previous": "clean",
-    "current": "dirty",
-    "authority": "housekeeping"
-  }
-}`;
-
 export default function StandardPage() {
+  const eventExample = JSON.stringify(loadArrivalScenario().events[2], null, 2);
   return (
     <>
       <PageHero eyebrow="The Standard" title="An operating contract for systems that need to work together." description="HOS makes facts, authority, capability and future controlled action portable between hospitality systems. It complements existing standards and maps to their strengths; it does not replace a PMS, require a cloud or control a vendor." badge="HOS Core 0.1 · Draft" />
@@ -51,7 +36,7 @@ export default function StandardPage() {
               ["Trust", "Later actions are default-deny, tenant-scoped, policy-evaluated, approved and auditable."],
             ].map(([title, text]) => <Card className="p-5" key={title}><h3 className="font-mono text-sm text-[var(--accent)]">{title}</h3><p className="mt-2 text-sm leading-6 text-[var(--muted-foreground)]">{text}</p></Card>)}
           </div>
-          <CodePanel label="CloudEvents-compatible event" code={eventExample} />
+          <div className="min-w-0"><CodePanel label="CloudEvents-compatible event · synthetic" code={eventExample} /><p className="mt-3 text-sm"><Link className="text-[var(--accent-strong)] underline" href="/docs/core#envelope">Every attribute, explained in HOS Core 0.1</Link></p></div>
         </div>
       </SectionFrame>
       <SectionFrame eyebrow="Inspect the contract" title="Technical detail is available when you need it.">
