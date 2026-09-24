@@ -31,6 +31,10 @@ This repository is intentionally not deployed or connected to a live email, anal
 
 Open [http://localhost:3000](http://localhost:3000). `LOCAL_FORMS_MODE=true` permits the local-only anti-spam bypass; never use it outside your computer. Valid local form submissions are encrypted in Postgres. Internal notifications and acknowledgements are JSON files under `data/outbox/`; no message is sent outside the computer.
 
+## HOS 0.1 specification artefacts
+
+The draft HOS Core 0.1 artefacts live in `public/spec/0.1/` and are served as static files: JSON Schemas for events and Event Producer manifests, and the arrival-readiness conformance scenario (`events.jsonl`, `expected.json`, producer manifests). `lib/hos/projection.ts` is the reference implementation of the arrival-readiness projection; the `/demo` page and `tests/unit/hos-conformance.test.ts` both run it against the published files, so the site, the schemas and the expected outcome cannot drift apart.
+
 ## Checks
 
 ```powershell

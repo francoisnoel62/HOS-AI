@@ -96,23 +96,27 @@ export const documentationItems: Array<{
 }> = [
   {
     title: "HOS Core 0.1",
-    description: "Entity vocabulary and an event-first contract for the first arrival-readiness run.",
+    description: "Core entities, event envelope, processing rules and the first projection, in one readable draft.",
     status: "Draft",
+    href: "/docs/core",
   },
   {
     title: "Event model",
-    description: "CloudEvents-compatible events with HOS business time, provenance and schema versioning.",
+    description: "CloudEvents-compatible events with business date, time zone, provenance and causal links, published as JSON Schema.",
     status: "Draft",
+    href: "/docs/core#envelope",
   },
   {
     title: "Event Producer manifest",
-    description: "A signed declaration of events, authority, delivery, replay and retention limits.",
+    description: "A declaration of events, authority, delivery, replay and retention limits. Draft schema published; signing is still in progress.",
     status: "In progress",
+    href: "/docs/core#manifests",
   },
   {
     title: "Arrival conformance scenario",
-    description: "Synthetic early-arrival replay covering duplicate, out-of-order and conflicting facts.",
-    status: "In progress",
+    description: "Nine synthetic deliveries covering duplicate, out-of-order and conflicting facts, with the expected outcome and a live replay.",
+    status: "Draft",
+    href: "/demo",
   },
   {
     title: "Mapping status",

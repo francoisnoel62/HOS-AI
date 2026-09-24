@@ -54,6 +54,10 @@ export default function HomePage() {
           <EventFlowDiagram />
           <ReadinessRiskCard />
         </div>
+        <div className="mt-6 flex flex-wrap gap-3">
+          <Link href="/demo"><Button>Replay the scenario <ArrowRight aria-hidden="true" size={16} /></Button></Link>
+          <Link href="/docs/core"><Button variant="secondary">Read HOS Core 0.1</Button></Link>
+        </div>
       </SectionFrame>
 
       <SectionFrame eyebrow="What HOS makes portable" title="Facts, control and a path to agency.">

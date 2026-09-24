@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:hos:schema:0.1:producer-manifest",
+  "title": "HOS 0.1 Event Producer manifest",
+  "description": "Draft. A producer's declaration of the events it emits for which properties, the authority it holds for each, and its delivery, replay and retention limits. At most one producer may be authoritative for a given event type and dimension at a property. The signing procedure is still in progress; the signature member is reserved.",
+  "type": "object",
+  "required": [
+    "hosmanifestversion",
+    "producer",
+    "name",
+    "system_role",
+    "property_ids",
+    "events",
+    "delivery",
+    "replay",
+    "retention"
+  ],
+  "properties": {
+    "hosmanifestversion": { "const": "0.1" },
+    "producer": {
+      "type": "string",
+      "format": "uri",
+      "description": "Must equal the source attribute of every event the producer emits."
+    },
+    "name": { "type": "string", "minLength": 1 },
+    "system_role": { "enum": ["pms", "housekeeping", "maintenance", "messaging", "other"] },
+    "property_ids": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "events": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["type", "authoritative"],
+        "properties": {
+          "type": {
+            "enum": [
+              "reservation.updated",
+              "stay.expected",
+              "unit.status_changed",
+              "task.completed",
+              "stay.arrival_signaled"
+            ]
+          },
+          "dimensions": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": { "enum": ["housekeeping", "occupancy", "maintenance"] },
+            "description": "For unit.status_changed: the dimensions this declaration covers."
+          },
+          "authoritative": {
+            "type": "boolean",
+            "description": "true when this producer is the source of truth for the event type (and dimensions) at the declared properties. Non-authoritative facts are recorded and shown, never merged into the authoritative value."
+          },
+          "note": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "delivery": {
+      "type": "object",
+      "required": ["guarantee", "ordering"],
+      "properties": {
+        "guarantee": { "enum": ["at-least-once", "at-most-once", "exactly-once"] },
+        "ordering": { "enum": ["none", "per-subject", "total"] }
+      },
+      "additionalProperties": false
+    },
+    "replay": {
+      "type": "object",
+      "required": ["supported"],
+      "properties": {
+        "supported": { "type": "boolean" },
+        "window_hours": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "retention": {
+      "type": "object",
+      "required": ["event_days"],
+      "properties": { "event_days": { "type": "integer", "minimum": 0 } },
+      "additionalProperties": false
+    },
+    "signature": {
+      "type": "object",
+      "description": "Reserved. Manifest signing (a detached signature over a canonical form) is in progress and not part of 0.1."
+    }
+  },
+  "additionalProperties": false
+}

@@ -39,7 +39,7 @@ test("contact and confirmation routes are not indexable", async ({ page }) => {
 });
 
 test("mobile menu covers the viewport instead of overlapping page content", async ({ page, isMobile }) => {
-  test.skip(!isMobile, "The menu button is only rendered below the md breakpoint.");
+  test.skip(!isMobile, "The menu button is only rendered below the lg breakpoint.");
   await page.goto("/");
   await page.getByRole("button", { name: "Open menu" }).click();
   const dialog = page.getByRole("dialog", { name: "Navigation menu" });
@@ -50,4 +50,31 @@ test("mobile menu covers the viewport instead of overlapping page content", asyn
   await dialog.getByRole("link", { name: "Roadmap" }).click();
   await expect(page).toHaveURL(/\/roadmap$/);
   await expect(dialog).toBeHidden();
+});
+
+test("live demo raises, then resolves, the arrival-readiness risk", async ({ page }) => {
+  await page.goto("/demo");
+  const next = page.getByRole("button", { name: "Deliver next event" });
+  const projection = page.getByRole("region", { name: "Arrival-readiness projection" });
+  for (let delivery = 1; delivery <= 6; delivery += 1) {
+    await next.click();
+    await expect(page.getByText(`${delivery} / 9`)).toBeVisible();
+  }
+  await expect(projection).toContainText("No situation");
+  await expect(projection).toContainText("not authoritative");
+  await next.click();
+  await expect(projection).toContainText("Readiness at risk");
+  await next.click();
+  await next.click();
+  await expect(projection).toContainText("Resolved");
+  await expect(next).toBeDisabled();
+});
+
+test("documentation links to the published HOS Core draft and its artefacts", async ({ page, request }) => {
+  await page.goto("/docs");
+  await page.getByRole("link", { name: "HOS Core 0.1", exact: true }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "HOS Core 0.1" })).toBeVisible();
+  for (const file of ["schemas/hos-event.schema.json", "schemas/producer-manifest.schema.json", "conformance/arrival-readiness/events.jsonl", "conformance/arrival-readiness/expected.json"]) {
+    expect((await request.get(`/spec/0.1/${file}`)).ok()).toBe(true);
+  }
 });

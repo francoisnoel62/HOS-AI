@@ -1,0 +1,61 @@
+{
+  "scenario": "arrival-readiness",
+  "hosschemaversion": "0.1",
+  "status": "draft",
+  "title": "Early arrival, room not ready",
+  "summary": "Synthetic facts from a PMS, a housekeeping system and a guest messaging platform for one property. Replay events.jsonl in file order through an implementation and compare its dispositions, readiness and situations with expected.json.",
+  "property": { "id": "prop_demo", "timezone": "Europe/Paris" },
+  "projection": { "ready_housekeeping_statuses": ["clean", "inspected"] },
+  "files": {
+    "events": "events.jsonl",
+    "expected": "expected.json",
+    "producers": ["producers/pms.json", "producers/housekeeping.json", "producers/messaging.json"]
+  },
+  "deliveries": [
+    {
+      "delivery": 1,
+      "checks": "Reservation context",
+      "note": "The PMS confirms reservation res_1042, arriving today. The guest is referenced only by a pseudonymous id."
+    },
+    {
+      "delivery": 2,
+      "checks": "Stay context",
+      "note": "The PMS expects stay_1042 in unit 204 with the standard check-in at 15:00."
+    },
+    {
+      "delivery": 3,
+      "checks": "Authoritative status",
+      "note": "The housekeeping system, the declared authority for housekeeping status, reports unit 204 dirty after the previous guest left."
+    },
+    {
+      "delivery": 4,
+      "checks": "Duplicate delivery",
+      "note": "The same fact arrives again, as at-least-once delivery allows. Same source and id: it is ignored."
+    },
+    {
+      "delivery": 5,
+      "checks": "A task is not a status",
+      "note": "The cleaning task is reported complete. At this property only the supervisor's inspection changes the authoritative status, so the unit is still dirty."
+    },
+    {
+      "delivery": 6,
+      "checks": "Conflicting facts",
+      "note": "The PMS flips unit 204 to clean because the task closed. Its manifest declares it non-authoritative for housekeeping, so HOS records the disagreement instead of merging it. A front desk trusting the PMS would hand over a room nobody released."
+    },
+    {
+      "delivery": 7,
+      "checks": "Risk detection",
+      "note": "At 11:40 the guest writes that they will arrive around 12:30, before the 15:00 check-in. The unit is not ready: HOS raises arrival.room_readiness_at_risk with its evidence."
+    },
+    {
+      "delivery": 8,
+      "checks": "Out-of-order delivery",
+      "note": "An earlier message (11:05, arriving 12:00) is delivered late. It is older than the 11:40 message, so it does not replace it."
+    },
+    {
+      "delivery": 9,
+      "checks": "Resolution",
+      "note": "The supervisor inspects unit 204 at 12:10. The authoritative status is ready 20 minutes before the guest arrives: the risk is resolved."
+    }
+  ]
+}
