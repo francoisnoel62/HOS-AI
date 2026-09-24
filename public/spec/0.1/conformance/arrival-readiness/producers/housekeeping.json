@@ -1,0 +1,14 @@
+{
+  "hosmanifestversion": "0.1",
+  "producer": "urn:hos:housekeeping:demo",
+  "name": "Synthetic housekeeping system",
+  "system_role": "housekeeping",
+  "property_ids": ["prop_demo"],
+  "events": [
+    { "type": "unit.status_changed", "dimensions": ["housekeeping"], "authoritative": true },
+    { "type": "task.completed", "authoritative": true }
+  ],
+  "delivery": { "guarantee": "at-least-once", "ordering": "none" },
+  "replay": { "supported": true, "window_hours": 24 },
+  "retention": { "event_days": 14 }
+}

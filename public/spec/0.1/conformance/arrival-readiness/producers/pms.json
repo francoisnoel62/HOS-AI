@@ -1,0 +1,21 @@
+{
+  "hosmanifestversion": "0.1",
+  "producer": "urn:hos:pms:demo",
+  "name": "Synthetic PMS",
+  "system_role": "pms",
+  "property_ids": ["prop_demo"],
+  "events": [
+    { "type": "reservation.updated", "authoritative": true },
+    { "type": "stay.expected", "authoritative": true },
+    { "type": "unit.status_changed", "dimensions": ["occupancy"], "authoritative": true },
+    {
+      "type": "unit.status_changed",
+      "dimensions": ["housekeeping"],
+      "authoritative": false,
+      "note": "The PMS mirrors housekeeping status; at this property the housekeeping system is the authority."
+    }
+  ],
+  "delivery": { "guarantee": "at-least-once", "ordering": "per-subject" },
+  "replay": { "supported": true, "window_hours": 72 },
+  "retention": { "event_days": 30 }
+}

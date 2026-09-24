@@ -1,0 +1,11 @@
+{
+  "hosmanifestversion": "0.1",
+  "producer": "urn:hos:messaging:demo",
+  "name": "Synthetic guest messaging platform",
+  "system_role": "messaging",
+  "property_ids": ["prop_demo"],
+  "events": [{ "type": "stay.arrival_signaled", "authoritative": true }],
+  "delivery": { "guarantee": "at-least-once", "ordering": "none" },
+  "replay": { "supported": false },
+  "retention": { "event_days": 7 }
+}

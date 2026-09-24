@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { ArrowUpRight, GitFork } from "lucide-react";
+import Link from "next/link";
 
 import { PageHero } from "@/components/content/page-hero";
 import { SectionFrame } from "@/components/content/section-frame";
@@ -14,10 +15,10 @@ export const metadata: Metadata = { title: "Documentation", description: "HOS Co
 export default function DocumentationPage() {
   return (
     <>
-      <PageHero eyebrow="Documentation" title="Inspect the contract, its proof and its current limits." description="Documentation is useful from the first public draft. Each item states exactly where it is in the work; unavailable material is not hidden behind a false link." badge="Core 0.1 · Draft" />
+      <PageHero eyebrow="Documentation" title="Inspect the contract, its proof and its current limits." description="Documentation is useful from the first public draft. Each item states exactly where it is in the work; unavailable material is not hidden behind a false link." badge="Core 0.1 · Draft" /><section className="mx-auto max-w-6xl px-5 lg:px-8"><div className="flex flex-wrap gap-3"><Link href="/docs/core"><Button>Read HOS Core 0.1</Button></Link><Link href="/demo"><Button variant="secondary">Replay the arrival scenario</Button></Link></div></section>
       <SectionFrame eyebrow="Published work" title="Status is part of the documentation.">
         <div className="divide-y divide-[var(--border)] border-y border-[var(--border)]">
-          {documentationItems.map((item) => <article className="grid gap-3 py-5 sm:grid-cols-[1fr_auto] sm:items-center" key={item.title}><div><h2 className="font-medium">{item.title}</h2><p className="mt-1 max-w-2xl text-sm leading-6 text-[var(--muted-foreground)]">{item.description}</p></div><StatusBadge status={item.status} /></article>)}
+          {documentationItems.map((item) => <article className="grid gap-3 py-5 sm:grid-cols-[1fr_auto] sm:items-center" key={item.title}><div><h2 className="font-medium">{item.href ? <Link className="underline decoration-[var(--border-strong)] underline-offset-4 hover:decoration-[var(--accent)]" href={item.href}>{item.title}</Link> : item.title}</h2><p className="mt-1 max-w-2xl text-sm leading-6 text-[var(--muted-foreground)]">{item.description}</p></div><StatusBadge status={item.status} /></article>)}
         </div>
       </SectionFrame>
       <SectionFrame eyebrow="Contribution surface" title="Contribute through the repository, not a closed comment box.">

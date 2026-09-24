@@ -16,8 +16,8 @@
     "test:a11y": "playwright test tests/e2e/accessibility.spec.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "db:migrate": "tsx scripts/migrate.ts",
-    "db:seed": "tsx scripts/seed.ts"
+    "db:migrate": "tsx --env-file-if-exists=.env.local scripts/migrate.ts",
+    "db:seed": "tsx --env-file-if-exists=.env.local scripts/seed.ts"
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.2.0",
@@ -43,6 +43,8 @@
     "@types/react": "^19.0.3",
     "@types/react-dom": "^19.0.2",
     "@vitejs/plugin-react": "^4.3.4",
+    "ajv": "^8.20.0",
+    "ajv-formats": "^3.0.1",
     "eslint": "^9.18.0",
     "eslint-config-next": "^16.2.0",
     "jsdom": "^25.0.1",
