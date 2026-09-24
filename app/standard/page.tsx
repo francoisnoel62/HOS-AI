@@ -7,6 +7,7 @@ import { SectionFrame } from "@/components/content/section-frame";
 import { RoadmapTrack } from "@/components/content/roadmap-track";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { siteConfig } from "@/lib/site";
 
 export const metadata: Metadata = { title: "The Standard", description: "Why HOS exists, how its operating contract works and what can be inspected today." };
 
@@ -54,7 +55,7 @@ export default function StandardPage() {
         </div>
       </SectionFrame>
       <SectionFrame eyebrow="Inspect the contract" title="Technical detail is available when you need it.">
-        <div className="grid gap-4 md:grid-cols-2"><Card className="p-6"><h2 className="text-xl font-semibold">Documentation status</h2><p className="mt-3 text-sm leading-6 text-[var(--muted-foreground)]">Published materials stay visible; incomplete materials are labelled honestly. There are no fake endpoints or sample credentials.</p><Link className="mt-5 inline-block" href="/docs"><Button variant="secondary">View documentation</Button></Link></Card><Card className="p-6"><h2 className="text-xl font-semibold">Contribute through GitHub</h2><p className="mt-3 text-sm leading-6 text-[var(--muted-foreground)]">Schemas, mappings, tests and documentation will be discussed and improved in the open repository.</p><a className="mt-5 inline-block" href="https://github.com/hos-ai" rel="noreferrer" target="_blank"><Button>Open GitHub</Button></a></Card></div>
+        <div className="grid gap-4 md:grid-cols-2"><Card className="p-6"><h2 className="text-xl font-semibold">Documentation status</h2><p className="mt-3 text-sm leading-6 text-[var(--muted-foreground)]">Published materials stay visible; incomplete materials are labelled honestly. There are no fake endpoints or sample credentials.</p><Link className="mt-5 inline-block" href="/docs"><Button variant="secondary">View documentation</Button></Link></Card><Card className="p-6"><h2 className="text-xl font-semibold">Contribute through GitHub</h2><p className="mt-3 text-sm leading-6 text-[var(--muted-foreground)]">Schemas, mappings, tests and documentation will be discussed and improved in the open repository.</p><a className="mt-5 inline-block" href={siteConfig.githubUrl} rel="noreferrer" target="_blank"><Button>Open GitHub</Button></a></Card></div>
       </SectionFrame>
       <SectionFrame eyebrow="Trajectory" title="HOS starts by observing; it earns the right to do more."><RoadmapTrack /></SectionFrame>
     </>

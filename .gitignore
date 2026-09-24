@@ -20,3 +20,9 @@
 !.env.example
 .DS_Store
 *.tsbuildinfo
+
+# private internal documents
+/deliverables/
+/docs/plans/
+/build_hos_prd.py
+/.tmp_hos_prd_render/
