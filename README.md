@@ -1,60 +1,239 @@
-# HOS AI website
+<p align="center">
+  <img src="docs/assets/readme-hero.svg" alt="HOS AI — An open language for hospitality operations. Interoperable facts. Visible authority. A path to responsible agency." width="100%" />
+</p>
 
-Local-first implementation of the HOS AI public website. It is a Next.js App Router project with TypeScript, Tailwind CSS, locally owned shadcn/ui-compatible primitives, Lucide icons and a Docker-backed local Postgres database for form development.
+<h1 align="center">Hospitality operations. Open by design.</h1>
 
-This repository is intentionally not deployed or connected to a live email, analytics, anti-spam or cloud-database provider. The project must not be published until the founder completes the external decisions in the implementation plan and production legal pages are accurate.
+<p align="center">
+  <strong>Hospitality Operating Specification for Agentic Infrastructure</strong><br />
+  Building a shared operational language for the systems and people that run hospitality.
+</p>
 
-## Local setup
+<p align="center">
+  <a href="#why-hos-ai">Why HOS AI</a> ·
+  <a href="#the-first-proof">First proof</a> ·
+  <a href="#project-status">Status</a> ·
+  <a href="#run-locally">Run locally</a> ·
+  <a href="#contribute">Contribute</a>
+</p>
 
-1. Copy `.env.example` to `.env.local`.
-2. Generate two local values and place them in `.env.local`:
+---
 
-   ```powershell
-   node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
-   node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
-   ```
+## Why HOS AI
 
-   Use the first for `FORM_ENCRYPTION_KEY` and the second for `RATE_LIMIT_SALT`.
-3. Start local Postgres:
+A guest arrives early. The reservation system expects them. Housekeeping still marks the room as dirty. A message announces their arrival. Each system holds part of the answer; the team needs one understandable situation.
 
-   ```powershell
-   docker compose up -d postgres
-   ```
+**HOS AI is building an open specification to make operational facts, capabilities and controlled actions portable across hospitality systems.** The aim is to give operators, software providers and future agents a common contract, with the source and authority of every fact still visible.
 
-4. Install packages, migrate the local schema and start the site:
+The proposed specification complements property management systems (PMS) and existing standards. Its design leaves infrastructure choices with participants: no mandatory broker, cloud or central database.
 
-   ```powershell
-   npm.cmd install
-   npm.cmd run db:migrate
-   npm.cmd run dev
-   ```
+| Interoperable facts                                           | Trustworthy control                                            | A path to agency                                                              |
+| :------------------------------------------------------------ | :------------------------------------------------------------- | :---------------------------------------------------------------------------- |
+| Shared identifiers, versioned events and explicit provenance. | Declared authority, tenant boundaries and reviewable evidence. | A progression from observation to recommendations and approval-bound actions. |
 
-Open [http://localhost:3000](http://localhost:3000). `LOCAL_FORMS_MODE=true` permits the local-only anti-spam bypass; never use it outside your computer. Valid local form submissions are encrypted in Postgres. Internal notifications and acknowledgements are JSON files under `data/outbox/`; no message is sent outside the computer.
+These are the specification's design commitments. This repository contains the **HOS AI website and its local development backend**; the operational contract is still taking shape.
 
-## Checks
+## The first proof
+
+**Early arrival. Room not ready. A risk made visible.**
+
+HOS Core 0.1 starts with a focused arrival-readiness scenario. The proposed flow brings facts from the PMS, housekeeping and guest messaging into a traceable projection that an operator can assess.
+
+```mermaid
+flowchart LR
+    P["PMS<br/>Reservation and expected stay"] --> H["HOS observation<br/>Sources · timestamps · authority"]
+    K["Housekeeping<br/>Unit status and task events"] --> H
+    M["Guest messaging<br/>Early-arrival signal"] --> H
+    H --> R["Readiness at risk<br/>Operator assessment"]
+```
+
+The illustrative output is `arrival.room_readiness_at_risk`. Conflicting facts retain their provenance. This first phase observes; booking changes and check-in actions remain outside its scope.
+
+The website presents this scenario as an illustration. A running event processor, executable conformance suite and live PMS connectors are future work.
+
+## Project status
+
+**Early-stage initiative · HOS Core 0.1 draft · Website under local development**
+
+| Area                                       | Where it stands                                                                                                       |
+| :----------------------------------------- | :-------------------------------------------------------------------------------------------------------------------- |
+| Website                                    | Implemented locally: standard overview, manifesto, governance, roadmap, documentation status and participation pages. |
+| Participation forms                        | Local PostgreSQL persistence, encrypted payloads and filesystem notification records.                                 |
+| HOS Core and event model                   | Described as draft material on the site. Versioned schemas and an operational runtime are not included here.          |
+| Producer manifests and arrival conformance | Marked in progress in the site's documentation catalogue; executable artefacts are not included here.                 |
+| Mappings and certification                 | Planned. No certified integrations are claimed.                                                                       |
+| Independent stewardship                    | An objective. HOS AI is working toward an independent HOS Foundation; no established foundation is claimed.           |
+| Data Cooperative                           | A future, optional programme, separate from HOS Core. Not active.                                                     |
+
+The repository is configured for local development. Production hosting, email delivery, analytics and anti-spam services still need configuration and review. Public release also requires founder decisions and completed legal and privacy pages.
+
+## Principles worth building around
+
+- **Keep authority visible.** Preserve who asserted a fact, when it occurred and which system is authoritative.
+- **Keep operational choice open.** Make the contract portable across infrastructure and vendor boundaries.
+- **Use data with restraint.** The proposed Core favours minimal, pseudonymous data; message content stays with its authority system.
+- **Earn the right to act.** Future actions are intended to be default-deny, policy-bound, approved and auditable.
+- **Make evidence inspectable.** Public conformance work should use synthetic or irreversibly anonymised material.
+- **Protect the commons.** The published governance direction gives funding and early participation no exclusive rights over the standard, member data or certification.
+
+The intended stewardship model is member-led, with one organisation, one vote. These commitments describe the direction of the initiative, rather than a governance structure already in operation.
+
+## Roadmap
+
+Progress depends on evidence and operational readiness. Dates are deliberately left open.
+
+| Stage              | Focus                                                                                       | Status                      |
+| :----------------- | :------------------------------------------------------------------------------------------ | :-------------------------- |
+| **01 · Observe**   | Core events, provenance, producer capabilities and a replayable arrival-readiness scenario. | Current specification focus |
+| **02 · Act**       | Declared capabilities and policy-controlled commands with explicit human approval.          | Future                      |
+| **03 · Trust**     | Versioned policies, approval records, audit evidence and bounded permissions.               | Future                      |
+| **04 · Agents**    | Responsible agent manifests and portable operational guarantees.                            | Future                      |
+| **05 · Ecosystem** | Certified profiles, mappings and voluntary interoperable participation.                     | Future                      |
+
+## Explore the repository
+
+The website uses **Next.js 16, React 19, TypeScript and Tailwind CSS 4**, with locally owned UI primitives, Lucide icons and a Docker-backed PostgreSQL 17 database for form development.
+
+```text
+app/                 Pages, metadata and form API routes
+components/          Brand, navigation, UI, diagrams and participation forms
+lib/content/         Audience messaging and documentation status
+lib/forms/           Validation, encryption, persistence and local outbox
+lib/analytics/       Allowlisted, payload-free browser event signals
+database/migrations/ PostgreSQL schema migrations
+scripts/             Migration and seed utilities
+tests/               Vitest unit tests and Playwright browser/accessibility checks
+docs/operations/     Local operating procedures
+```
+
+Start with the [homepage](app/page.tsx), [standard overview](app/standard/page.tsx), [manifesto](app/manifesto/page.tsx) or [governance commitments](app/governance/page.tsx). Shared audience copy lives in [site-copy.ts](lib/content/site-copy.ts).
+
+## Run locally
+
+### Prerequisites
+
+- Node.js **22 or newer** and npm.
+- Docker with Compose for the local PostgreSQL service.
+- Git to clone the repository.
+
+The commands below use PowerShell, matching the current development setup. In Bash or Zsh, use `cp` instead of `Copy-Item` and `npm` instead of `npm.cmd`.
+
+### 1. Get the code
+
+```powershell
+git clone https://github.com/francoisnoel62/HOS-AI.git
+cd HOS-AI
+npm.cmd ci
+Copy-Item .env.example .env.local
+```
+
+### 2. Configure local secrets
+
+Generate two independent values:
+
+```powershell
+# FORM_ENCRYPTION_KEY — 32 bytes, base64 encoded
+node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
+
+# RATE_LIMIT_SALT — a separate random value
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+
+Paste the corresponding values into `.env.local`. The other defaults are provided in [`.env.example`](.env.example); keep this populated local file private.
+
+### 3. Start the database and apply migrations
+
+```powershell
+docker compose up -d --wait postgres
+node --env-file=.env.local --import=tsx scripts/migrate.ts
+```
+
+The explicit `--env-file` loads the local database settings for the standalone migration script. The `npm.cmd run db:migrate` shortcut is also available when `DATABASE_URL` is already exported in your shell.
+
+### 4. Start the website
+
+```powershell
+npm.cmd run dev
+```
+
+Open **[localhost:3000](http://localhost:3000)**. Next.js loads `.env.local` automatically. Explore `/standard`, `/roadmap`, `/governance` and `/participate` from the site navigation.
+
+<details>
+<summary><strong>What happens when you submit a local form?</strong></summary>
+
+The form handler validates inputs, applies a honeypot and rate limit, and stores the submission in PostgreSQL. Submission payloads and contact email fields use AES-256-GCM encryption; operational metadata is stored separately.
+
+Internal notifications and acknowledgements are written as JSON files to `data/outbox/`. These records include recipient addresses in plain text and remain local development data. No email is sent.
+
+`LOCAL_FORMS_MODE=true` permits the local anti-spam bypass when no Turnstile secret is configured. Use it only on your own computer. Docker credentials in `docker-compose.yml` are development defaults.
+
+Use synthetic test submissions. Guest data, credentials, API keys, exports and confidential commercial information do not belong in the public forms or repository.
+
+</details>
+
+## Development checks
+
+Run the static checks, unit suite and production build:
 
 ```powershell
 npm.cmd run typecheck
 npm.cmd run lint
 npm.cmd test
-npm.cmd run test:e2e
 npm.cmd run build
 ```
 
-Run the Playwright browser installation once if needed:
+Then install Chromium once and run the browser suite:
 
 ```powershell
 npm.cmd exec playwright install chromium
+npm.cmd run test:e2e
 ```
 
-## Boundaries
+Playwright starts the production server on port `3100`, so **build before running browser tests**. The suite covers key navigation and participation flows, theme switching and automated accessibility checks in desktop and mobile browser profiles. Run `npm.cmd run test:a11y` for the accessibility subset.
 
-- No accounts, payments, scheduling, CMS, comments, newsletter, active Data Cooperative or live PMS integration.
-- No guest data, API credentials, exports or confidential commercial data belong in any public form.
-- The local form outbox is an engineering substitute for transactional email only. It is not a production delivery service.
-- The local Postgres password in `docker-compose.yml` is development-only.
-- `app/legal/page.tsx` and `app/privacy/page.tsx` are templates that require founder-owned review before public release.
+The current [Playwright configuration](playwright.config.ts) invokes `npm.cmd`; contributors on macOS or Linux need to change its `webServer.command` to `npm run start -- --port 3100` for those checks.
 
-## Licensing and marks
+Available scripts are listed in [`package.json`](package.json). Automated accessibility checks are part of the verification process, not a claim of complete accessibility conformance.
 
-The site code is licensed under [Apache-2.0](LICENSE). The HOS AI name, temporary mark, logo and editorial content are not granted for reuse by that code licence.
+## Contribute
+
+HOS needs both operational knowledge and technical care. Useful contributions today include clearer explanations, accessible interfaces, stronger form handling, tests and concrete feedback on the proposed contract.
+
+| Your perspective               | A useful place to start                                                                                           |
+| :----------------------------- | :---------------------------------------------------------------------------------------------------------------- |
+| Hospitality operator           | Describe an arrival-readiness problem using a synthetic example and identify the systems that own each fact.      |
+| PMS or software provider       | Review event meaning, identifiers, source authority and capability declarations.                                  |
+| Integrator or developer        | Improve the website, local tooling, tests or documentation; propose replay and mapping requirements.              |
+| Founding participant or patron | Review the participation paths and governance commitments, and help define the conditions for shared stewardship. |
+
+For repository contributions:
+
+1. [Open an issue](https://github.com/francoisnoel62/HOS-AI/issues) describing the problem, its context and the expected outcome. Discuss larger changes before implementing them.
+2. Create a focused branch and make the change. Keep sample data synthetic and status claims grounded in available evidence.
+3. Run the checks relevant to your change. For interface changes, inspect desktop and mobile layouts in both themes.
+4. Open a pull request explaining the problem, the change and how it was verified. Add screenshots for visible interface changes.
+
+The website also provides four participation paths: **founding member**, **pilot partner**, **technical contributor** and **financial patron**. In this local implementation, those forms save locally; they do not contact the project team.
+
+## Operations and release readiness
+
+Local procedures cover [submission review](docs/operations/submission-review.md), [delivery failures](docs/operations/delivery-failure.md), [deletion requests](docs/operations/deletion-request.md), [abuse incidents](docs/operations/abuse-incident.md), [security issues](docs/operations/security-issue.md) and [content releases](docs/operations/content-release.md).
+
+The current scope excludes accounts, payments, scheduling, a CMS, comments, newsletters, live PMS integrations and an active Data Cooperative. The local outbox is a development substitute for transactional email. Analytics currently emit only local browser events.
+
+Before public release, the founder must resolve the external service and stewardship decisions, complete the [legal](app/legal/page.tsx) and [privacy](app/privacy/page.tsx) templates, and review production configuration and delivery. Publishing this repository does not make the website ready to operate as a public service.
+
+For security reports, keep secrets, personal data and exploitable details out of public issues. The linked security procedure currently covers local incident handling; a dedicated external reporting process is not documented here.
+
+## Licensing and identity
+
+The website code is licensed under **[Apache-2.0](LICENSE)**.
+
+The HOS AI name, temporary mark, logo and editorial content are not granted for reuse by that code licence. The proposed specification is intended for CC BY 4.0, as stated in the governance page; that intention is separate from the code licence included in this repository.
+
+---
+
+<p align="center">
+  <strong>An open operational language. A shared foundation for what comes next.</strong><br />
+  Built with hospitality, for hospitality.
+</p>
