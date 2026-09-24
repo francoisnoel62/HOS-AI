@@ -1,13 +1,14 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 
 import type { Situation, HosFact, ProducerManifest, ProjectionConfig } from "@/lib/hos/types";
 import type { Disposition, Readiness, ReplayStep, SituationStatus } from "@/lib/hos/projection";
 
-// Server-side loader for the published arrival-readiness conformance scenario.
+// Server-side loaders for the published HOS 0.1 artefacts: the arrival-readiness conformance scenario and the examples.
 
 export const specVersionPath = "/spec/0.1";
 export const scenarioPath = `${specVersionPath}/conformance/arrival-readiness`;
+export const examplesPath = `${specVersionPath}/examples`;
 
 export type ArrivalScenario = {
   scenario: string;
@@ -15,7 +16,9 @@ export type ArrivalScenario = {
   status: string;
   title: string;
   summary: string;
-  property: { id: string; timezone: string };
+  covers: string[];
+  tenant: { id: string };
+  property: { id: string; timezone: string; country: string };
   projection: ProjectionConfig;
   files: { events: string; expected: string; producers: string[] };
   deliveries: Array<{ delivery: number; checks: string; note: string }>;
@@ -54,6 +57,12 @@ export function loadArrivalScenario() {
   const manifests = scenario.files.producers.map((file) => JSON.parse(readScenarioFile(file)) as ProducerManifest);
   const events = parseJsonLines(readScenarioFile(scenario.files.events)) as HosFact[];
   return { scenario, manifests, events };
+}
+
+export function listExamples() {
+  return readdirSync(path.join(publicDirectory, examplesPath))
+    .filter((file) => file.endsWith(".json"))
+    .sort();
 }
 
 export function loadExpectedOutcome() {

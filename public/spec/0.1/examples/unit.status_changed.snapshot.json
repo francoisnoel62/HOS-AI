@@ -1,0 +1,26 @@
+{
+  "specversion": "1.0",
+  "id": "hk-002301",
+  "source": "urn:hos:housekeeping:demo",
+  "type": "unit.status_changed",
+  "time": "2026-07-30T10:16:00Z",
+  "datacontenttype": "application/json",
+  "hosschemaversion": "0.1",
+  "hosrecordedat": "2026-07-30T10:16:02Z",
+  "hostenant": "tenant_demo",
+  "hosproperty": "prop_demo",
+  "hospropertytimezone": "Europe/Paris",
+  "hosbusinessdate": "2026-07-30",
+  "hossubjects": "unit:unit_204",
+  "hosdatamode": "snapshot",
+  "hossensitivity": "internal",
+  "data": {
+    "unit_id": "unit_204",
+    "statuses": {
+      "housekeeping": "inspected",
+      "occupancy": "vacant"
+    },
+    "authority_source": "urn:hos:housekeeping:demo",
+    "reason": "recovery"
+  }
+}

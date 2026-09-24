@@ -2,13 +2,49 @@
   "hosmanifestversion": "0.1",
   "producer": "urn:hos:housekeeping:demo",
   "name": "Synthetic housekeeping system",
+  "organization": {
+    "name": "HOS AI synthetic corpus"
+  },
   "system_role": "housekeeping",
   "property_ids": ["prop_demo"],
+  "entities": ["Unit", "Task"],
   "events": [
-    { "type": "unit.status_changed", "dimensions": ["housekeeping"], "authoritative": true },
-    { "type": "task.completed", "authoritative": true }
+    {
+      "type": "unit.status_changed",
+      "dimensions": ["housekeeping"],
+      "authoritative": true,
+      "snapshot": true
+    },
+    {
+      "type": "unit.status_changed",
+      "dimensions": ["occupancy"],
+      "authoritative": false,
+      "snapshot": true,
+      "note": "Occupancy is reported for context; the PMS is the authority."
+    },
+    {
+      "type": "housekeeping.task.created",
+      "authoritative": true
+    },
+    {
+      "type": "housekeeping.task.completed",
+      "authoritative": true
+    }
   ],
-  "delivery": { "guarantee": "at-least-once", "ordering": "none" },
-  "replay": { "supported": true, "window_hours": 24 },
-  "retention": { "event_days": 14 }
+  "delivery": {
+    "mechanisms": ["webhook"],
+    "guarantee": "at-least-once",
+    "ordering": "none"
+  },
+  "replay": {
+    "supported": true,
+    "window_days": 30,
+    "format": "jsonl"
+  },
+  "retention": {
+    "event_days": 30
+  },
+  "limitations": [
+    "The property releases units on inspection only, so the housekeeping status goes from dirty to inspected without a clean step."
+  ]
 }

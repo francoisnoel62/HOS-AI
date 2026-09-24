@@ -96,25 +96,25 @@ export const documentationItems: Array<{
 }> = [
   {
     title: "HOS Core 0.1",
-    description: "Core entities, event envelope, processing rules and the first projection, in one readable draft.",
+    description: "Tenant, Property, Unit, Reservation, Stay, Task, Guest and Message; opaque identifiers, external references and the four-dimension Unit status model.",
     status: "Draft",
     href: "/docs/core",
   },
   {
-    title: "Event model",
-    description: "CloudEvents-compatible events with business date, time zone, provenance and causal links, published as JSON Schema.",
+    title: "HOS Events 0.1",
+    description: "Eleven CloudEvents-compatible event types in five families, the envelope profile, snapshots, and delivery, ordering and replay rules.",
     status: "Draft",
-    href: "/docs/core#envelope",
+    href: "/docs/events",
   },
   {
     title: "Event Producer manifest",
-    description: "A declaration of events, authority, delivery, replay and retention limits. Draft schema published; signing is still in progress.",
+    description: "A declaration of events, authority, snapshots, delivery, replay, retention and limitations. Draft schema published; signing is still in progress.",
     status: "In progress",
-    href: "/docs/core#manifests",
+    href: "/docs/events#producers",
   },
   {
     title: "Arrival conformance scenario",
-    description: "Nine synthetic deliveries covering duplicate, out-of-order and conflicting facts, with the expected outcome and a live replay.",
+    description: "Thirteen synthetic deliveries covering the nominal case, a duplicate, an out-of-order event, conflicting facts, snapshot recovery and a missing capability.",
     status: "Draft",
     href: "/demo",
   },

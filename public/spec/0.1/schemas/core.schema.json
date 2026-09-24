@@ -1,0 +1,337 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:hos:schema:0.1:core",
+  "title": "HOS Core 0.1",
+  "description": "Draft. The operational minimum required to make the arrival-readiness scenario portable: identifiers, external references, extensions, sensitivity classes, the Unit status model and eight Core entities. This file holds definitions; HOS Events reference them.",
+  "$defs": {
+    "hosId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._~-]{0,127}$",
+      "description": "Opaque, stable HOS identifier, unique within its Tenant. It carries no business meaning and no personal data."
+    },
+    "ianaTimezone": {
+      "type": "string",
+      "pattern": "^[A-Za-z]+(?:[/_+-][A-Za-z0-9]+)*$",
+      "description": "IANA time zone name, for example Europe/Paris."
+    },
+    "countryCode": {
+      "type": "string",
+      "pattern": "^[A-Z]{2}$",
+      "description": "ISO 3166-1 alpha-2 country code."
+    },
+    "localTime": {
+      "type": "string",
+      "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$",
+      "description": "Local wall-clock time, HH:MM."
+    },
+    "externalRef": {
+      "type": "object",
+      "description": "A typed, sourced reference to an identifier held by another system.",
+      "required": ["source_system", "id_type", "source_id"],
+      "properties": {
+        "source_system": {
+          "type": "string",
+          "format": "uri",
+          "description": "URI of the system that issued the identifier."
+        },
+        "id_type": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "description": "Kind of identifier in that system, for example confirmation_number."
+        },
+        "source_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The identifier as issued by the source system."
+        },
+        "verification": {
+          "enum": ["verified", "asserted"],
+          "description": "verified when the identifier was confirmed with the source system; asserted when it is only reported. Omitted when not known."
+        }
+      },
+      "additionalProperties": false
+    },
+    "externalRefs": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/externalRef" }
+    },
+    "extensions": {
+      "type": "object",
+      "description": "Vendor detail under an inverted domain namespace such as com.example. Each namespace publishes its own schema and documentation, and can never redefine a Core field or enum.",
+      "propertyNames": { "pattern": "^[a-z][a-z0-9-]*(\\.[a-z0-9-]+)+$" },
+      "additionalProperties": { "type": "object" }
+    },
+    "sensitivityClass": {
+      "enum": ["public", "internal", "confidential", "restricted"],
+      "description": "Handling class. public: no restriction; internal: operational data for authorised participants; confidential: commercial or pseudonymous personal data; restricted: data whose disclosure could harm a person, such as special-category data."
+    },
+    "unitStatusDimension": {
+      "enum": ["occupancy", "housekeeping", "maintenance", "commercial"],
+      "description": "The four independent dimensions of a Unit's status."
+    },
+    "occupancyStatus": {
+      "enum": ["vacant", "occupied", "unknown"],
+      "description": "Physical occupancy state."
+    },
+    "housekeepingStatus": {
+      "enum": ["dirty", "clean", "inspected", "unknown"],
+      "description": "Readiness as reported by the housekeeping authority."
+    },
+    "maintenanceStatus": {
+      "enum": ["operational", "out_of_service", "unknown"],
+      "description": "Basic operational availability; there is no detailed maintenance model in 0.1."
+    },
+    "commercialStatus": {
+      "enum": ["sellable", "not_sellable", "unknown"],
+      "description": "Commercial disposition as declared by the responsible system."
+    },
+    "unitStatuses": {
+      "type": "object",
+      "description": "Values of one or more Unit status dimensions.",
+      "minProperties": 1,
+      "properties": {
+        "occupancy": { "$ref": "#/$defs/occupancyStatus" },
+        "housekeeping": { "$ref": "#/$defs/housekeepingStatus" },
+        "maintenance": { "$ref": "#/$defs/maintenanceStatus" },
+        "commercial": { "$ref": "#/$defs/commercialStatus" }
+      },
+      "additionalProperties": false
+    },
+    "reservationStatus": {
+      "enum": ["tentative", "confirmed", "cancelled", "no_show"],
+      "description": "Commercial status of a Reservation."
+    },
+    "stayStatus": {
+      "enum": ["expected", "in_house", "departed", "cancelled"],
+      "description": "Operational status of a Stay."
+    },
+    "taskType": { "enum": ["cleaning", "inspection", "turndown", "maintenance", "other"] },
+    "taskStatus": { "enum": ["open", "in_progress", "completed", "cancelled"] },
+    "taskPriority": { "enum": ["low", "normal", "high", "urgent"] },
+    "messageChannel": {
+      "enum": ["sms", "email", "chat", "messaging_app", "ota_messaging", "phone", "other"]
+    },
+    "Tenant": {
+      "title": "Tenant",
+      "description": "Security, policy and data-autonomy boundary.",
+      "x-hos-boundary": "A Property belongs to one Tenant at a time.",
+      "type": "object",
+      "required": ["tenant_id"],
+      "properties": { "tenant_id": { "$ref": "#/$defs/hosId" } },
+      "additionalProperties": false
+    },
+    "Property": {
+      "title": "Property",
+      "description": "Tenant, IANA time zone, country and business-date policy.",
+      "x-hos-boundary": "Establishment-level operating context.",
+      "type": "object",
+      "required": ["property_id", "tenant_id", "timezone", "country", "business_date_policy"],
+      "properties": {
+        "property_id": { "$ref": "#/$defs/hosId" },
+        "tenant_id": { "$ref": "#/$defs/hosId" },
+        "timezone": { "$ref": "#/$defs/ianaTimezone" },
+        "country": { "$ref": "#/$defs/countryCode" },
+        "business_date_policy": {
+          "type": "object",
+          "required": ["rollover_local_time"],
+          "properties": {
+            "rollover_local_time": {
+              "$ref": "#/$defs/localTime",
+              "description": "Local time at which the business date advances, for example 04:00 after night audit."
+            }
+          },
+          "additionalProperties": false
+        },
+        "external_refs": { "$ref": "#/$defs/externalRefs" }
+      },
+      "additionalProperties": false
+    },
+    "Unit": {
+      "title": "Unit",
+      "description": "Property, local label or type, and four independent statuses.",
+      "x-hos-boundary": "A room is a local type or label of Unit.",
+      "type": "object",
+      "required": ["unit_id", "property_id", "statuses"],
+      "properties": {
+        "unit_id": { "$ref": "#/$defs/hosId" },
+        "property_id": { "$ref": "#/$defs/hosId" },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Local label, for example 204."
+        },
+        "unit_type": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Local type, for example double_room."
+        },
+        "statuses": {
+          "allOf": [{ "$ref": "#/$defs/unitStatuses" }],
+          "required": ["occupancy", "housekeeping", "maintenance", "commercial"]
+        },
+        "external_refs": { "$ref": "#/$defs/externalRefs" }
+      },
+      "additionalProperties": false
+    },
+    "Reservation": {
+      "title": "Reservation",
+      "description": "Property, commercial status, planned arrival and departure, and external references.",
+      "x-hos-boundary": "Commercial commitment; it can yield zero, one or many Stays.",
+      "type": "object",
+      "required": [
+        "reservation_id",
+        "property_id",
+        "status",
+        "planned_arrival_date",
+        "planned_departure_date"
+      ],
+      "properties": {
+        "reservation_id": { "$ref": "#/$defs/hosId" },
+        "property_id": { "$ref": "#/$defs/hosId" },
+        "status": { "$ref": "#/$defs/reservationStatus" },
+        "planned_arrival_date": { "type": "string", "format": "date" },
+        "planned_departure_date": { "type": "string", "format": "date" },
+        "guest_id": { "$ref": "#/$defs/hosId" },
+        "external_refs": { "$ref": "#/$defs/externalRefs" }
+      },
+      "additionalProperties": false
+    },
+    "Stay": {
+      "title": "Stay",
+      "description": "Property, linked Reservation, planned and actual times, and Unit assignment history.",
+      "x-hos-boundary": "Operational execution of a visit.",
+      "type": "object",
+      "required": [
+        "stay_id",
+        "property_id",
+        "reservation_id",
+        "status",
+        "planned_arrival_at",
+        "planned_departure_at",
+        "unit_assignments"
+      ],
+      "properties": {
+        "stay_id": { "$ref": "#/$defs/hosId" },
+        "property_id": { "$ref": "#/$defs/hosId" },
+        "reservation_id": { "$ref": "#/$defs/hosId" },
+        "status": { "$ref": "#/$defs/stayStatus" },
+        "guest_id": { "$ref": "#/$defs/hosId" },
+        "planned_arrival_at": { "type": "string", "format": "date-time" },
+        "planned_departure_at": { "type": "string", "format": "date-time" },
+        "actual_arrival_at": { "type": "string", "format": "date-time" },
+        "actual_departure_at": { "type": "string", "format": "date-time" },
+        "unit_assignments": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["unit_id", "assigned_at"],
+            "properties": {
+              "unit_id": { "$ref": "#/$defs/hosId" },
+              "assigned_at": { "type": "string", "format": "date-time" },
+              "released_at": { "type": "string", "format": "date-time" }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "Task": {
+      "title": "Task",
+      "description": "Linked Property, Unit or Stay; type, status and priority.",
+      "x-hos-boundary": "Minimal operational work item.",
+      "type": "object",
+      "required": ["task_id", "property_id", "task_type", "status", "priority"],
+      "properties": {
+        "task_id": { "$ref": "#/$defs/hosId" },
+        "property_id": { "$ref": "#/$defs/hosId" },
+        "unit_id": { "$ref": "#/$defs/hosId" },
+        "stay_id": { "$ref": "#/$defs/hosId" },
+        "task_type": { "$ref": "#/$defs/taskType" },
+        "status": { "$ref": "#/$defs/taskStatus" },
+        "priority": { "$ref": "#/$defs/taskPriority" }
+      },
+      "additionalProperties": false
+    },
+    "Guest": {
+      "title": "Guest",
+      "description": "Pseudonymous HOS identifiers and external references only.",
+      "x-hos-boundary": "No mandatory global person identity.",
+      "type": "object",
+      "required": ["guest_id"],
+      "properties": {
+        "guest_id": { "$ref": "#/$defs/hosId" },
+        "external_refs": { "$ref": "#/$defs/externalRefs" }
+      },
+      "additionalProperties": false
+    },
+    "Message": {
+      "title": "Message",
+      "description": "Channel, direction, time, linked Guest or Stay, and sensitivity class.",
+      "x-hos-boundary": "Message content is excluded from Core.",
+      "type": "object",
+      "required": ["message_id", "property_id", "channel", "direction", "sent_at", "sensitivity"],
+      "properties": {
+        "message_id": { "$ref": "#/$defs/hosId" },
+        "property_id": { "$ref": "#/$defs/hosId" },
+        "channel": { "$ref": "#/$defs/messageChannel" },
+        "direction": { "enum": ["inbound", "outbound"] },
+        "sent_at": { "type": "string", "format": "date-time" },
+        "guest_id": { "$ref": "#/$defs/hosId" },
+        "stay_id": { "$ref": "#/$defs/hosId" },
+        "sensitivity": { "$ref": "#/$defs/sensitivityClass" }
+      },
+      "additionalProperties": false
+    },
+    "GuestIdentityLink": {
+      "title": "Guest identity link",
+      "description": "A traceable, reversible relationship created when two guest references are matched. Resolution is never destructive: records are linked, not merged.",
+      "type": "object",
+      "required": [
+        "link_id",
+        "guest_id",
+        "linked_to",
+        "source",
+        "confidence",
+        "author",
+        "rationale",
+        "created_at"
+      ],
+      "properties": {
+        "link_id": { "$ref": "#/$defs/hosId" },
+        "guest_id": { "$ref": "#/$defs/hosId" },
+        "linked_to": {
+          "oneOf": [
+            {
+              "type": "object",
+              "required": ["guest_id"],
+              "properties": { "guest_id": { "$ref": "#/$defs/hosId" } },
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "required": ["external_ref"],
+              "properties": { "external_ref": { "$ref": "#/$defs/externalRef" } },
+              "additionalProperties": false
+            }
+          ]
+        },
+        "source": {
+          "type": "string",
+          "format": "uri",
+          "description": "System that proposed the match."
+        },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "author": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Pseudonymous reference of the person or process responsible for the link."
+        },
+        "rationale": { "type": "string", "minLength": 1 },
+        "created_at": { "type": "string", "format": "date-time" },
+        "revoked_at": { "type": "string", "format": "date-time" }
+      },
+      "additionalProperties": false
+    }
+  }
+}

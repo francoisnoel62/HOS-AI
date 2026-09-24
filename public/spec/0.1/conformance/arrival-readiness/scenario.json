@@ -2,10 +2,27 @@
   "scenario": "arrival-readiness",
   "hosschemaversion": "0.1",
   "status": "draft",
-  "title": "Early arrival, room not ready",
-  "summary": "Synthetic facts from a PMS, a housekeeping system and a guest messaging platform for one property. Replay events.jsonl in file order through an implementation and compare its dispositions, readiness and situations with expected.json.",
-  "property": { "id": "prop_demo", "timezone": "Europe/Paris" },
-  "projection": { "ready_housekeeping_statuses": ["clean", "inspected"] },
+  "title": "Early arrival, unit not ready",
+  "summary": "Synthetic facts from a PMS, a housekeeping system and a guest messaging platform for one property. Replay events.jsonl in file order through an implementation and compare its dispositions, readiness and situations with expected.json. The situations are non-normative; the dispositions follow the HOS Events 0.1 processing rules.",
+  "covers": [
+    "Nominal early-arrival, dirty-unit scenario",
+    "Duplicate event (source + id deduplication)",
+    "Out-of-order event",
+    "Conflicting source facts",
+    "Snapshot recovery with explicit classification",
+    "Missing capability (undeclared means denied)"
+  ],
+  "tenant": {
+    "id": "tenant_demo"
+  },
+  "property": {
+    "id": "prop_demo",
+    "timezone": "Europe/Paris",
+    "country": "FR"
+  },
+  "projection": {
+    "ready_housekeeping_statuses": ["clean", "inspected"]
+  },
   "files": {
     "events": "events.jsonl",
     "expected": "expected.json",
@@ -15,47 +32,67 @@
     {
       "delivery": 1,
       "checks": "Reservation context",
-      "note": "The PMS confirms reservation res_1042, arriving today. The guest is referenced only by a pseudonymous id."
+      "note": "The PMS created reservation res_1042 on 12 July for an arrival today. The guest is a pseudonymous id; the PMS confirmation number travels as a typed external reference."
     },
     {
       "delivery": 2,
       "checks": "Stay context",
-      "note": "The PMS expects stay_1042 in unit 204 with the standard check-in at 15:00."
+      "note": "The PMS expects stay_1042 today, with the standard check-in at 15:00."
     },
     {
       "delivery": 3,
-      "checks": "Authoritative status",
-      "note": "The housekeeping system, the declared authority for housekeeping status, reports unit 204 dirty after the previous guest left."
+      "checks": "Unit assignment",
+      "note": "The PMS assigns unit 204. Assignment is a fact of its own, so the stay keeps an assignment history."
     },
     {
       "delivery": 4,
-      "checks": "Duplicate delivery",
-      "note": "The same fact arrives again, as at-least-once delivery allows. Same source and id: it is ignored."
+      "checks": "Authoritative status",
+      "note": "The housekeeping system, the declared authority for housekeeping status, reports unit 204 dirty after the previous guest left. Only that dimension changes."
     },
     {
       "delivery": 5,
-      "checks": "A task is not a status",
-      "note": "The cleaning task is reported complete. At this property only the supervisor's inspection changes the authoritative status, so the unit is still dirty."
+      "checks": "Duplicate delivery",
+      "note": "The same event arrives again, as at-least-once delivery allows. Same source and id: it is ignored."
     },
     {
       "delivery": 6,
+      "checks": "Task context",
+      "note": "The housekeeping system creates cleaning task task_88 for unit 204. Its causal link points to the departure status change."
+    },
+    {
+      "delivery": 7,
+      "checks": "Missing capability",
+      "note": "The PMS publishes a housekeeping task, but its manifest does not declare that capability at this property. Undeclared means denied: HOS ignores it."
+    },
+    {
+      "delivery": 8,
+      "checks": "A task is not a status",
+      "note": "Task task_88 is reported complete. At this property only the supervisor's inspection releases a unit, so the authoritative status is still dirty."
+    },
+    {
+      "delivery": 9,
       "checks": "Conflicting facts",
       "note": "The PMS flips unit 204 to clean because the task closed. Its manifest declares it non-authoritative for housekeeping, so HOS records the disagreement instead of merging it. A front desk trusting the PMS would hand over a room nobody released."
     },
     {
-      "delivery": 7,
+      "delivery": 10,
       "checks": "Risk detection",
-      "note": "At 11:40 the guest writes that they will arrive around 12:30, before the 15:00 check-in. The unit is not ready: HOS raises arrival.room_readiness_at_risk with its evidence."
+      "note": "At 11:40 the guest writes that they will arrive around 12:30, before the 15:00 check-in. Only the extracted signal travels, not the message. The unit is not ready: the reference projection raises arrival.room_readiness_at_risk with its evidence."
     },
     {
-      "delivery": 8,
+      "delivery": 11,
       "checks": "Out-of-order delivery",
-      "note": "An earlier message (11:05, arriving 12:00) is delivered late. It is older than the 11:40 message, so it does not replace it."
+      "note": "An earlier message (11:05, arriving 12:00) is delivered late. Its signal is older than the 11:40 one, so it does not replace it."
     },
     {
-      "delivery": 9,
-      "checks": "Resolution",
-      "note": "The supervisor inspects unit 204 at 12:10. The authoritative status is ready 20 minutes before the guest arrives: the risk is resolved."
+      "delivery": 12,
+      "checks": "Snapshot recovery",
+      "note": "The housekeeping webhook was down while the supervisor inspected unit 204. On recovery the system sends an explicit, sensitivity-classified snapshot. The authoritative status becomes inspected: the risk is resolved 14 minutes before the guest arrives."
+    },
+    {
+      "delivery": 13,
+      "checks": "Stay started",
+      "note": "The guest checks in at 12:35 into an inspected unit."
     }
   ]
 }

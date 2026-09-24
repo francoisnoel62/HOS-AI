@@ -1,12 +1,66 @@
 import type { Metadata } from "next";
-import { PageHero } from "@/components/content/page-hero";
 import Link from "next/link";
 
+import { PageHero } from "@/components/content/page-hero";
 import { StatusBadge } from "@/components/content/status-badge";
 import { Card } from "@/components/ui/card";
 
 export const metadata: Metadata = { title: "Changelog", description: "Published changes and decisions only." };
 
+const entries = [
+  {
+    date: "24 September 2026",
+    title: "HOS Core 0.1 realigned and HOS Events 0.1 draft published.",
+    items: [
+      "Core 0.1 now has eight entities, including Tenant, typed external references, namespaced extensions, sensitivity classes and the four-dimension Unit status model (occupancy, housekeeping, maintenance, commercial), each with unknown.",
+      "HOS Events 0.1: the envelope profile, eleven event types in five families, explicit snapshots, and delivery, ordering and replay rules.",
+      "Breaking for the earlier draft: hos-event.schema.json is replaced by core, event-envelope and events schemas; hospropertyid becomes hosproperty, hostimezone becomes hospropertytimezone, and hostenant and hossubjects are required. task.completed becomes housekeeping.task.completed and stay.arrival_signaled becomes a signal in guest.message.received.",
+      "Arrival readiness situations are now a non-normative reference. The conformance scenario grows to thirteen deliveries, adding snapshot recovery and a missing capability, and every event type has an example.",
+    ],
+    links: [
+      ["/docs/events", "Read HOS Events 0.1"],
+      ["/docs/core", "Read HOS Core 0.1"],
+    ],
+  },
+  {
+    date: "24 September 2026",
+    title: "HOS Core 0.1 draft and the arrival-readiness scenario.",
+    items: [
+      "Readable draft of HOS Core 0.1: entities, event envelope, processing rules and the arrival-readiness projection.",
+      "JSON Schemas for HOS 0.1 events and Event Producer manifests.",
+      "A synthetic conformance scenario of nine deliveries with its expected outcome, and a live replay.",
+    ],
+    links: [["/demo", "Open the live demo"]],
+  },
+];
+
 export default function ChangelogPage() {
-  return <><PageHero eyebrow="Changelog" title="Nothing is announced before it exists." description="This changelog will list released artefacts and published decisions. HOS AI does not promise a content rhythm before the project has one." /><section className="mx-auto max-w-6xl px-5 pb-20 lg:px-8"><Card className="p-8"><div className="flex flex-wrap items-center gap-3"><p className="eyebrow">24 September 2026</p><StatusBadge status="Draft" /></div><h2 className="mt-3 text-2xl font-semibold tracking-[-0.045em]">HOS Core 0.1 draft and the arrival-readiness scenario.</h2><ul className="mt-4 max-w-2xl space-y-2 text-sm leading-6 text-[var(--muted-foreground)]"><li>Readable draft of HOS Core 0.1: entities, event envelope, processing rules and the arrival-readiness projection.</li><li>JSON Schemas for HOS 0.1 events and Event Producer manifests.</li><li>A synthetic conformance scenario of nine deliveries with its expected outcome, and a live replay.</li></ul><div className="mt-5 flex flex-wrap gap-4 text-sm"><Link className="text-[var(--accent-strong)] underline" href="/docs/core">Read the draft</Link><Link className="text-[var(--accent-strong)] underline" href="/demo">Open the live demo</Link></div></Card></section></>;
+  return (
+    <>
+      <PageHero eyebrow="Changelog" title="Nothing is announced before it exists." description="This changelog lists released artefacts and published decisions, newest first. HOS AI does not promise a content rhythm before the project has one." />
+      <section className="mx-auto max-w-6xl space-y-4 px-5 pb-20 lg:px-8">
+        {entries.map((entry) => (
+          <Card className="p-8" key={entry.title}>
+            <div className="flex flex-wrap items-center gap-3">
+              <p className="eyebrow">{entry.date}</p>
+              <StatusBadge status="Draft" />
+            </div>
+            <h2 className="mt-3 text-2xl font-semibold tracking-[-0.045em]">{entry.title}</h2>
+            <ul className="mt-4 max-w-3xl space-y-2 text-sm leading-6 text-[var(--muted-foreground)]">
+              {entry.items.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+            <div className="mt-5 flex flex-wrap gap-4 text-sm">
+              {entry.links.map(([href, label]) => (
+                <Link className="text-[var(--accent-strong)] underline" href={href} key={href}>
+                  {label}
+                </Link>
+              ))}
+            </div>
+          </Card>
+        ))}
+      </section>
+    </>
+  );
 }

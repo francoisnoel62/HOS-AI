@@ -1,0 +1,24 @@
+{
+  "specversion": "1.0",
+  "id": "hk-002232",
+  "source": "urn:hos:housekeeping:demo",
+  "type": "housekeeping.task.created",
+  "time": "2026-07-30T06:45:00Z",
+  "datacontenttype": "application/json",
+  "hosschemaversion": "0.1",
+  "hosrecordedat": "2026-07-30T06:45:01Z",
+  "hostenant": "tenant_demo",
+  "hosproperty": "prop_demo",
+  "hospropertytimezone": "Europe/Paris",
+  "hosbusinessdate": "2026-07-30",
+  "hossubjects": "task:task_88 unit:unit_204",
+  "hoscausationsource": "urn:hos:housekeeping:demo",
+  "hoscausationid": "hk-002231",
+  "data": {
+    "task_id": "task_88",
+    "unit_id": "unit_204",
+    "task_type": "cleaning",
+    "priority": "normal",
+    "due_at": "2026-07-30T13:00:00Z"
+  }
+}

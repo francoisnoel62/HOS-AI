@@ -13,7 +13,7 @@ import { siteConfig } from "@/lib/site";
 export const metadata: Metadata = { title: "The Standard", description: "Why HOS exists, how its operating contract works and what can be inspected today." };
 
 export default function StandardPage() {
-  const eventExample = JSON.stringify(loadArrivalScenario().events[2], null, 2);
+  const eventExample = JSON.stringify(loadArrivalScenario().events[3], null, 2);
   return (
     <>
       <PageHero eyebrow="The Standard" title="An operating contract for systems that need to work together." description="HOS makes facts, authority, capability and future controlled action portable between hospitality systems. It complements existing standards and maps to their strengths; it does not replace a PMS, require a cloud or control a vendor." badge="HOS Core 0.1 · Draft" />
@@ -30,13 +30,13 @@ export default function StandardPage() {
         <div className="grid gap-4 lg:grid-cols-[0.8fr_1.2fr]">
           <div className="space-y-3">
             {[
-              ["Core", "Property, Unit, Reservation, Stay, Task, pseudonymous Guest and minimal Message."],
+              ["Core", "Tenant, Property, Unit, Reservation, Stay, Task, pseudonymous Guest and minimal Message."],
               ["Events", "CloudEvents-compatible facts with HOS business date, property time zone, causal links and version."],
               ["Capabilities", "Each producer publishes the events it can provide, source authority, replay and retention limits."],
               ["Trust", "Later actions are default-deny, tenant-scoped, policy-evaluated, approved and auditable."],
             ].map(([title, text]) => <Card className="p-5" key={title}><h3 className="font-mono text-sm text-[var(--accent)]">{title}</h3><p className="mt-2 text-sm leading-6 text-[var(--muted-foreground)]">{text}</p></Card>)}
           </div>
-          <div className="min-w-0"><CodePanel label="CloudEvents-compatible event · synthetic" code={eventExample} /><p className="mt-3 text-sm"><Link className="text-[var(--accent-strong)] underline" href="/docs/core#envelope">Every attribute, explained in HOS Core 0.1</Link></p></div>
+          <div className="min-w-0"><CodePanel label="CloudEvents-compatible event · synthetic" code={eventExample} /><p className="mt-3 text-sm"><Link className="text-[var(--accent-strong)] underline" href="/docs/events#envelope">Every attribute, explained in HOS Events 0.1</Link></p></div>
         </div>
       </SectionFrame>
       <SectionFrame eyebrow="Inspect the contract" title="Technical detail is available when you need it.">

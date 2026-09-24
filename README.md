@@ -33,7 +33,7 @@ Open [http://localhost:3000](http://localhost:3000). `LOCAL_FORMS_MODE=true` per
 
 ## HOS 0.1 specification artefacts
 
-The draft HOS Core 0.1 artefacts live in `public/spec/0.1/` and are served as static files: JSON Schemas for events and Event Producer manifests, and the arrival-readiness conformance scenario (`events.jsonl`, `expected.json`, producer manifests). `lib/hos/projection.ts` is the reference implementation of the arrival-readiness projection; the `/demo` page and `tests/unit/hos-conformance.test.ts` both run it against the published files, so the site, the schemas and the expected outcome cannot drift apart.
+The HOS Core 0.1 and HOS Events 0.1 drafts live in `public/spec/0.1/` and are served as static files: JSON Schemas for the Core, the event envelope, the event catalogue and Event Producer manifests, one example per event type, and the arrival-readiness conformance scenario (`events.jsonl`, `expected.json`, producer manifests). `lib/hos/projection.ts` is the non-normative reference implementation of the arrival-readiness projection; the `/demo` page and `tests/unit/hos-conformance.test.ts` both run it against the published files, and the `/docs/core` and `/docs/events` tables are generated from the schemas, so the site, the schemas and the expected outcome cannot drift apart.
 
 ## Checks
 

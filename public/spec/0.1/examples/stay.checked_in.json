@@ -1,0 +1,19 @@
+{
+  "specversion": "1.0",
+  "id": "pms-000470",
+  "source": "urn:hos:pms:demo",
+  "type": "stay.checked_in",
+  "time": "2026-07-30T10:35:00Z",
+  "datacontenttype": "application/json",
+  "hosschemaversion": "0.1",
+  "hosrecordedat": "2026-07-30T10:35:01Z",
+  "hostenant": "tenant_demo",
+  "hosproperty": "prop_demo",
+  "hospropertytimezone": "Europe/Paris",
+  "hosbusinessdate": "2026-07-30",
+  "hossubjects": "stay:stay_1042 unit:unit_204",
+  "data": {
+    "stay_id": "stay_1042",
+    "unit_id": "unit_204"
+  }
+}
