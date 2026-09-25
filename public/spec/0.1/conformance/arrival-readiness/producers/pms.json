@@ -46,6 +46,14 @@
       "authoritative": true
     },
     {
+      "type": "unit.maintenance_scheduled",
+      "authoritative": true
+    },
+    {
+      "type": "unit.maintenance_cancelled",
+      "authoritative": true
+    },
+    {
       "type": "unit.status_changed",
       "dimensions": ["occupancy", "commercial"],
       "authoritative": true

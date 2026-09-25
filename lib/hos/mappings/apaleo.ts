@@ -19,6 +19,8 @@ import type {
   StayExpected,
   StayUnitAssigned,
   StayUnitUnassigned,
+  UnitMaintenanceCancelled,
+  UnitMaintenanceScheduled,
   UnitStatusChanged,
   UnitStatusDimension,
 } from "@/lib/hos/types";
@@ -89,7 +91,12 @@ export type ApaleoAdapterConfig = {
 };
 
 // What the integration received and fetched for one webhook.
-export type ApaleoDelivery = { received_at: string; webhook: ApaleoWebhook; reservation?: ApaleoReservation; unit?: ApaleoUnit };
+export type ApaleoMaintenanceType = "OutOfService" | "OutOfOrder" | "OutOfInventory";
+
+// A scheduled maintenance of one unit, from the Operations API.
+export type ApaleoMaintenance = { id: string; unit: { id: string; name?: string }; from: string; to: string; type: ApaleoMaintenanceType; description?: string };
+
+export type ApaleoDelivery = { received_at: string; webhook: ApaleoWebhook; reservation?: ApaleoReservation; unit?: ApaleoUnit; maintenance?: ApaleoMaintenance };
 
 // What HOS has been told about a reservation and its stay.
 type PublishedStay = {
@@ -107,6 +114,14 @@ type PublishedStay = {
 
 type Statuses = Partial<Record<UnitStatusDimension, string>>;
 
+// Apaleo's maintenance types already say whether the unit can still be sold: a small repair (OutOfService) leaves it
+// sellable, a bigger one (OutOfOrder) does not, and a construction site (OutOfInventory) leaves the house count.
+const maintenanceWindows: Record<ApaleoMaintenanceType, Pick<UnitMaintenanceScheduled["data"], "statuses" | "reason">> = {
+  OutOfService: { statuses: { maintenance: "out_of_service" }, reason: "repair" },
+  OutOfOrder: { statuses: { maintenance: "out_of_service", commercial: "not_sellable" }, reason: "repair" },
+  OutOfInventory: { statuses: { maintenance: "out_of_service", commercial: "not_sellable" }, reason: "renovation" },
+};
+
 const dimensions: UnitStatusDimension[] = ["occupancy", "housekeeping", "maintenance", "commercial"];
 
 // Only bedrooms are HOS units; Apaleo also rents parking lots, meeting rooms and event spaces.
@@ -115,6 +130,8 @@ const isBedroom = (unitGroup?: { type?: string }) => !unitGroup?.type || unitGro
 export function createApaleoAdapter(config: ApaleoAdapterConfig) {
   const stays = new Map<string, PublishedStay>();
   const units = new Map<string, Statuses>();
+  // What HOS has been told about each maintenance window: its unit, and the plan last published.
+  const windows = new Map<string, { unitId: string; plan: string; cancelled: boolean }>();
   const { resolve } = config.identities;
 
   function handle(delivery: ApaleoDelivery): MappingResult {
@@ -249,12 +266,33 @@ export function createApaleoAdapter(config: ApaleoAdapterConfig) {
       units.set(apaleo.id, { ...published, ...next });
     }
 
+    function maintenance(apaleo: ApaleoMaintenance | undefined) {
+      const known = windows.get(entityId);
+      const maintenanceId = resolve("maintenance", entityId);
+      if (webhook.type === "deleted") {
+        // A deleted maintenance can no longer be fetched: its unit is what this adapter published.
+        if (!known || known.cancelled) return skip(known ? "Already cancelled." : "Deleted before HOS knew the maintenance.");
+        publish<UnitMaintenanceCancelled>("unit.maintenance_cancelled", entityId, occurred, [`unit:${known.unitId}`], { maintenance_id: maintenanceId, unit_id: known.unitId });
+        known.cancelled = true;
+        return;
+      }
+      if (!apaleo) return skip("Not returned by the Operations API.");
+      const unitId = resolve("unit", apaleo.unit.id);
+      const window = { maintenance_id: maintenanceId, unit_id: unitId, starts_at: utc(apaleo.from), ends_at: utc(apaleo.to), ...maintenanceWindows[apaleo.type] };
+      const plan = JSON.stringify(window);
+      if (known?.plan === plan && !known.cancelled) return skip("No change since the last fetch.");
+      publish<UnitMaintenanceScheduled>("unit.maintenance_scheduled", entityId, occurred, [`unit:${unitId}`], window);
+      windows.set(entityId, { unitId, plan, cancelled: false });
+    }
+
     if (webhook.topic === "Reservation") {
       if (delivery.reservation?.id === entityId) reservation(delivery.reservation);
       else skip("Not returned by the Booking API.");
     } else if (webhook.topic === "Unit") {
       if (delivery.unit?.id === entityId) unit(delivery.unit);
       else skip("Not returned by the Inventory API.");
+    } else if (webhook.topic === "Maintenance") {
+      maintenance(delivery.maintenance?.id === entityId ? delivery.maintenance : undefined);
     } else {
       skip("No HOS 0.1 counterpart in this mapping.");
     }
@@ -269,7 +307,8 @@ export function apaleoRecordingAdapter({ adapter }: MappingRecording): Recording
   const apaleo = createApaleoAdapter({ ...(adapter as unknown as Omit<ApaleoAdapterConfig, "identities">), identities: createIdentityRegistry(adapter.crosswalk) });
   return (delivery) => {
     const call = delivery.fetched[0];
-    const fetched = call ? { [call.operation.startsWith("GET /inventory/") ? "unit" : "reservation"]: call.response } : {};
+    const kind = call?.operation.startsWith("GET /inventory/") ? "unit" : call?.operation.startsWith("GET /operations/") ? "maintenance" : "reservation";
+    const fetched = call ? { [kind]: call.response } : {};
     return apaleo.handle({ received_at: delivery.received_at, webhook: delivery.webhook as ApaleoWebhook, ...fetched });
   };
 }

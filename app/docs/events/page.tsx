@@ -16,7 +16,7 @@ import eventsSchema from "@/public/spec/0.1/schemas/events.schema.json";
 
 export const metadata: Metadata = {
   title: "HOS Events 0.1 (draft)",
-  description: "Immutable, CloudEvents-compatible HOS events: the envelope profile, thirteen event types in five families, snapshots, delivery, deduplication, ordering and replay.",
+  description: "Immutable, CloudEvents-compatible HOS events: the envelope profile, fifteen event types in five families, snapshots, delivery, deduplication, ordering and replay.",
 };
 
 type SchemaNode = { title?: string; description?: string; required?: string[]; properties?: Record<string, SchemaNode>; "x-hos-family"?: string; "x-hos-authority"?: string };
@@ -25,11 +25,11 @@ const envelope = envelopeSchema as unknown as SchemaNode;
 const catalogue = Object.entries((eventsSchema as unknown as { $defs: Record<string, SchemaNode> }).$defs);
 
 const principles = [
-  ["Immutable facts", "An event records what happened. A correction is a new event; nothing is edited in place."],
+  ["Immutable facts", "An event records what happened. A correction, a released unit, a reverted check-in or a withdrawn maintenance window is a new event; nothing is edited in place."],
   ["Named for meaning", "Types are domain.resource.past_tense, singular and vendor-neutral: housekeeping.task.completed, not a vendor's webhook name."],
   ["One dimension at a time", "A status change states only the changed dimension, the previous value when known, the new value, the authority source and an optional reason."],
   ["Explicit snapshots", "A snapshot is sent only when deltas cannot recover the state. It is declared in hosdatamode, allowed by the producer's manifest and sensitivity-classified."],
-  ["Undo is a new fact", "A released unit or a reverted check-in is an event of its own, stay.unit_unassigned or stay.check_in_reverted; nothing earlier is deleted."],
+  ["Plans are not states", "unit.maintenance_scheduled plans when a unit will be out of service or out of sale. The unit's statuses change only through unit.status_changed, when the window begins."],
   ["Honest time and actor", "time is when the fact occurred. When the source only knows the entity's last modification, hostimebasis says modified; when it knows nothing, recorded. hosactor names who acted, pseudonymously, when the source knows."],
 ];
 
@@ -50,7 +50,7 @@ export default function EventsSpecificationPage() {
       <PageHero
         eyebrow="Documentation · HOS Events"
         title="HOS Events 0.1"
-        description="Immutable, CloudEvents-compatible records of what happened in hospitality operations: one envelope profile, thirteen event types in five families, and the delivery rules every producer and consumer share."
+        description="Immutable, CloudEvents-compatible records of what happened in hospitality operations: one envelope profile, fifteen event types in five families, and the delivery rules every producer and consumer share."
         badge="Draft · Observe"
       />
       <section className="mx-auto max-w-6xl px-5 lg:px-8">
@@ -106,7 +106,7 @@ export default function EventsSpecificationPage() {
         </div>
       </SectionFrame>
 
-      <SectionFrame id="catalogue" eyebrow="Event catalogue" title="Thirteen event types in five families." description="Required data is listed per type; every data object also accepts namespaced extensions. Each type has a downloadable example.">
+      <SectionFrame id="catalogue" eyebrow="Event catalogue" title="Fifteen event types in five families." description="Required data is listed per type; every data object also accepts namespaced extensions. Each type has a downloadable example.">
         <SpecTable
           columns={["Type", "Family · authority", "Required data", "Meaning", "Example"]}
           label="HOS Events 0.1 catalogue"

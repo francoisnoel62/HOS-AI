@@ -19,6 +19,8 @@ import type {
   StayExpected,
   StayUnitAssigned,
   StayUnitUnassigned,
+  UnitMaintenanceCancelled,
+  UnitMaintenanceScheduled,
   UnitStatusChanged,
   UnitStatusDimension,
 } from "@/lib/hos/types";
@@ -39,6 +41,7 @@ export type CloudbedsWebhook = {
   reservationID?: string;
   roomID?: string;
   roomId?: string;
+  roomBlockID?: string;
   status?: string;
   actor?: { type: string; id: string };
   startDate?: string;
@@ -83,7 +86,17 @@ export type CloudbedsAdapterConfig = {
 };
 
 // What the integration received and fetched for one webhook.
-export type CloudbedsDelivery = { received_at: string; webhook: CloudbedsWebhook; reservation?: CloudbedsReservation; rooms?: CloudbedsRoomStatus[] };
+// One block of getRoomBlocks. Its dates are days; eventID identifies each room's entry in the block.
+export type CloudbedsRoomBlock = {
+  roomBlockID: string;
+  roomBlockType: "blocked_dates" | "out_of_service" | "courtesy_hold" | string;
+  roomBlockReason?: string;
+  startDate: string;
+  endDate: string;
+  rooms: Array<{ eventID: string; roomID: string; roomTypeID?: unknown; isSource?: boolean }>;
+};
+
+export type CloudbedsDelivery = { received_at: string; webhook: CloudbedsWebhook; reservation?: CloudbedsReservation; rooms?: CloudbedsRoomStatus[]; roomBlocks?: CloudbedsRoomBlock[] };
 
 type PublishedStatus = "tentative" | "confirmed" | "cancelled" | "no_show";
 
@@ -102,15 +115,20 @@ const reservationStatuses: Partial<Record<CloudbedsReservationStatus, "tentative
 };
 const roomConditions: Record<string, string> = { dirty: "dirty", clean: "clean", inspected: "inspected" };
 
+// The day after a date, for block dates read as the last blocked night.
+const nextDay = (date: string) => new Date(Date.parse(`${date}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10);
+
 export function createCloudbedsAdapter(config: CloudbedsAdapterConfig) {
   const reservations = new Map<string, PublishedReservation>();
   const units = new Map<string, Statuses>();
+  // What HOS has been told about each room block: per room entry, the unit and the plan last published.
+  const blocks = new Map<string, Map<string, { unitId: string; plan: string }>>();
   const { resolve } = config.identities;
 
   function handle(delivery: CloudbedsDelivery): MappingResult {
     const { webhook } = delivery;
     const { event } = webhook;
-    const entityId = webhook.reservationID ?? webhook.roomID ?? webhook.roomId ?? "";
+    const entityId = webhook.reservationID ?? webhook.roomID ?? webhook.roomId ?? webhook.roomBlockID ?? "";
     const unmapped: Unmapped[] = [];
     const skip = (reason: string) => unmapped.push({ event, id: entityId, reason });
 
@@ -271,6 +289,39 @@ export function createCloudbedsAdapter(config: CloudbedsAdapterConfig) {
       units.set(roomId, { ...published, ...next });
     }
 
+    // Each room of a block is a maintenance window of its own. A block holds a room as a stay would: from its first day at
+    // the check-in time until the day after its last day at the check-out time.
+    function roomBlock(blockId: string, cloudbeds: CloudbedsRoomBlock | undefined) {
+      const published = blocks.get(blockId) ?? new Map<string, { unitId: string; plan: string }>();
+      blocks.set(blockId, published);
+      // A block the fetch misses is not withdrawn: only its removal event says so.
+      if (!cloudbeds && event !== "roomblock/removed") return skip("Not returned by getRoomBlocks.");
+      if (cloudbeds?.roomBlockType === "courtesy_hold") return skip("A courtesy hold is a commercial hold, not maintenance.");
+      const current = event === "roomblock/removed" || !cloudbeds ? [] : cloudbeds.rooms;
+      for (const { eventID, roomID } of current) {
+        const unitId = resolve("unit", roomID);
+        const window: UnitMaintenanceScheduled["data"] = {
+          maintenance_id: resolve("maintenance", eventID),
+          unit_id: unitId,
+          starts_at: zonedTimeToUtc(cloudbeds!.startDate, property!.checkInTime, property!.timezone),
+          ends_at: zonedTimeToUtc(nextDay(cloudbeds!.endDate), property!.checkOutTime, property!.timezone),
+          // Cloudbeds's block reason is free text, which stays in Cloudbeds.
+          statuses: cloudbeds!.roomBlockType === "out_of_service" ? { maintenance: "out_of_service", commercial: "not_sellable" } : { commercial: "not_sellable" },
+        };
+        const plan = JSON.stringify(window);
+        if (published.get(eventID)?.plan === plan) continue;
+        publish<UnitMaintenanceScheduled>("unit.maintenance_scheduled", eventID, occurred, [`unit:${unitId}`], window, timing(true));
+        published.set(eventID, { unitId, plan });
+      }
+      // Rooms no longer in the block, or the whole block when it is removed, are withdrawn.
+      for (const [eventID, { unitId }] of [...published]) {
+        if (current.some((room) => room.eventID === eventID)) continue;
+        publish<UnitMaintenanceCancelled>("unit.maintenance_cancelled", eventID, occurred, [`unit:${unitId}`], { maintenance_id: resolve("maintenance", eventID), unit_id: unitId }, timing(true));
+        published.delete(eventID);
+      }
+      if (!events.length) skip("No change since the last fetch.");
+    }
+
     if (event.startsWith("reservation/")) {
       const fetched = delivery.reservation;
       if (fetched && fetched.reservationID === webhook.reservationID) reservation(fetched);
@@ -280,6 +331,9 @@ export function createCloudbedsAdapter(config: CloudbedsAdapterConfig) {
       const status = delivery.rooms?.find((item) => item.roomID === roomId);
       if (roomId && status) room(roomId, status);
       else skip("Room not returned by getHousekeepingStatus.");
+    } else if (event.startsWith("roomblock/")) {
+      if (webhook.roomBlockID) roomBlock(webhook.roomBlockID, delivery.roomBlocks?.find((item) => item.roomBlockID === webhook.roomBlockID));
+      else skip("No room block id in the webhook.");
     } else if (event.startsWith("guest/")) {
       skip("Guest profiles are personal data; HOS carries only a pseudonymous guest_id.");
     } else {
@@ -300,6 +354,7 @@ export function cloudbedsRecordingAdapter({ adapter }: MappingRecording): Record
       const { data } = response as { data: unknown };
       if (operation === "GET /getReservation") fetched.reservation = data as CloudbedsReservation;
       if (operation === "GET /getHousekeepingStatus") fetched.rooms = data as CloudbedsRoomStatus[];
+      if (operation === "GET /getRoomBlocks") fetched.roomBlocks = (data as { roomBlocks: CloudbedsRoomBlock[] }).roomBlocks;
     }
     return cloudbeds.handle({ received_at: delivery.received_at, webhook: delivery.webhook as CloudbedsWebhook, ...fetched });
   };

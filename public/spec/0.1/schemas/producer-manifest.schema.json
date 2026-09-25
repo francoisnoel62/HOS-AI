@@ -60,7 +60,17 @@
       "type": "array",
       "uniqueItems": true,
       "items": {
-        "enum": ["Tenant", "Property", "Unit", "Reservation", "Stay", "Task", "Guest", "Message"]
+        "enum": [
+          "Tenant",
+          "Property",
+          "Unit",
+          "MaintenanceWindow",
+          "Reservation",
+          "Stay",
+          "Task",
+          "Guest",
+          "Message"
+        ]
       },
       "description": "Core entities the producer exposes."
     },
@@ -83,6 +93,8 @@
               "stay.unit_assigned",
               "stay.unit_unassigned",
               "unit.status_changed",
+              "unit.maintenance_scheduled",
+              "unit.maintenance_cancelled",
               "housekeeping.task.created",
               "housekeeping.task.completed",
               "guest.message.received"

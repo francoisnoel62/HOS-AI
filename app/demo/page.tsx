@@ -27,7 +27,7 @@ export default function DemoPage() {
     { href: `${scenarioPath}/${scenario.files.expected}`, label: "expected.json", text: "Dispositions, readiness and situations your implementation must reproduce." },
     { href: `${scenarioPath}/scenario.json`, label: "scenario.json", text: "Tenant and property profile, readiness rule, the cases covered and what each delivery checks." },
     ...scenario.files.producers.map((file) => ({ href: `${scenarioPath}/${file}`, label: file, text: "Event Producer manifest: declared events, authority, delivery, replay and retention." })),
-    { href: `${specVersionPath}/schemas/events.schema.json`, label: "events.schema.json", text: "JSON Schema (2020-12) for the thirteen HOS Events 0.1 types, with the envelope and Core schemas it references." },
+    { href: `${specVersionPath}/schemas/events.schema.json`, label: "events.schema.json", text: "JSON Schema (2020-12) for the fifteen HOS Events 0.1 types, with the envelope and Core schemas it references." },
     { href: `${specVersionPath}/schemas/reference/arrival-readiness.schema.json`, label: "reference/arrival-readiness.schema.json", text: "Non-normative schema of the two reference situations." },
   ];
 

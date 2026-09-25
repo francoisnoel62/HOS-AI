@@ -4,7 +4,7 @@ import { examplesPath, listExamples, loadArrivalScenario, loadExpectedOutcome, t
 import { replayArrivalReadiness } from "@/lib/hos/projection";
 import type { HosFact } from "@/lib/hos/types";
 
-import { errors, readJson, validateEvent, validateManifest, validateProperty, validateSituation, validateUnit } from "./hos-schemas";
+import { errors, readJson, validateEvent, validateMaintenanceWindow, validateManifest, validateProperty, validateSituation, validateUnit } from "./hos-schemas";
 
 const { scenario, manifests, events } = loadArrivalScenario();
 const eventTypes: string[] = readJson("spec/0.1/schemas/events.schema.json").allOf[1].properties.type.enum;
@@ -13,6 +13,13 @@ describe("HOS Core 0.1", () => {
   it("defines the four independent unit status dimensions, each with unknown", () => {
     expect(validateUnit({ unit_id: "unit_204", property_id: "prop_demo", statuses: { occupancy: "unknown", housekeeping: "inspected", maintenance: "out_of_service", commercial: "not_sellable" } })).toBe(true);
     expect(validateUnit({ unit_id: "unit_204", property_id: "prop_demo", statuses: { housekeeping: "dirty" } })).toBe(false);
+  });
+
+  it("defines a maintenance window as a plan of the statuses a unit will have", () => {
+    const window = readJson("spec/0.1/examples/entities/maintenance-window.json");
+    expect(validateMaintenanceWindow(window), errors(validateMaintenanceWindow)).toBe(true);
+    expect(validateMaintenanceWindow({ ...window, statuses: { housekeeping: "dirty" } })).toBe(false);
+    expect(validateMaintenanceWindow({ ...window, reason: "because" })).toBe(false);
   });
 
   it("lets a Property declare the standard times of stays planned in days", () => {
@@ -33,7 +40,7 @@ describe("HOS Events 0.1 published artefacts", () => {
   });
 
   it("publishes an example for every event type in the catalogue", () => {
-    expect(eventTypes).toHaveLength(13);
+    expect(eventTypes).toHaveLength(15);
     expect(eventTypes.filter((type) => !listExamples().includes(`${type}.json`))).toEqual([]);
   });
 
@@ -75,6 +82,8 @@ describe("HOS Events 0.1 published artefacts", () => {
       ["an actor named by a person's name", { ...reservation, hosactor: "user:Jane Example" }],
       ["an actor of an unknown kind", { ...reservation, hosactor: "robot:r2" }],
       ["a time basis HOS does not define", { ...reservation, hostimebasis: "estimated" }],
+      ["a maintenance window that imposes no status", { ...reservation, type: "unit.maintenance_scheduled", data: { maintenance_id: "mnt_1", unit_id: "unit_204", starts_at: "2026-07-30T08:00:00Z", ends_at: "2026-07-30T12:00:00Z", statuses: {} } }],
+      ["a maintenance window that claims an operational unit", { ...reservation, type: "unit.maintenance_scheduled", data: { maintenance_id: "mnt_1", unit_id: "unit_204", starts_at: "2026-07-30T08:00:00Z", ends_at: "2026-07-30T12:00:00Z", statuses: { maintenance: "operational" } } }],
     ];
     it.each(cases)("%s", (_name, event) => {
       expect(validateEvent(event)).toBe(false);
@@ -156,5 +165,53 @@ describe("stay facts that undo earlier ones", () => {
     expect(steps[3].stays.stay_1042.stay_status).toBe("in_house");
     expect(steps[4].stays.stay_1042.stay_status).toBe("expected");
     expect(replay([created, expected, assigned, reverted, checkedIn]).at(-1)!.stays.stay_1042.stay_status).toBe("expected");
+  });
+});
+
+describe("maintenance windows in the reference projection", () => {
+  const [created, expected, assigned] = events;
+  const signal = events.find((event) => event.type === "guest.message.received")!;
+  const inspected = events.find((event) => event.hosdatamode === "snapshot")!;
+  const pms = events.find((event) => event.type === "stay.checked_in")!;
+  const window = (id: string, time: string, data: Record<string, unknown>, type = "unit.maintenance_scheduled") =>
+    ({ ...pms, id, type, time, hossubjects: "unit:unit_204", data: { maintenance_id: "mnt_7", unit_id: "unit_204", ...data } }) as unknown as HosFact;
+  const blocking = window("pms-m1", "2026-07-29T08:00:00Z", { starts_at: "2026-07-30T06:00:00Z", ends_at: "2026-07-30T16:00:00Z", statuses: { maintenance: "out_of_service", commercial: "not_sellable" }, reason: "repair" });
+  const cancelled = window("pms-m2", "2026-07-30T07:00:00Z", {}, "unit.maintenance_cancelled");
+  const replay = (stream: HosFact[]) => replayArrivalReadiness(stream, manifests, scenario.projection);
+  const situations = (stream: HosFact[]) => replay(stream).flatMap((step) => step.emitted);
+
+  it("raises a risk when a window blocks the unit at the planned check-in, even without an arrival signal", () => {
+    const [risk] = situations([created, expected, assigned, blocking]);
+    expect(risk).toMatchObject({
+      type: "arrival.room_readiness_at_risk",
+      data: { unit_id: "unit_204", expected_arrival_at: "2026-07-30T13:00:00Z", maintenance: { maintenance_id: "mnt_7", statuses: { maintenance: "out_of_service", commercial: "not_sellable" }, event_id: "pms-m1" } },
+    });
+    expect(risk.data.evidence).toContainEqual({ source: "urn:hos:pms:demo", id: "pms-m1" });
+    expect(validateSituation({ ...risk, id: "s-1" }), errors(validateSituation)).toBe(true);
+    expect(replay([created, expected, assigned, blocking]).at(-1)!.stays.stay_1042.readiness).toBe("not_ready");
+  });
+
+  it("resolves the risk as unit_available when the window is cancelled", () => {
+    const [, resolved] = situations([created, expected, assigned, blocking, cancelled]);
+    expect(resolved).toMatchObject({ type: "arrival.room_readiness_resolved", data: { reason: "unit_available" } });
+    expect(validateSituation({ ...resolved, id: "s-2" }), errors(validateSituation)).toBe(true);
+  });
+
+  it("checks the window against when the guest is expected, not only the planned check-in", () => {
+    const early = window("pms-m3", "2026-07-29T08:00:00Z", { starts_at: "2026-07-30T10:00:00Z", ends_at: "2026-07-30T11:00:00Z", statuses: { maintenance: "out_of_service" } });
+    const afternoon = window("pms-m4", "2026-07-29T08:00:00Z", { starts_at: "2026-07-30T13:30:00Z", ends_at: "2026-07-30T15:00:00Z", statuses: { maintenance: "out_of_service" } });
+    const ready = [created, expected, assigned, inspected, signal];
+    expect(situations([...ready, early])).toMatchObject([{ type: "arrival.room_readiness_at_risk", data: { expected_arrival_at: "2026-07-30T10:30:00Z" } }]);
+    expect(situations([...ready, afternoon])).toEqual([]);
+  });
+
+  it("keeps the latest plan, ignores an older cancellation and windows on other units", () => {
+    const moved = window("pms-m5", "2026-07-29T12:00:00Z", { starts_at: "2026-07-31T06:00:00Z", ends_at: "2026-07-31T16:00:00Z", statuses: { maintenance: "out_of_service" } });
+    const stale = window("pms-m6", "2026-07-29T07:00:00Z", {}, "unit.maintenance_cancelled");
+    const steps = replay([created, expected, assigned, blocking, stale, moved]);
+    expect(steps.map((step) => step.disposition).slice(3)).toEqual(["applied", "superseded", "applied"]);
+    expect(steps.at(-1)!.stays.stay_1042).toMatchObject({ maintenance: null, situation: "resolved" });
+    const elsewhere = { ...blocking, id: "pms-m7", data: { ...blocking.data, maintenance_id: "mnt_8", unit_id: "unit_207" } } as HosFact;
+    expect(situations([created, expected, assigned, elsewhere])).toEqual([]);
   });
 });

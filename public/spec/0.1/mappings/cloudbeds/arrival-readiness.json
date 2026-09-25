@@ -11,7 +11,7 @@
       "url": "https://github.com/cloudbeds/cloudbeds-api-python/tree/release/v1",
       "revision": "abbc43bdcec310ebdd8e923908fd58431994d02a",
       "official": true,
-      "covers": "Generated from Cloudbeds's OpenAPI description: getReservation, getHousekeepingStatus and getHotelDetails responses, reservation statuses, and webhook subscriptions by object and action."
+      "covers": "Generated from Cloudbeds's OpenAPI description: getReservation, getHousekeepingStatus, getRoomBlocks and getHotelDetails responses, reservation statuses, and webhook subscriptions by object and action."
     },
     {
       "label": "Pipedream Cloudbeds components",
@@ -25,7 +25,7 @@
       "url": "https://www.npmjs.com/package/n8n-nodes-cloudbeds",
       "revision": "0.3.30",
       "official": false,
-      "covers": "Webhook event names, including reservation/accommodation_changed and housekeeping/room_condition_changed."
+      "covers": "Webhook event names, including reservation/accommodation_changed, housekeeping/room_condition_changed and roomblock/*."
     },
     {
       "label": "Cloudbeds developer documentation: webhooks",

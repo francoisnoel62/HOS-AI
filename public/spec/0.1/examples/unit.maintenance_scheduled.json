@@ -1,0 +1,26 @@
+{
+  "specversion": "1.0",
+  "id": "pms-000391",
+  "source": "urn:hos:pms:demo",
+  "type": "unit.maintenance_scheduled",
+  "time": "2026-07-28T09:12:00Z",
+  "datacontenttype": "application/json",
+  "hosschemaversion": "0.1",
+  "hosrecordedat": "2026-07-28T09:12:01Z",
+  "hostenant": "tenant_demo",
+  "hosproperty": "prop_demo",
+  "hospropertytimezone": "Europe/Paris",
+  "hosbusinessdate": "2026-07-28",
+  "hossubjects": "unit:unit_207",
+  "data": {
+    "maintenance_id": "mnt_31",
+    "unit_id": "unit_207",
+    "starts_at": "2026-07-30T08:00:00Z",
+    "ends_at": "2026-07-31T14:00:00Z",
+    "statuses": {
+      "maintenance": "out_of_service",
+      "commercial": "not_sellable"
+    },
+    "reason": "repair"
+  }
+}

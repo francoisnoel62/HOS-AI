@@ -20,6 +20,8 @@ import type {
   StayExpected,
   StayUnitAssigned,
   StayUnitUnassigned,
+  UnitMaintenanceCancelled,
+  UnitMaintenanceScheduled,
   UnitStatusChanged,
   UnitStatusDimension,
 } from "@/lib/hos/types";
@@ -85,8 +87,22 @@ export type MewsAdapterConfig = {
   identities: IdentityRegistry;
 };
 
+// An out-of-order or internal-use block of one resource, from Get all resource blocks.
+export type MewsResourceBlock = {
+  Id: string;
+  EnterpriseId: string;
+  AssignedResourceId: string;
+  IsActive: boolean;
+  Type: "OutOfOrder" | "InternalUse";
+  StartUtc: string;
+  EndUtc: string;
+  CreatedUtc: string;
+  UpdatedUtc: string;
+  DeletedUtc?: string | null;
+};
+
 // What the integration received and fetched for one webhook message.
-export type MewsDelivery = { received_at: string; webhook: MewsWebhook; reservations?: MewsReservation[]; resources?: MewsResource[] };
+export type MewsDelivery = { received_at: string; webhook: MewsWebhook; reservations?: MewsReservation[]; resources?: MewsResource[]; resourceBlocks?: MewsResourceBlock[] };
 
 type PublishedStatus = "tentative" | "confirmed" | "cancelled" | "no_show";
 
@@ -107,6 +123,7 @@ type PublishedStay = {
 };
 
 type PublishedUnit = { updatedUtc: string; statuses: Partial<Record<UnitStatusDimension, string>> };
+type PublishedWindow = { updatedUtc: string; unitId: string; cancelled: boolean };
 
 const reservationStatuses: Partial<Record<MewsServiceOrderState, "tentative" | "confirmed">> = {
   Optional: "tentative",
@@ -139,6 +156,7 @@ const isNewer = (candidate: string, current: string) => Date.parse(candidate) > 
 export function createMewsAdapter(config: MewsAdapterConfig) {
   const stays = new Map<string, PublishedStay>();
   const units = new Map<string, PublishedUnit>();
+  const windows = new Map<string, PublishedWindow>();
   const { resolve } = config.identities;
 
   function handle(delivery: MewsDelivery): MappingResult {
@@ -285,6 +303,40 @@ export function createMewsAdapter(config: MewsAdapterConfig) {
       units.set(mews.Id, { updatedUtc: mews.UpdatedUtc, statuses });
     }
 
+    // A resource block is a maintenance window: out of order takes the unit out of service and out of sale, internal
+    // use only out of sale.
+    function block(mews: MewsResourceBlock) {
+      const skip = (reason: string) => unmapped.push({ event: "ResourceBlockUpdated", id: mews.Id, reason });
+      const known = windows.get(mews.Id);
+      if (known && !isNewer(mews.UpdatedUtc, known.updatedUtc)) return skip("No change since the last fetch.");
+      const maintenanceId = resolve("maintenance", mews.Id);
+      const unitId = resolve("unit", mews.AssignedResourceId);
+      windows.set(mews.Id, { updatedUtc: mews.UpdatedUtc, unitId, cancelled: !mews.IsActive || Boolean(mews.DeletedUtc) });
+      if (!mews.IsActive || mews.DeletedUtc) {
+        if (!known || known.cancelled) return skip(known ? "Already cancelled." : "Deleted before HOS knew the block.");
+        const cancelledAt = mews.DeletedUtc ? { time: mews.DeletedUtc, options: {} } : { time: mews.UpdatedUtc, options: { timeBasis: "modified" as const } };
+        publish<UnitMaintenanceCancelled>("unit.maintenance_cancelled", mews.Id, cancelledAt.time, [`unit:${known.unitId}`], { maintenance_id: maintenanceId, unit_id: known.unitId }, cancelledAt.options);
+        return;
+      }
+      const internal = mews.Type === "InternalUse";
+      publish<UnitMaintenanceScheduled>(
+        "unit.maintenance_scheduled",
+        mews.Id,
+        mews.UpdatedUtc,
+        [`unit:${unitId}`],
+        {
+          maintenance_id: maintenanceId,
+          unit_id: unitId,
+          starts_at: utc(mews.StartUtc),
+          ends_at: utc(mews.EndUtc),
+          statuses: internal ? { commercial: "not_sellable" } : { maintenance: "out_of_service", commercial: "not_sellable" },
+          ...(internal ? { reason: "internal_use" as const } : {}),
+        },
+        // A new block is dated by its creation; a changed one only by its last update.
+        mews.UpdatedUtc === mews.CreatedUtc ? {} : { timeBasis: "modified" },
+      );
+    }
+
     for (const { Discriminator: discriminator, Value } of delivery.webhook.Events) {
       const id = Value.Id;
       if (handled.has(`${discriminator}|${id}`)) continue;
@@ -298,6 +350,10 @@ export function createMewsAdapter(config: MewsAdapterConfig) {
         const fetched = delivery.resources?.find((item) => item.Id === id);
         if (fetched) resource(fetched);
         else skip("Not returned by Get all resources.");
+      } else if (discriminator === "ResourceBlockUpdated") {
+        const fetched = delivery.resourceBlocks?.find((item) => item.Id === id);
+        if (fetched) block(fetched);
+        else skip("Not returned by Get all resource blocks.");
       } else if (discriminator === "CustomerAdded" || discriminator === "CustomerUpdated") {
         skip("Customer profiles are personal data; HOS carries only a pseudonymous guest_id.");
       } else if (discriminator === "MessageAdded") {
@@ -317,12 +373,13 @@ export function createMewsAdapter(config: MewsAdapterConfig) {
 export function mewsRecordingAdapter({ adapter }: MappingRecording): RecordingAdapter {
   const mews = createMewsAdapter({ ...(adapter as unknown as Omit<MewsAdapterConfig, "identities">), identities: createIdentityRegistry(adapter.crosswalk) });
   return (delivery) => {
-    const fetched = responses<{ Reservations?: MewsReservation[]; Resources?: MewsResource[] }>(delivery);
+    const fetched = responses<{ Reservations?: MewsReservation[]; Resources?: MewsResource[]; ResourceBlocks?: MewsResourceBlock[] }>(delivery);
     return mews.handle({
       received_at: delivery.received_at,
       webhook: delivery.webhook as MewsWebhook,
       reservations: fetched.flatMap((response) => response.Reservations ?? []),
       resources: fetched.flatMap((response) => response.Resources ?? []),
+      resourceBlocks: fetched.flatMap((response) => response.ResourceBlocks ?? []),
     });
   };
 }

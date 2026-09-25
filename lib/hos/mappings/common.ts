@@ -5,7 +5,7 @@ import type { HosFact } from "@/lib/hos/types";
 // replays a PMS's own payloads through its adapter.
 
 // actor ids become the pseudonymous references of hosactor.
-export type HosEntityKind = "reservation" | "stay" | "unit" | "guest" | "actor";
+export type HosEntityKind = "reservation" | "stay" | "unit" | "guest" | "maintenance" | "actor";
 export type IdentityRegistry = { resolve(kind: HosEntityKind, pmsId: string): string };
 export type Crosswalk = Partial<Record<HosEntityKind, Record<string, string>>>;
 

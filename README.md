@@ -56,7 +56,8 @@ The website replays this scenario at `/demo` with a small, non-normative referen
 - `stay.unit_unassigned` and `stay.check_in_reverted`;
 - the `hosactor` envelope attribute and the `modified` time basis;
 - standard check-in and check-out times on the Property;
-- rules for when `stay.expected` is due and for producers without a guest identity.
+- rules for when `stay.expected` is due and for producers without a guest identity;
+- scheduled maintenance windows, which all three PMSs have: a ninth Core entity and the `unit.maintenance_scheduled` and `unit.maintenance_cancelled` events.
 
 A validator CLI, SDKs, a production event processor and live PMS connectors are future work.
 

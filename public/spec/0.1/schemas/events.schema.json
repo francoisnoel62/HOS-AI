@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:hos:schema:0.1:events",
   "title": "HOS Events 0.1",
-  "description": "Draft. The initial HOS event catalogue: thirteen immutable fact types in five families, on the HOS Events envelope profile. Data objects are closed so that personal or commercial data cannot travel unnoticed. Snapshot mode is allowed for unit.status_changed only.",
+  "description": "Draft. The initial HOS event catalogue: fifteen immutable fact types in five families, on the HOS Events envelope profile. Data objects are closed so that personal or commercial data cannot travel unnoticed. Snapshot mode is allowed for unit.status_changed only.",
   "allOf": [
     {
       "$ref": "urn:hos:schema:0.1:event-envelope"
@@ -21,6 +21,8 @@
             "stay.unit_assigned",
             "stay.unit_unassigned",
             "unit.status_changed",
+            "unit.maintenance_scheduled",
+            "unit.maintenance_cancelled",
             "housekeeping.task.created",
             "housekeeping.task.completed",
             "guest.message.received"
@@ -211,6 +213,40 @@
             "data": {
               "$ref": "#/$defs/unit.status_changed"
             }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": ["type"],
+        "properties": {
+          "type": {
+            "const": "unit.maintenance_scheduled"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "$ref": "#/$defs/unit.maintenance_scheduled"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": ["type"],
+        "properties": {
+          "type": {
+            "const": "unit.maintenance_cancelled"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "$ref": "#/$defs/unit.maintenance_cancelled"
           }
         }
       }
@@ -763,6 +799,62 @@
         },
         "reason": {
           "enum": ["recovery", "resynchronisation", "initial_load"]
+        },
+        "extensions": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/extensions"
+        }
+      },
+      "additionalProperties": false
+    },
+    "unit.maintenance_scheduled": {
+      "title": "unit.maintenance_scheduled",
+      "description": "A maintenance window was planned for a unit, or its plan changed. It is published again whenever the window changes; the latest occurrence for a maintenance_id wins. It does not change the unit's current statuses: unit.status_changed does, when the window begins.",
+      "x-hos-family": "Unit",
+      "x-hos-authority": "Declared: maintenance system or PMS",
+      "type": "object",
+      "required": ["maintenance_id", "unit_id", "starts_at", "ends_at", "statuses"],
+      "properties": {
+        "maintenance_id": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/hosId"
+        },
+        "unit_id": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/hosId"
+        },
+        "starts_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Start of the window. When the source plans windows in days, the window holds the unit as a stay would: its first day at the Property's standard check-in time."
+        },
+        "ends_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "End of the window, exclusive. When the source plans windows in days, the day that frees the unit at the Property's standard check-out time."
+        },
+        "statuses": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/maintenanceWindowStatuses"
+        },
+        "reason": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/maintenanceReason"
+        },
+        "extensions": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/extensions"
+        }
+      },
+      "additionalProperties": false
+    },
+    "unit.maintenance_cancelled": {
+      "title": "unit.maintenance_cancelled",
+      "description": "A maintenance window was withdrawn. A window that ends as planned needs no event; one cut short is published again with its new end.",
+      "x-hos-family": "Unit",
+      "x-hos-authority": "Declared: maintenance system or PMS",
+      "type": "object",
+      "required": ["maintenance_id", "unit_id"],
+      "properties": {
+        "maintenance_id": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/hosId"
+        },
+        "unit_id": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/hosId"
         },
         "extensions": {
           "$ref": "urn:hos:schema:0.1:core#/$defs/extensions"

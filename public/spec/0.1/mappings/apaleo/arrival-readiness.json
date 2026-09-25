@@ -28,6 +28,13 @@
       "covers": "UnitModel: occupancy, condition (Clean, CleanToBeInspected, Dirty) and maintenance (OutOfService, OutOfOrder, OutOfInventory)."
     },
     {
+      "label": "Apaleo Operations API models",
+      "url": "https://www.npmjs.com/package/@apaleo/angular-api-proxy-operations",
+      "revision": "19.0.29",
+      "official": true,
+      "covers": "MaintenanceModel: unit, from, to and type (OutOfService, OutOfOrder, OutOfInventory). The typings are generated from the evolving Operations API."
+    },
+    {
       "label": "Apaleo developer guide: webhook payload",
       "url": "https://apaleo.dev/guides/webhook/webhooks-payload.html",
       "official": true,

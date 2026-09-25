@@ -11,7 +11,7 @@
       "url": "https://github.com/MewsSystems/gitbook-connector-api",
       "revision": "e8732c7d48b3df39e5a39fc459f56beab541158a",
       "official": true,
-      "covers": "General Webhooks (events/wh-general.md), Get all reservations ver 2023-06-06 (operations/reservations.md) and Get all resources (operations/resources.md)."
+      "covers": "General Webhooks (events/wh-general.md), Get all reservations ver 2023-06-06 (operations/reservations.md), Get all resources (operations/resources.md) and Get all resource blocks (operations/resourceblocks.md)."
     }
   ],
   "scenario": "../../conformance/arrival-readiness/scenario.json",

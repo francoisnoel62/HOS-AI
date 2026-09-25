@@ -96,13 +96,13 @@ export const documentationItems: Array<{
 }> = [
   {
     title: "HOS Core 0.1",
-    description: "Tenant, Property, Unit, Reservation, Stay, Task, Guest and Message; opaque identifiers, external references and the four-dimension Unit status model.",
+    description: "Tenant, Property, Unit, Maintenance window, Reservation, Stay, Task, Guest and Message; opaque identifiers, external references and the four-dimension Unit status model.",
     status: "Draft",
     href: "/docs/core",
   },
   {
     title: "HOS Events 0.1",
-    description: "Thirteen CloudEvents-compatible event types in five families, the envelope profile with time bases and actors, snapshots, and delivery, ordering and replay rules.",
+    description: "Fifteen CloudEvents-compatible event types in five families, the envelope profile with time bases and actors, snapshots, and delivery, ordering and replay rules.",
     status: "Draft",
     href: "/docs/events",
   },

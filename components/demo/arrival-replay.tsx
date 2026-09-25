@@ -234,6 +234,16 @@ export function ArrivalReplay({
                   <Muted>None</Muted>
                 )}
               </Row>
+              {stay.maintenance ? (
+                <Row label="Maintenance window">
+                  <span className="font-semibold text-[var(--warning)]">
+                    {occurred(stay.maintenance.starts_at)} – {occurred(stay.maintenance.ends_at)}
+                  </span>
+                  <Source>
+                    {[stay.maintenance.statuses.maintenance, stay.maintenance.statuses.commercial].filter(Boolean).join(" · ")} · {producer(stay.maintenance.source)}
+                  </Source>
+                </Row>
+              ) : null}
               <Row label="Readiness · stay">
                 {stay.readiness === "not_ready" ? "Not ready" : stay.readiness === "ready" ? "Ready" : "Unknown"}
                 <Source>Stay {stayLabels[stay.stay_status].toLowerCase()}</Source>

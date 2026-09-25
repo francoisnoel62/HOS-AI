@@ -6,6 +6,7 @@ import type {
   HosFact,
   HousekeepingTaskCompleted,
   HousekeepingTaskCreated,
+  MaintenanceRef,
   ProducerManifest,
   ProjectionConfig,
   RoomReadinessAtRisk,
@@ -18,6 +19,8 @@ import type {
   StayUnitAssigned,
   StayUnitUnassigned,
   TaskRef,
+  UnitMaintenanceCancelled,
+  UnitMaintenanceScheduled,
   UnitStatusChanged,
   UnitStatusDimension,
 } from "@/lib/hos/types";
@@ -43,6 +46,7 @@ export type StayView = {
   housekeeping: FactRef | null;
   conflicts: ConflictRef[];
   latest_task: TaskRef | null;
+  maintenance: MaintenanceRef | null;
   arrival: (FactRef & { confidence?: number }) | null;
   early: boolean;
   readiness: Readiness;
@@ -105,7 +109,10 @@ export function replayArrivalReadiness(events: HosFact[], manifests: ProducerMan
   const observations = new Map<string, Map<string, Timed<string>>>();
   const tasks = new Map<string, Timed<HousekeepingTaskCreated | HousekeepingTaskCompleted>>();
   const arrivals = new Map<string, Timed<ArrivalSignal>>();
+  const maintenance = new Map<string, Timed<UnitMaintenanceScheduled | UnitMaintenanceCancelled>>();
   const situations = new Map<string, SituationStatus>();
+  // Whether a maintenance window blocked each stay's unit at the last assessment, to name what resolved a risk.
+  const blocked = new Map<string, boolean>();
 
   function keepLatest<T>(map: Map<string, Timed<T>>, key: string, value: T, event: HosFact): Disposition {
     if (!isLater(event, map.get(key)?.event)) return "superseded";
@@ -172,6 +179,9 @@ export function replayArrivalReadiness(events: HosFact[], manifests: ProducerMan
       case "housekeeping.task.created":
       case "housekeeping.task.completed":
         return event.data.unit_id ? keepLatest(tasks, event.data.unit_id, event, event) : "applied";
+      case "unit.maintenance_scheduled":
+      case "unit.maintenance_cancelled":
+        return keepLatest(maintenance, event.data.maintenance_id, event, event);
       case "guest.message.received":
         return ingestMessage(event);
     }
@@ -196,9 +206,18 @@ export function replayArrivalReadiness(events: HosFact[], manifests: ProducerMan
     // A reverted check-in makes the stay expected again.
     const stayStatus: StayStatus = !reservationActive ? "cancelled" : lifecycle?.value.type === "stay.checked_out" ? "departed" : lifecycle?.value.type === "stay.checked_in" ? "in_house" : "expected";
     const early = Boolean(signal) && Date.parse(signal!.value.expected_arrival_at) < Date.parse(stay.data.planned_arrival_at);
-    const readiness: Readiness = !status || status.value === "unknown" ? "unknown" : config.ready_housekeeping_statuses.includes(status.value) ? "ready" : "not_ready";
+    // A maintenance window on the assigned unit that covers the moment the guest is expected makes the unit unavailable.
+    const expectedAt = Date.parse(signal?.value.expected_arrival_at ?? stay.data.planned_arrival_at);
+    const window = unitId
+      ? [...maintenance.values()]
+          .flatMap(({ value, event }) => (value.type === "unit.maintenance_scheduled" ? [{ value, event }] : []))
+          .filter(({ value }) => value.data.unit_id === unitId && Date.parse(value.data.starts_at) <= expectedAt && expectedAt < Date.parse(value.data.ends_at))
+          .sort((a, b) => byOccurrence(a.event, b.event))
+          .at(-1)
+      : undefined;
+    const readiness: Readiness = window ? "not_ready" : !status || status.value === "unknown" ? "unknown" : config.ready_housekeeping_statuses.includes(status.value) ? "ready" : "not_ready";
 
-    const facts = [reservation?.event, stay, assignment?.event, status?.event, ...conflicting.map((item) => item.event), task?.event, signal?.event]
+    const facts = [reservation?.event, stay, assignment?.event, status?.event, ...conflicting.map((item) => item.event), task?.event, signal?.event, window?.event]
       .filter((fact): fact is HosFact => Boolean(fact))
       .filter((fact, index, all) => all.indexOf(fact) === index)
       .sort(byOccurrence);
@@ -222,6 +241,9 @@ export function replayArrivalReadiness(events: HosFact[], manifests: ProducerMan
             time: task.event.time,
           }
         : null,
+      maintenance: window
+        ? { maintenance_id: window.value.data.maintenance_id, starts_at: window.value.data.starts_at, ends_at: window.value.data.ends_at, statuses: window.value.data.statuses, source: window.event.source, event_id: window.event.id, time: window.event.time }
+        : null,
       arrival: signal ? { ...factRef(signal.event, signal.value.expected_arrival_at), ...(signal.value.confidence === undefined ? {} : { confidence: signal.value.confidence }) } : null,
       early,
       readiness,
@@ -233,8 +255,11 @@ export function replayArrivalReadiness(events: HosFact[], manifests: ProducerMan
         ? "stay_started"
         : readiness === "ready"
           ? "unit_ready"
-          : "arrival_not_early";
-    return { view, facts, atRisk: stayStatus === "expected" && early && readiness !== "ready", reason };
+          : blocked.get(stay.data.stay_id) && !window
+            ? "unit_available"
+            : "arrival_not_early";
+    blocked.set(stay.data.stay_id, Boolean(window));
+    return { view, facts, atRisk: stayStatus === "expected" && (Boolean(window) || (early && readiness !== "ready")), reason };
   }
 
   function envelope<TType extends Situation["type"]>(type: TType, id: string, stay: StayExpected, view: StayView, facts: HosFact[], trigger: HosFact) {
@@ -279,10 +304,11 @@ export function replayArrivalReadiness(events: HosFact[], manifests: ProducerMan
             reservation_id: view.reservation_id,
             unit_id: view.unit_id,
             planned_arrival_at: view.planned_arrival_at,
-            expected_arrival_at: view.arrival!.value,
+            expected_arrival_at: view.arrival?.value ?? view.planned_arrival_at,
             housekeeping: view.housekeeping,
             conflicts: view.conflicts,
             latest_task: view.latest_task,
+            ...(view.maintenance ? { maintenance: view.maintenance } : {}),
             evidence: evidence(facts),
           },
         };

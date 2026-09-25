@@ -124,6 +124,24 @@ describe("Apaleo adapter", () => {
     expect(cleaning.data).toMatchObject({ current: "clean" });
   });
 
+  it("maps maintenances with the saleability their type implies, and their deletion", () => {
+    const target = adapter();
+    const planned = { id: "HOSX-PAR-MNT-2", unit: { id: unit.id, name: "204" }, from: "2026-07-30T10:00:00+02:00", to: "2026-07-30T18:00:00+02:00", type: "OutOfOrder" as const, description: "Leaking shower" };
+    const handle = (type: string, at: string, maintenance?: typeof planned | Omit<typeof planned, "type"> & { type: "OutOfService" | "OutOfOrder" | "OutOfInventory" }) => {
+      const result = target.handle({ received_at: at, webhook: { ...webhook(0), topic: "Maintenance", type, timestamp: Date.parse(at), data: { entityId: planned.id } }, maintenance });
+      for (const event of result.events) expect(validateEvent(event), errors(validateEvent)).toBe(true);
+      return result;
+    };
+    const [scheduled] = handle("created", "2026-07-28T09:00:00Z", planned).events;
+    expect(scheduled).toMatchObject({ type: "unit.maintenance_scheduled", time: "2026-07-28T09:00:00Z", data: { unit_id: "unit_204", starts_at: "2026-07-30T08:00:00Z", ends_at: "2026-07-30T16:00:00Z", statuses: { maintenance: "out_of_service", commercial: "not_sellable" }, reason: "repair" } });
+    expect(JSON.stringify(scheduled)).not.toMatch(/Leaking/);
+    expect(handle("changed", "2026-07-28T09:05:00Z", planned).unmapped[0].reason).toBe("No change since the last fetch.");
+    expect(handle("changed", "2026-07-28T10:00:00Z", { ...planned, type: "OutOfService" }).events).toMatchObject([{ data: { statuses: { maintenance: "out_of_service" }, reason: "repair" } }]);
+    expect(handle("changed", "2026-07-28T11:00:00Z", { ...planned, type: "OutOfInventory" }).events).toMatchObject([{ data: { statuses: { maintenance: "out_of_service", commercial: "not_sellable" }, reason: "renovation" } }]);
+    expect(handle("deleted", "2026-07-29T08:00:00Z").events).toMatchObject([{ type: "unit.maintenance_cancelled", data: { unit_id: "unit_204" } }]);
+    expect(handle("deleted", "2026-07-29T08:01:00Z").unmapped[0].reason).toBe("Already cancelled.");
+  });
+
   it("leaves other accounts, other unit types and guest details out of HOS", () => {
     const target = adapter();
     const stranger = target.handle({ received_at: "2026-07-12T14:03:01Z", webhook: { ...webhook(0), accountId: "OTHER" }, reservation });

@@ -111,6 +111,47 @@
       },
       "additionalProperties": false
     },
+    "maintenanceRef": {
+      "type": "object",
+      "description": "A maintenance window that blocks the unit when the guest is expected, and the fact it comes from.",
+      "required": [
+        "maintenance_id",
+        "starts_at",
+        "ends_at",
+        "statuses",
+        "source",
+        "event_id",
+        "time"
+      ],
+      "properties": {
+        "maintenance_id": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/hosId"
+        },
+        "starts_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "ends_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "statuses": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/maintenanceWindowStatuses"
+        },
+        "source": {
+          "type": "string",
+          "format": "uri"
+        },
+        "event_id": {
+          "type": "string"
+        },
+        "time": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "additionalProperties": false
+    },
     "taskRef": {
       "type": "object",
       "required": ["task_id", "task_type", "status", "source", "event_id", "time"],
@@ -140,7 +181,7 @@
     },
     "arrival.room_readiness_at_risk": {
       "title": "arrival.room_readiness_at_risk",
-      "description": "A guest is expected before the planned check-in time and the assigned unit is not ready according to its authoritative housekeeping status. Observation only.",
+      "description": "A guest is expected before the planned check-in time and the assigned unit is not ready according to its authoritative housekeeping status, or a maintenance window blocks the assigned unit when the guest is expected. expected_arrival_at is the latest arrival signal, or the planned check-in without one. Observation only.",
       "type": "object",
       "required": [
         "stay_id",
@@ -204,6 +245,9 @@
             }
           ]
         },
+        "maintenance": {
+          "$ref": "#/$defs/maintenanceRef"
+        },
         "evidence": {
           "type": "array",
           "description": "Facts the situation is derived from, sorted by occurrence time, then source, then id.",
@@ -246,7 +290,13 @@
           ]
         },
         "reason": {
-          "enum": ["unit_ready", "arrival_not_early", "reservation_inactive", "stay_started"]
+          "enum": [
+            "unit_ready",
+            "unit_available",
+            "arrival_not_early",
+            "reservation_inactive",
+            "stay_started"
+          ]
         },
         "planned_arrival_at": {
           "type": "string",

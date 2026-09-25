@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { loadArrivalScenario } from "@/lib/hos/conformance";
 import { createIdentityRegistry, type MappingRecording } from "@/lib/hos/mappings/common";
-import { createMewsAdapter, type MewsAdapterConfig, type MewsReservation, type MewsResource } from "@/lib/hos/mappings/mews";
+import { createMewsAdapter, type MewsAdapterConfig, type MewsReservation, type MewsResource, type MewsResourceBlock } from "@/lib/hos/mappings/mews";
 import { loadRecording } from "@/lib/hos/mappings/replay";
 import { replayArrivalReadiness } from "@/lib/hos/projection";
 import type { HosFact } from "@/lib/hos/types";
@@ -120,6 +120,24 @@ describe("Mews adapter", () => {
       { unit_id: "unit_204", dimension: "housekeeping", current: "dirty", authority_source: "urn:hos:pms:demo" },
     ]);
     expect(sense(target, { State: "Inspected", UpdatedUtc: "2026-07-30T10:10:00Z" }).events).toMatchObject([{ data: { dimension: "housekeeping", previous: "dirty", current: "inspected" } }]);
+  });
+
+  it("maps resource blocks to maintenance windows, and a deleted block to a cancellation", () => {
+    const target = adapter();
+    const base: MewsResourceBlock & { Name: string; Notes: string } = { Id: "7f8e9d0c-1b2a-3c4d-5e6f-7a8b9c0d1e2f", EnterpriseId: created.EnterpriseId, AssignedResourceId: room.Id, IsActive: true, Type: "OutOfOrder", StartUtc: "2026-07-30T08:00:00Z", EndUtc: "2026-07-30T16:00:00Z", CreatedUtc: "2026-07-28T09:00:00Z", UpdatedUtc: "2026-07-28T09:00:00Z", DeletedUtc: null, Name: "Air conditioning", Notes: "Guest complained about the noise" };
+    const block = (change: Partial<MewsResourceBlock>) => {
+      const result = target.handle({ received_at: change.UpdatedUtc ?? base.UpdatedUtc, webhook: webhook("ResourceBlockUpdated", base.Id), resourceBlocks: [{ ...base, ...change }] });
+      for (const event of result.events) expect(validateEvent(event), errors(validateEvent)).toBe(true);
+      return result;
+    };
+    const [planned] = block({}).events;
+    expect(planned).toMatchObject({ type: "unit.maintenance_scheduled", time: "2026-07-28T09:00:00Z", data: { unit_id: "unit_204", starts_at: "2026-07-30T08:00:00Z", ends_at: "2026-07-30T16:00:00Z", statuses: { maintenance: "out_of_service", commercial: "not_sellable" } } });
+    expect(planned).not.toHaveProperty("hostimebasis");
+    expect(JSON.stringify(planned)).not.toMatch(/Air conditioning|noise/);
+    const moved = block({ Type: "InternalUse", EndUtc: "2026-07-30T20:00:00Z", UpdatedUtc: "2026-07-29T10:00:00Z" }).events;
+    expect(moved).toMatchObject([{ hostimebasis: "modified", data: { maintenance_id: (planned.data as { maintenance_id: string }).maintenance_id, statuses: { commercial: "not_sellable" }, reason: "internal_use" } }]);
+    expect(block({ IsActive: false, DeletedUtc: "2026-07-29T12:00:00Z", UpdatedUtc: "2026-07-29T12:00:00Z" }).events).toMatchObject([{ type: "unit.maintenance_cancelled", time: "2026-07-29T12:00:00Z", data: { unit_id: "unit_204" } }]);
+    expect(block({ IsActive: false, DeletedUtc: "2026-07-29T12:00:00Z", UpdatedUtc: "2026-07-29T12:00:00Z" }).unmapped[0].reason).toBe("No change since the last fetch.");
   });
 
   it("leaves other services, other enterprises and customer profiles out of HOS", () => {

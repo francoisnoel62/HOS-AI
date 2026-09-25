@@ -120,6 +120,29 @@ describe("Cloudbeds adapter", () => {
     expect(sense(target, { roomBlocked: false }, "2026-07-29T16:00:00Z").events).toMatchObject([{ data: { dimension: "commercial", previous: "not_sellable", current: "sellable" } }]);
   });
 
+  it("maps a room block to one maintenance window per room, and its removal to cancellations", () => {
+    const target = adapter();
+    const block = { roomBlockID: "RB-311", roomBlockType: "out_of_service", roomBlockReason: "Leaking shower", startDate: "2026-07-30", endDate: "2026-07-30", rooms: [{ eventID: "EV-1", roomID: "418204-12" }, { eventID: "EV-2", roomID: "418204-15" }] };
+    const handle = (event: string, at: string, roomBlocks: (typeof block)[] = []) => {
+      const result = target.handle({ received_at: at, webhook: { version: "1.0", event, timestamp: seconds(at), propertyID: 418204, propertyID_str: "418204", roomBlockID: "RB-311" }, roomBlocks });
+      for (const item of result.events) expect(validateEvent(item), errors(validateEvent)).toBe(true);
+      return result;
+    };
+    const planned = handle("roomblock/created", "2026-07-28T09:00:00Z", [block]).events;
+    expect(planned).toHaveLength(2);
+    // One blocked night: from its check-in time to the next day's check-out time.
+    expect(planned[0]).toMatchObject({ type: "unit.maintenance_scheduled", data: { unit_id: "unit_204", starts_at: "2026-07-30T13:00:00Z", ends_at: "2026-07-31T09:00:00Z", statuses: { maintenance: "out_of_service", commercial: "not_sellable" } } });
+    expect(JSON.stringify(planned)).not.toMatch(/Leaking/);
+    const narrowed = handle("roomblock/details_changed", "2026-07-28T10:00:00Z", [{ ...block, roomBlockType: "blocked_dates", rooms: [block.rooms[0]] }]).events;
+    expect(narrowed.map((item) => [item.type, (item.data as { statuses?: object }).statuses ?? null])).toEqual([
+      ["unit.maintenance_scheduled", { commercial: "not_sellable" }],
+      ["unit.maintenance_cancelled", null],
+    ]);
+    expect(handle("roomblock/details_changed", "2026-07-28T10:30:00Z").unmapped[0].reason).toBe("Not returned by getRoomBlocks.");
+    expect(handle("roomblock/removed", "2026-07-29T08:00:00Z").events).toMatchObject([{ type: "unit.maintenance_cancelled", data: { unit_id: "unit_204" } }]);
+    expect(handle("roomblock/created", "2026-07-29T09:00:00Z", [{ ...block, roomBlockType: "courtesy_hold" }]).unmapped[0].reason).toMatch(/courtesy hold/);
+  });
+
   it("leaves other properties and guest profiles out of HOS", () => {
     const target = adapter();
     expect(send(target, { propertyID: 999 }, {}, "2026-07-12T14:03:00Z").unmapped[0].reason).toBe("The property is not configured as a HOS property.");

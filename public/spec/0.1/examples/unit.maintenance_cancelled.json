@@ -1,0 +1,19 @@
+{
+  "specversion": "1.0",
+  "id": "pms-000398",
+  "source": "urn:hos:pms:demo",
+  "type": "unit.maintenance_cancelled",
+  "time": "2026-07-28T16:40:00Z",
+  "datacontenttype": "application/json",
+  "hosschemaversion": "0.1",
+  "hosrecordedat": "2026-07-28T16:40:01Z",
+  "hostenant": "tenant_demo",
+  "hosproperty": "prop_demo",
+  "hospropertytimezone": "Europe/Paris",
+  "hosbusinessdate": "2026-07-28",
+  "hossubjects": "unit:unit_207",
+  "data": {
+    "maintenance_id": "mnt_31",
+    "unit_id": "unit_207"
+  }
+}

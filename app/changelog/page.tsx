@@ -10,6 +10,20 @@ export const metadata: Metadata = { title: "Changelog", description: "Published 
 const entries = [
   {
     date: "25 September 2026",
+    title: "HOS 0.1 draft: scheduled maintenance windows.",
+    items: [
+      "Core gains a ninth entity, the maintenance window: a planned period when a unit is out of service or cannot be sold, the statuses it imposes, and an optional reason.",
+      "Two unit events: unit.maintenance_scheduled, published again whenever the plan changes, and unit.maintenance_cancelled. The catalogue grows to fifteen types. A plan never changes a unit's current statuses; unit.status_changed does.",
+      "The reference projection raises a room-readiness risk when a window blocks the assigned unit at the time the guest is expected, even without an early arrival. When the window goes, it resolves the risk as unit_available.",
+      "The Mews, Apaleo and Cloudbeds adapters map resource blocks, maintenances and room blocks. Cloudbeds block dates are read as nights, pending confirmation on a live property.",
+    ],
+    links: [
+      ["/docs/core", "Read HOS Core 0.1"],
+      ["/docs/events", "Read HOS Events 0.1"],
+    ],
+  },
+  {
+    date: "25 September 2026",
     title: "HOS 0.1 draft: what the PMS mappings showed was missing.",
     items: [
       "Two stay events: stay.unit_unassigned releases a unit from a stay, and stay.check_in_reverted makes a stay expected again. The catalogue grows to thirteen types, and the reference projection handles both.",
