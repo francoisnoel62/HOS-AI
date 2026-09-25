@@ -29,7 +29,22 @@ const situationLabels: Record<SituationStatus, { label: string; tone: BadgeTone 
   resolved: { label: "Resolved", tone: "success" },
 };
 
-export function ArrivalReplay({ steps, notes, timezone, stayId, producerLabels }: { steps: ReplayStep[]; notes: Note[]; timezone: string; stayId: string; producerLabels: Record<string, string> }) {
+// origins, keyed by delivery, shows the payload a mapped fact was translated from, such as a PMS webhook message.
+export function ArrivalReplay({
+  steps,
+  notes,
+  timezone,
+  stayId,
+  producerLabels,
+  origins = {},
+}: {
+  steps: ReplayStep[];
+  notes: Note[];
+  timezone: string;
+  stayId: string;
+  producerLabels: Record<string, string>;
+  origins?: Record<number, { label: string; code: string }>;
+}) {
   const [position, setPosition] = useState(0);
   const [playing, setPlaying] = useState(false);
   const clock = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: timezone });
@@ -43,6 +58,7 @@ export function ArrivalReplay({ steps, notes, timezone, stayId, producerLabels }
   const step = position > 0 ? steps[position - 1] : undefined;
   const stay: StayView | undefined = step?.stays[stayId];
   const note = step ? notes.find((item) => item.delivery === step.delivery) : undefined;
+  const origin = step ? origins[step.delivery] : undefined;
   const finished = position >= steps.length;
 
   const running = playing && !finished;
@@ -237,6 +253,12 @@ export function ArrivalReplay({ steps, notes, timezone, stayId, producerLabels }
             </p>
             <p className="mt-2 text-sm leading-6">{note.note}</p>
           </Card>
+        ) : null}
+
+        {origin ? (
+          <div className="[&_pre]:max-h-[26rem] [&_pre]:overflow-y-auto">
+            <CodePanel code={origin.code} label={origin.label} />
+          </div>
         ) : null}
 
         {panel ? (

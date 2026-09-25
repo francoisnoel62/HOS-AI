@@ -119,8 +119,14 @@ export const documentationItems: Array<{
     href: "/demo",
   },
   {
-    title: "Mapping status",
-    description: "Experimental, partner-backed and certified are used only when the evidence exists.",
+    title: "Mews mapping",
+    description: "An unofficial adapter from Mews Connector API webhooks and fetched reservations and resources to HOS Events 0.1. It replays the arrival scenario to the same expected outcome. Synthetic payloads; not yet run against a live Mews environment.",
+    status: "Experimental",
+    href: "/demo/mews",
+  },
+  {
+    title: "Partner-backed and certified mappings",
+    description: "Partner-backed and certified are used only when the evidence exists. No mapping has reached either status.",
     status: "Planned",
   },
 ];

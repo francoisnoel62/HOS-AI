@@ -5,6 +5,7 @@ import Link from "next/link";
 import { PageHero } from "@/components/content/page-hero";
 import { SectionFrame } from "@/components/content/section-frame";
 import { ArrivalReplay } from "@/components/demo/arrival-replay";
+import { producerLabels } from "@/components/demo/producer-labels";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { loadArrivalScenario, scenarioPath, specVersionPath } from "@/lib/hos/conformance";
@@ -15,12 +16,9 @@ export const metadata: Metadata = {
   description: "Replay thirteen synthetic HOS Events 0.1 facts from a PMS, a housekeeping system and guest messaging, and watch the reference projection detect, then resolve, an early-arrival room-readiness risk.",
 };
 
-const roleLabels: Record<string, string> = { pms: "PMS", housekeeping: "Housekeeping", messaging: "Messaging", maintenance: "Maintenance", other: "Other" };
-
 export default function DemoPage() {
   const { scenario, manifests, events } = loadArrivalScenario();
   const steps = replayArrivalReadiness(events, manifests, scenario.projection);
-  const producerLabels = Object.fromEntries(manifests.map((manifest) => [manifest.producer, roleLabels[manifest.system_role]]));
   const downloads = [
     { href: `${scenarioPath}/${scenario.files.events}`, label: "events.jsonl", text: `The ${events.length} deliveries, in delivery order, one CloudEvent per line.` },
     { href: `${scenarioPath}/${scenario.files.expected}`, label: "expected.json", text: "Dispositions, readiness and situations your implementation must reproduce." },
@@ -39,7 +37,7 @@ export default function DemoPage() {
         badge="HOS Events 0.1 · Observe · Synthetic data"
       />
       <section className="mx-auto max-w-6xl px-5 pb-16 lg:px-8">
-        <ArrivalReplay notes={scenario.deliveries} producerLabels={producerLabels} stayId="stay_1042" steps={steps} timezone={scenario.property.timezone} />
+        <ArrivalReplay notes={scenario.deliveries} producerLabels={producerLabels(manifests)} stayId="stay_1042" steps={steps} timezone={scenario.property.timezone} />
         <p className="mt-6 max-w-3xl text-sm leading-6 text-[var(--muted-foreground)]">
           Times are shown in the property time zone ({scenario.property.timezone}). HOS 0.1 only observes: it does not reassign the room, message the guest or change the booking. The projection on this page is the non-normative reference implementation, run against the published files below.
         </p>
@@ -65,6 +63,9 @@ export default function DemoPage() {
         <div className="mt-8 flex flex-wrap gap-3">
           <Link href="/docs/events">
             <Button>Read HOS Events 0.1</Button>
+          </Link>
+          <Link href="/demo/mews">
+            <Button variant="secondary">Replay it from Mews-format PMS data</Button>
           </Link>
           <Link href="/participate/pilot">
             <Button variant="secondary">Run this scenario with your systems</Button>

@@ -9,6 +9,16 @@ export const metadata: Metadata = { title: "Changelog", description: "Published 
 
 const entries = [
   {
+    date: "25 September 2026",
+    title: "An experimental Mews mapping replays the arrival scenario.",
+    items: [
+      "An unofficial reference adapter maps Mews Connector API General Webhooks, reservations (ver 2023-06-06) and resources to HOS Events 0.1. It was written from Mews's public documentation and is not endorsed by Mews.",
+      "The PMS deliveries of the arrival scenario are recorded in Mews format. Replayed through the adapter, they reach the scenario's expected outcome. Delivery 7, a PMS task, has no Mews counterpart.",
+      "The mapping exposed gaps to discuss for HOS 0.1: no way to remove a unit assignment, no defined moment for stay.expected, and limited provenance for room states mirrored by a PMS.",
+    ],
+    links: [["/demo/mews", "Replay the Mews mapping"]],
+  },
+  {
     date: "24 September 2026",
     title: "HOS Core 0.1 realigned and HOS Events 0.1 draft published.",
     items: [

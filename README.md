@@ -49,7 +49,11 @@ flowchart LR
 
 The illustrative output is `arrival.room_readiness_at_risk`. Conflicting facts retain their provenance. This first phase observes; booking changes and check-in actions remain outside its scope.
 
-The website replays this scenario at `/demo` with a small, non-normative reference projection run against a synthetic conformance corpus. A validator CLI, SDKs, a production event processor and live PMS connectors are future work.
+The website replays this scenario at `/demo` with a small, non-normative reference projection run against a synthetic conformance corpus.
+
+`/demo/mews` replays the same scenario with its PMS side recorded as [Mews Connector API](https://github.com/MewsSystems/gitbook-connector-api) payloads: webhook messages, then the reservations and resources an integration fetches. An experimental reference adapter turns them into HOS events and reaches the same expected outcome. The mapping is unofficial, built from public documentation with synthetic data, and not yet run against a live Mews environment. Its [notes](public/spec/0.1/mappings/mews/README.md) list what it taught us about HOS 0.1.
+
+A validator CLI, SDKs, a production event processor and live PMS connectors are future work.
 
 ## Project status
 
@@ -61,7 +65,7 @@ The website replays this scenario at `/demo` with a small, non-normative referen
 | Participation forms                        | Local PostgreSQL persistence, encrypted payloads and filesystem notification records.                                 |
 | HOS Core and event model                   | Draft JSON Schemas in [`public/spec/0.1`](public/spec/0.1), documented at `/docs/core` and `/docs/events`.            |
 | Producer manifests and arrival conformance | Draft manifest schema (signing in progress) and a synthetic arrival corpus, checked by the unit tests.                |
-| Mappings and certification                 | Planned. No certified integrations are claimed.                                                                       |
+| Mappings and certification                 | An experimental, unofficial Mews mapping replays the arrival scenario. No partner-backed or certified integrations are claimed. |
 | Independent stewardship                    | An objective. HOS AI is working toward an independent HOS Foundation; no established foundation is claimed.           |
 | Data Cooperative                           | A future, optional programme, separate from HOS Core. Not active.                                                     |
 
@@ -100,10 +104,10 @@ components/          Brand, navigation, UI, diagrams and participation forms
 lib/content/         Audience messaging and documentation status
 lib/forms/           Validation, encryption, persistence and local outbox
 lib/analytics/       Allowlisted, payload-free browser event signals
-lib/hos/             Reference arrival-readiness projection and spec loaders
+lib/hos/             Reference arrival-readiness projection, spec loaders and the Mews mapping
 database/migrations/ PostgreSQL schema migrations
 scripts/             Migration and seed utilities
-public/spec/0.1/     Draft HOS schemas, examples and conformance corpus
+public/spec/0.1/     Draft HOS schemas, examples, conformance corpus and mapping recordings
 tests/               Vitest unit tests and Playwright browser/accessibility checks
 docs/operations/     Local operating procedures
 ```

@@ -1,29 +1,13 @@
-import { readFileSync } from "node:fs";
-import path from "node:path";
-
-import Ajv2020 from "ajv/dist/2020";
-import addFormats from "ajv-formats";
 import { describe, expect, it } from "vitest";
 
 import { examplesPath, listExamples, loadArrivalScenario, loadExpectedOutcome, toExpectedOutcome } from "@/lib/hos/conformance";
 import { replayArrivalReadiness } from "@/lib/hos/projection";
 import type { HosFact } from "@/lib/hos/types";
 
-const publicDirectory = path.join(process.cwd(), "public");
-const readJson = (file: string) => JSON.parse(readFileSync(path.join(publicDirectory, file), "utf8"));
-
-const ajv = new Ajv2020({ allErrors: true, allowUnionTypes: true, strictTypes: false });
-addFormats(ajv);
-ajv.addVocabulary(["x-hos-authority", "x-hos-boundary", "x-hos-family"]);
-for (const file of ["core", "event-envelope", "events", "producer-manifest", "reference/arrival-readiness"]) ajv.addSchema(readJson(`spec/0.1/schemas/${file}.schema.json`));
-const validateEvent = ajv.getSchema("urn:hos:schema:0.1:events")!;
-const validateManifest = ajv.getSchema("urn:hos:schema:0.1:producer-manifest")!;
-const validateSituation = ajv.getSchema("urn:hos:schema:0.1:reference:arrival-readiness")!;
-const validateUnit = ajv.getSchema("urn:hos:schema:0.1:core#/$defs/Unit")!;
+import { errors, readJson, validateEvent, validateManifest, validateSituation, validateUnit } from "./hos-schemas";
 
 const { scenario, manifests, events } = loadArrivalScenario();
 const eventTypes: string[] = readJson("spec/0.1/schemas/events.schema.json").allOf[1].properties.type.enum;
-const errors = (validate: typeof validateEvent) => JSON.stringify(validate.errors);
 
 describe("HOS Core 0.1", () => {
   it("defines the four independent unit status dimensions, each with unknown", () => {

@@ -1,0 +1,449 @@
+{
+  "mapping": "mews-connector-api",
+  "hosschemaversion": "0.1",
+  "status": "experimental",
+  "title": "Arrival readiness with the PMS side in Mews Connector API format",
+  "summary": "Synthetic Mews General Webhook messages and the Get all reservations (ver 2023-06-06) and Get all resources responses an integration would fetch for them, replacing the PMS deliveries of the arrival-readiness conformance scenario. Run through the reference Mews adapter, they must reproduce the scenario's expected outcome. Unofficial: written from Mews's public documentation, not affiliated with, reviewed or endorsed by Mews, and not yet run against a live Mews environment.",
+  "documentation": {
+    "source": "https://github.com/MewsSystems/gitbook-connector-api",
+    "revision": "e8732c7d48b3df39e5a39fc459f56beab541158a",
+    "pages": [
+      "events/wh-general.md",
+      "operations/reservations.md",
+      "operations/resources.md"
+    ]
+  },
+  "scenario": "../../conformance/arrival-readiness/scenario.json",
+  "adapter": {
+    "source": "urn:hos:pms:demo",
+    "tenant": "tenant_demo",
+    "properties": [
+      {
+        "enterpriseId": "8e5cf371-2031-4e68-a24b-04923fd67bf6",
+        "propertyId": "prop_demo",
+        "timezone": "Europe/Paris",
+        "accommodationServiceIds": [
+          "e7be0201-0b45-4cae-b26b-99a7d994d1af"
+        ]
+      }
+    ],
+    "crosswalk": {
+      "reservation": {
+        "3c123e14-464c-4e4e-a3db-8d4168b6c2da": "res_1042"
+      },
+      "stay": {
+        "3c123e14-464c-4e4e-a3db-8d4168b6c2da": "stay_1042"
+      },
+      "unit": {
+        "9f9b3c0b-f7a1-4e79-80e8-95c50afb409a": "unit_204"
+      },
+      "guest": {
+        "e5425534-012c-4257-b05a-ec75c6e34f3c": "guest_7q2k"
+      }
+    }
+  },
+  "identity": "The adapter derives each event id from the Mews entity id, the HOS type and the occurrence time, so a retried webhook yields the same id. HOS ids come from the integration's crosswalk and are never the Mews GUIDs. Access and client tokens are omitted from the recorded requests.",
+  "deliveries": [
+    {
+      "delivery": "A",
+      "reproduces": [
+        1,
+        2
+      ],
+      "received_at": "2026-07-12T14:03:01Z",
+      "note": "The booking engine creates the reservation. Mews sends ids only, so the integration fetches the reservation. The customer events are not mapped: HOS carries a pseudonymous guest_id, never the profile. Mews has no separate expected-arrival moment, so the stay is published with the reservation.",
+      "webhook": {
+        "EnterpriseId": "8e5cf371-2031-4e68-a24b-04923fd67bf6",
+        "IntegrationId": "f92a3e4d-6647-4ea0-ba02-d90c1cfb3afc",
+        "Events": [
+          {
+            "Discriminator": "CustomerAdded",
+            "Value": {
+              "Id": "e5425534-012c-4257-b05a-ec75c6e34f3c"
+            }
+          },
+          {
+            "Discriminator": "CustomerUpdated",
+            "Value": {
+              "Id": "e5425534-012c-4257-b05a-ec75c6e34f3c"
+            }
+          },
+          {
+            "Discriminator": "ServiceOrderUpdated",
+            "Value": {
+              "Id": "3c123e14-464c-4e4e-a3db-8d4168b6c2da"
+            }
+          }
+        ]
+      },
+      "fetched": [
+        {
+          "operation": "reservations/getAll/2023-06-06",
+          "request": {
+            "EnterpriseIds": [
+              "8e5cf371-2031-4e68-a24b-04923fd67bf6"
+            ],
+            "ReservationIds": [
+              "3c123e14-464c-4e4e-a3db-8d4168b6c2da"
+            ],
+            "Limitation": {
+              "Count": 100
+            }
+          },
+          "response": {
+            "Reservations": [
+              {
+                "Id": "3c123e14-464c-4e4e-a3db-8d4168b6c2da",
+                "ServiceId": "e7be0201-0b45-4cae-b26b-99a7d994d1af",
+                "AccountId": "e5425534-012c-4257-b05a-ec75c6e34f3c",
+                "AccountType": "Customer",
+                "CreatorProfileId": "2e500398-d5f0-4238-91fc-1f0639a65472",
+                "UpdaterProfileId": "2e500398-d5f0-4238-91fc-1f0639a65472",
+                "BookerId": null,
+                "Number": "1042",
+                "State": "Confirmed",
+                "Origin": "Distributor",
+                "CommanderOrigin": null,
+                "OriginDetails": null,
+                "CreatedUtc": "2026-07-12T14:03:00Z",
+                "UpdatedUtc": "2026-07-12T14:03:00Z",
+                "CancelledUtc": null,
+                "VoucherId": null,
+                "BusinessSegmentId": null,
+                "Options": {
+                  "OwnerCheckedIn": false,
+                  "AllCompanionsCheckedIn": false,
+                  "AnyCompanionCheckedIn": false,
+                  "ConnectorCheckIn": false
+                },
+                "RateId": "6ff4b814-5a90-4ed0-9487-c719c464942f",
+                "CreditCardId": null,
+                "GroupId": "915631a5-b4ab-47c1-bade-5c669e900e62",
+                "RequestedResourceCategoryId": "d7ecccdf-5f7e-438d-890a-dd2eaff03936",
+                "AssignedResourceId": null,
+                "AvailabilityBlockId": null,
+                "PartnerCompanyId": null,
+                "TravelAgencyId": null,
+                "AssignedResourceLocked": false,
+                "ChannelNumber": null,
+                "ChannelManagerNumber": null,
+                "CancellationReason": null,
+                "ReleasedUtc": null,
+                "StartUtc": "2026-07-30T13:00:00Z",
+                "EndUtc": "2026-08-01T09:00:00Z",
+                "ScheduledStartUtc": "2026-07-30T13:00:00Z",
+                "ActualStartUtc": null,
+                "ScheduledEndUtc": "2026-08-01T09:00:00Z",
+                "ActualEndUtc": null,
+                "Purpose": "Leisure",
+                "QrCodeData": null,
+                "PersonCounts": [
+                  {
+                    "AgeCategoryId": "220529d2-ff93-4445-a9f3-8735b43ac2d4",
+                    "Count": 2
+                  }
+                ]
+              }
+            ],
+            "Cursor": "3c123e14-464c-4e4e-a3db-8d4168b6c2da"
+          }
+        }
+      ]
+    },
+    {
+      "delivery": "B",
+      "reproduces": [
+        3
+      ],
+      "received_at": "2026-07-30T06:06:01Z",
+      "note": "The front desk assigns room 204 in Mews. AssignedResourceId differs from what the adapter published, so it emits stay.unit_assigned. Mews stamps the reservation's last update, not the assignment itself.",
+      "webhook": {
+        "EnterpriseId": "8e5cf371-2031-4e68-a24b-04923fd67bf6",
+        "IntegrationId": "f92a3e4d-6647-4ea0-ba02-d90c1cfb3afc",
+        "Events": [
+          {
+            "Discriminator": "ServiceOrderUpdated",
+            "Value": {
+              "Id": "3c123e14-464c-4e4e-a3db-8d4168b6c2da"
+            }
+          }
+        ]
+      },
+      "fetched": [
+        {
+          "operation": "reservations/getAll/2023-06-06",
+          "request": {
+            "EnterpriseIds": [
+              "8e5cf371-2031-4e68-a24b-04923fd67bf6"
+            ],
+            "ReservationIds": [
+              "3c123e14-464c-4e4e-a3db-8d4168b6c2da"
+            ],
+            "Limitation": {
+              "Count": 100
+            }
+          },
+          "response": {
+            "Reservations": [
+              {
+                "Id": "3c123e14-464c-4e4e-a3db-8d4168b6c2da",
+                "ServiceId": "e7be0201-0b45-4cae-b26b-99a7d994d1af",
+                "AccountId": "e5425534-012c-4257-b05a-ec75c6e34f3c",
+                "AccountType": "Customer",
+                "CreatorProfileId": "2e500398-d5f0-4238-91fc-1f0639a65472",
+                "UpdaterProfileId": "b8a9e3cb-6ee3-43d7-a714-43efda98ec5f",
+                "BookerId": null,
+                "Number": "1042",
+                "State": "Confirmed",
+                "Origin": "Distributor",
+                "CommanderOrigin": null,
+                "OriginDetails": null,
+                "CreatedUtc": "2026-07-12T14:03:00Z",
+                "UpdatedUtc": "2026-07-30T06:06:00Z",
+                "CancelledUtc": null,
+                "VoucherId": null,
+                "BusinessSegmentId": null,
+                "Options": {
+                  "OwnerCheckedIn": false,
+                  "AllCompanionsCheckedIn": false,
+                  "AnyCompanionCheckedIn": false,
+                  "ConnectorCheckIn": false
+                },
+                "RateId": "6ff4b814-5a90-4ed0-9487-c719c464942f",
+                "CreditCardId": null,
+                "GroupId": "915631a5-b4ab-47c1-bade-5c669e900e62",
+                "RequestedResourceCategoryId": "d7ecccdf-5f7e-438d-890a-dd2eaff03936",
+                "AssignedResourceId": "9f9b3c0b-f7a1-4e79-80e8-95c50afb409a",
+                "AvailabilityBlockId": null,
+                "PartnerCompanyId": null,
+                "TravelAgencyId": null,
+                "AssignedResourceLocked": false,
+                "ChannelNumber": null,
+                "ChannelManagerNumber": null,
+                "CancellationReason": null,
+                "ReleasedUtc": null,
+                "StartUtc": "2026-07-30T13:00:00Z",
+                "EndUtc": "2026-08-01T09:00:00Z",
+                "ScheduledStartUtc": "2026-07-30T13:00:00Z",
+                "ActualStartUtc": null,
+                "ScheduledEndUtc": "2026-08-01T09:00:00Z",
+                "ActualEndUtc": null,
+                "Purpose": "Leisure",
+                "QrCodeData": null,
+                "PersonCounts": [
+                  {
+                    "AgeCategoryId": "220529d2-ff93-4445-a9f3-8735b43ac2d4",
+                    "Count": 2
+                  }
+                ]
+              }
+            ],
+            "Cursor": "3c123e14-464c-4e4e-a3db-8d4168b6c2da"
+          }
+        }
+      ]
+    },
+    {
+      "delivery": "C",
+      "reproduces": [
+        9
+      ],
+      "received_at": "2026-07-30T08:21:03Z",
+      "note": "Room 204 turns Clean in Mews once the cleaning task closes. Mews says neither why nor what it was before, and the adapter had not seen the room yet. The manifest names the housekeeping system as the authority, so HOS records the disagreement instead of trusting the PMS.",
+      "webhook": {
+        "EnterpriseId": "8e5cf371-2031-4e68-a24b-04923fd67bf6",
+        "IntegrationId": "f92a3e4d-6647-4ea0-ba02-d90c1cfb3afc",
+        "Events": [
+          {
+            "Discriminator": "ResourceUpdated",
+            "Value": {
+              "Id": "9f9b3c0b-f7a1-4e79-80e8-95c50afb409a"
+            }
+          }
+        ]
+      },
+      "fetched": [
+        {
+          "operation": "resources/getAll",
+          "request": {
+            "EnterpriseIds": [
+              "8e5cf371-2031-4e68-a24b-04923fd67bf6"
+            ],
+            "ResourceIds": [
+              "9f9b3c0b-f7a1-4e79-80e8-95c50afb409a"
+            ],
+            "Extent": {
+              "Resources": true,
+              "Inactive": false
+            },
+            "Limitation": {
+              "Count": 100
+            }
+          },
+          "response": {
+            "Resources": [
+              {
+                "Id": "9f9b3c0b-f7a1-4e79-80e8-95c50afb409a",
+                "EnterpriseId": "8e5cf371-2031-4e68-a24b-04923fd67bf6",
+                "IsActive": true,
+                "ParentResourceId": null,
+                "Name": "204",
+                "State": "Clean",
+                "Descriptions": {
+                  "en-US": "Double room, courtyard side"
+                },
+                "CreatedUtc": "2024-03-01T09:00:00Z",
+                "UpdatedUtc": "2026-07-30T08:21:00Z",
+                "Data": {
+                  "Discriminator": "Space",
+                  "Value": {
+                    "FloorNumber": "2",
+                    "LocationNotes": null
+                  }
+                },
+                "ExternalNames": {
+                  "en-US": "Room 204"
+                },
+                "Directions": {
+                  "en-US": "Second floor, left from the lift"
+                }
+              }
+            ],
+            "Cursor": "9f9b3c0b-f7a1-4e79-80e8-95c50afb409a"
+          }
+        }
+      ]
+    },
+    {
+      "delivery": "D",
+      "reproduces": [
+        13
+      ],
+      "received_at": "2026-07-30T10:35:01Z",
+      "note": "The guest checks in. The reservation State becomes Started and ActualStartUtc, the actual arrival, becomes the time of stay.checked_in.",
+      "webhook": {
+        "EnterpriseId": "8e5cf371-2031-4e68-a24b-04923fd67bf6",
+        "IntegrationId": "f92a3e4d-6647-4ea0-ba02-d90c1cfb3afc",
+        "Events": [
+          {
+            "Discriminator": "ServiceOrderUpdated",
+            "Value": {
+              "Id": "3c123e14-464c-4e4e-a3db-8d4168b6c2da"
+            }
+          }
+        ]
+      },
+      "fetched": [
+        {
+          "operation": "reservations/getAll/2023-06-06",
+          "request": {
+            "EnterpriseIds": [
+              "8e5cf371-2031-4e68-a24b-04923fd67bf6"
+            ],
+            "ReservationIds": [
+              "3c123e14-464c-4e4e-a3db-8d4168b6c2da"
+            ],
+            "Limitation": {
+              "Count": 100
+            }
+          },
+          "response": {
+            "Reservations": [
+              {
+                "Id": "3c123e14-464c-4e4e-a3db-8d4168b6c2da",
+                "ServiceId": "e7be0201-0b45-4cae-b26b-99a7d994d1af",
+                "AccountId": "e5425534-012c-4257-b05a-ec75c6e34f3c",
+                "AccountType": "Customer",
+                "CreatorProfileId": "2e500398-d5f0-4238-91fc-1f0639a65472",
+                "UpdaterProfileId": "b8a9e3cb-6ee3-43d7-a714-43efda98ec5f",
+                "BookerId": null,
+                "Number": "1042",
+                "State": "Started",
+                "Origin": "Distributor",
+                "CommanderOrigin": null,
+                "OriginDetails": null,
+                "CreatedUtc": "2026-07-12T14:03:00Z",
+                "UpdatedUtc": "2026-07-30T10:35:00Z",
+                "CancelledUtc": null,
+                "VoucherId": null,
+                "BusinessSegmentId": null,
+                "Options": {
+                  "OwnerCheckedIn": true,
+                  "AllCompanionsCheckedIn": true,
+                  "AnyCompanionCheckedIn": true,
+                  "ConnectorCheckIn": false
+                },
+                "RateId": "6ff4b814-5a90-4ed0-9487-c719c464942f",
+                "CreditCardId": null,
+                "GroupId": "915631a5-b4ab-47c1-bade-5c669e900e62",
+                "RequestedResourceCategoryId": "d7ecccdf-5f7e-438d-890a-dd2eaff03936",
+                "AssignedResourceId": "9f9b3c0b-f7a1-4e79-80e8-95c50afb409a",
+                "AvailabilityBlockId": null,
+                "PartnerCompanyId": null,
+                "TravelAgencyId": null,
+                "AssignedResourceLocked": false,
+                "ChannelNumber": null,
+                "ChannelManagerNumber": null,
+                "CancellationReason": null,
+                "ReleasedUtc": null,
+                "StartUtc": "2026-07-30T10:35:00Z",
+                "EndUtc": "2026-08-01T09:00:00Z",
+                "ScheduledStartUtc": "2026-07-30T13:00:00Z",
+                "ActualStartUtc": "2026-07-30T10:35:00Z",
+                "ScheduledEndUtc": "2026-08-01T09:00:00Z",
+                "ActualEndUtc": null,
+                "Purpose": "Leisure",
+                "QrCodeData": null,
+                "PersonCounts": [
+                  {
+                    "AgeCategoryId": "220529d2-ff93-4445-a9f3-8735b43ac2d4",
+                    "Count": 2
+                  }
+                ]
+              }
+            ],
+            "Cursor": "3c123e14-464c-4e4e-a3db-8d4168b6c2da"
+          }
+        }
+      ]
+    }
+  ],
+  "not_reproduced": [
+    {
+      "delivery": 7,
+      "reason": "Mews General Webhooks have no task event, and a Mews task points to a service order, not a resource. This integration publishes no housekeeping tasks, which the property's manifest already expects: the PMS is not a declared task source."
+    }
+  ],
+  "differences": [
+    {
+      "delivery": 1,
+      "field": "data.external_refs",
+      "reason": "The Mews confirmation Number and reservation Id replace the corpus reference DEMO-1042."
+    },
+    {
+      "delivery": 2,
+      "field": "time",
+      "reason": "Published with the reservation, at CreatedUtc. hosbusinessdate is still the arrival day."
+    },
+    {
+      "delivery": 9,
+      "field": "data.previous",
+      "reason": "Mews does not report the previous state, and the adapter had not seen the room before."
+    },
+    {
+      "delivery": 9,
+      "field": "data.reason",
+      "reason": "Mews does not say why a resource state changed."
+    },
+    {
+      "delivery": 9,
+      "field": "hoscausationsource",
+      "reason": "Mews does not link the state change to the task that caused it."
+    },
+    {
+      "delivery": 9,
+      "field": "hoscausationid",
+      "reason": "Mews does not link the state change to the task that caused it."
+    }
+  ]
+}
