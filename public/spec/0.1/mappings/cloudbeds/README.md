@@ -1,6 +1,6 @@
 # Cloudbeds API v1.3 → HOS Events 0.1 — experimental mapping
 
-Status: **experimental and unofficial**. HOS AI is not affiliated with Cloudbeds, and Cloudbeds has not reviewed or endorsed this mapping. Every payload is synthetic, and **two webhook payloads are reconstructed**. The adapter has not yet run against a live Cloudbeds property.
+Status: **experimental and unofficial**. HOS AI is not affiliated with Cloudbeds, and Cloudbeds has not reviewed or endorsed this mapping. Every payload is synthetic, and **two webhook payloads are reconstructed**. The adapter has not yet run against a live Cloudbeds property; the [live check](#live-check) is ready for it.
 
 The mapping covers the facts the arrival-readiness scenario needs from a PMS: reservations, stays, room assignment, check-in and check-out, and room status. It is written from these sources:
 
@@ -20,7 +20,7 @@ No published sample of `reservation/accommodation_changed` or `housekeeping/room
 
 ### Room block dates
 
-Block dates are days. A window holds its room as a stay would: from the first day at the standard check-in time to the day after the last day at the standard check-out time. That reading takes `endDate` as the last blocked night, as `getRoomBlocks`' filter on "blocks that include this date" suggests. It is not yet confirmed on a live property. No published sample of the `roomblock/*` webhooks was reachable either: the adapter reads only `roomBlockID`, the property id and the timestamp from them, and fetches the block.
+Block dates are days. A window holds its room as a stay would: from the first day at the standard check-in time to the day after the last day at the standard check-out time. That reading takes `endDate` as the last blocked night, as `getRoomBlocks`' filter on "blocks that include this date" suggests. It is not yet confirmed on a live property; the [live check](#live-check) shows the window it reads next to the block in Cloudbeds. No published sample of the `roomblock/*` webhooks was reachable either: the adapter reads only `roomBlockID`, the property id and the timestamp from them, and fetches the block.
 
 ## Contents
 
@@ -90,8 +90,27 @@ The dispositions, readiness and situations are the same as in the scenario's `ex
 6. **Payload spelling varies.** Reservation events say `propertyID`, guest events `propertyId`.
 7. **Tasks are out of reach.** This integration publishes no tasks.
 
+## Live check
+
+`npm run cloudbeds:live` runs the adapter against a live Cloudbeds property. Cloudbeds has no public demo. The key comes from a partner sandbox, which Cloudbeds grants on request, or from a property's own API credentials, under Account, Apps & Marketplace, API Credentials. The check is read-only: it calls `getHotels`, `getHotelDetails`, `getReservations`, `getReservation`, `getHousekeepingStatus` and `getRoomBlocks`, and nothing else. `CLOUDBEDS_API_KEY` comes from the environment and is never printed or stored.
+
+```sh
+CLOUDBEDS_API_KEY=… npm run cloudbeds:live -- --days 1 --out cloudbeds-live.json
+```
+
+The run does what an integration does before its first webhook. Every room status, room block and reservation goes through the adapter, and the check reports what the [Mews live check](../mews/README.md#live-check) reports: facts by type and why the rest were not mapped, schema errors, facts a second pass publishes, and today's arrivals as the arrival-readiness projection sees them.
+
+- `--property`, or `CLOUDBEDS_PROPERTY_ID`, picks the property when the key reaches several. Without it, the check lists them.
+- The time zone comes from `getHotels`, and the standard check-in and check-out times from `getHotelDetails`, as `15:00` or `3:00 PM`. `--check-in` and `--check-out` override them.
+- Reservations are those that check in by the end of the window and check out after yesterday. Each one is fetched with `getReservation`, as a webhook would have it fetched, a few calls a second. A 429 waits and retries.
+- A fetch does not say when a reservation was made or a room assigned. Those facts are dated when they were recorded, with `hostimebasis` `recorded`. Room blocks are dated by the fetch.
+
+The check confirms the fetched shapes the adapter reads, and shows each room block's window next to the block in Cloudbeds, which settles how to read `endDate`. It does not check the two reconstructed webhook payloads: that needs a webhook subscription. The endpoints, parameters and the `x-api-key` header follow the official SDK. The report keeps HOS ids, counts, room names and block dates. It never keeps Cloudbeds payloads, block reasons or guest data. The logic is `lib/hos/mappings/cloudbeds-sync.ts`, tested offline in `tests/unit/cloudbeds-sync.test.ts`.
+
+The check has not run yet: the environment this mapping was built in could not reach Cloudbeds.
+
 ## Not covered yet
 
 - The estimated arrival time on the reservation, a structured arrival signal HOS does not map yet.
-- API keys or OAuth, rate limits and webhook subscription management in a live integration.
+- OAuth, rate limits beyond the live check's pause, and webhook subscription management in a live integration.
 - Persistence of the crosswalk and of the adapter's published state.
