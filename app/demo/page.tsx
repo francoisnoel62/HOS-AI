@@ -1,14 +1,17 @@
 import type { Metadata } from "next";
-import { Download } from "lucide-react";
+import { ArrowRight, Download } from "lucide-react";
 import Link from "next/link";
 
 import { PageHero } from "@/components/content/page-hero";
 import { SectionFrame } from "@/components/content/section-frame";
+import { SpecTable } from "@/components/content/spec-table";
 import { ArrivalReplay } from "@/components/demo/arrival-replay";
 import { producerLabels } from "@/components/demo/producer-labels";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { pmsComparison, pmsMappingCopy } from "@/lib/content/pms-mappings";
 import { loadArrivalScenario, scenarioPath, specVersionPath } from "@/lib/hos/conformance";
+import { pmsMappings } from "@/lib/hos/mappings/replay";
 import { replayArrivalReadiness } from "@/lib/hos/projection";
 
 export const metadata: Metadata = {
@@ -64,12 +67,38 @@ export default function DemoPage() {
           <Link href="/docs/events">
             <Button>Read HOS Events 0.1</Button>
           </Link>
-          <Link href="/demo/mews">
-            <Button variant="secondary">Replay it from Mews-format PMS data</Button>
-          </Link>
           <Link href="/participate/pilot">
             <Button variant="secondary">Run this scenario with your systems</Button>
           </Link>
+        </div>
+      </SectionFrame>
+      <SectionFrame
+        eyebrow="Real PMS formats · Experimental"
+        id="pms-mappings"
+        title="The same arrival, from three real PMS APIs."
+        description="Each replay swaps the synthetic PMS facts for the payloads a real PMS API would send, maps them through an unofficial reference adapter and reaches the same expected outcome. The payloads are synthetic, and no adapter has yet run against a live system."
+      >
+        <div className="grid gap-3 md:grid-cols-3">
+          {pmsMappings.map((pms) => (
+            <Link className="group" href={`/demo/${pms}`} key={pms}>
+              <Card className="flex h-full flex-col p-5 transition-colors group-hover:border-[var(--border-strong)]">
+                <p className="eyebrow">{pmsMappingCopy[pms].api}</p>
+                <h3 className="mt-3 text-xl font-semibold">{pmsMappingCopy[pms].name}</h3>
+                <p className="mt-2 flex-1 text-sm leading-6 text-[var(--muted-foreground)]">{pmsMappingCopy[pms].description}</p>
+                <span className="mt-4 inline-flex items-center gap-1 text-sm text-[var(--accent-strong)]">
+                  Replay from {pmsMappingCopy[pms].name} <ArrowRight aria-hidden="true" size={14} />
+                </span>
+              </Card>
+            </Link>
+          ))}
+        </div>
+        <div className="mt-8">
+          <SpecTable
+            columns={["What mattered", ...pmsMappings.map((pms) => pmsMappingCopy[pms].name)]}
+            label="How the three PMS APIs compare for the arrival scenario"
+            minWidth="48rem"
+            rows={pmsComparison.map(([question, ...answers]) => ({ key: question, cells: [question, ...answers] }))}
+          />
         </div>
       </SectionFrame>
     </>

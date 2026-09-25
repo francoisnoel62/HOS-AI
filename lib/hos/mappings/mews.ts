@@ -1,6 +1,17 @@
+import {
+  createFactWriter,
+  createIdentityRegistry,
+  type IdentityRegistry,
+  localDate,
+  type MappingRecording,
+  type MappingResult,
+  type RecordingAdapter,
+  responses,
+  type Unmapped,
+  utc,
+} from "@/lib/hos/mappings/common";
 import type {
   ExternalRef,
-  HosFact,
   ReservationCancelled,
   ReservationCreated,
   ReservationUpdated,
@@ -57,10 +68,6 @@ export type MewsResource = {
   Data: { Discriminator: string; Value?: unknown };
 };
 
-export type HosEntityKind = "reservation" | "stay" | "unit" | "guest";
-export type IdentityRegistry = { resolve(kind: HosEntityKind, mewsId: string): string };
-export type Crosswalk = Partial<Record<HosEntityKind, Record<string, string>>>;
-
 export type MewsPropertyConfig = {
   enterpriseId: string;
   propertyId: string;
@@ -79,9 +86,6 @@ export type MewsAdapterConfig = {
 
 // What the integration received and fetched for one webhook message.
 export type MewsDelivery = { received_at: string; webhook: MewsWebhook; reservations?: MewsReservation[]; resources?: MewsResource[] };
-// A Mews event, or part of one, that did not become a HOS fact, and why.
-export type MewsUnmapped = { discriminator: string; id: string; reason: string };
-export type MewsMappingResult = { events: HosFact[]; unmapped: MewsUnmapped[] };
 
 type PublishedStatus = "tentative" | "confirmed" | "cancelled" | "no_show";
 
@@ -129,31 +133,6 @@ const resourceStatuses: Record<MewsResourceState, [UnitStatusDimension, string]>
   OutOfOrder: ["maintenance", "out_of_service"],
 };
 
-// HOS ids are opaque and must survive a PMS migration, so they are never the Mews GUIDs. An integration persists this
-// crosswalk; an id it has not seen yet gets a fresh opaque id.
-export function createIdentityRegistry(crosswalk: Crosswalk = {}, mint = () => crypto.randomUUID().replaceAll("-", "").slice(0, 16)): IdentityRegistry {
-  const known = new Map<string, string>();
-  for (const [kind, ids] of Object.entries(crosswalk)) for (const [mewsId, hosId] of Object.entries(ids ?? {})) known.set(`${kind}|${mewsId}`, hosId);
-  return {
-    resolve(kind, mewsId) {
-      const key = `${kind}|${mewsId}`;
-      if (!known.has(key)) known.set(key, `${kind}_${mint()}`);
-      return known.get(key)!;
-    },
-  };
-}
-
-function utc(value: string) {
-  const iso = new Date(value).toISOString();
-  return iso.endsWith(".000Z") ? `${iso.slice(0, -5)}Z` : iso;
-}
-
-function localDate(iso: string, timeZone: string) {
-  const parts = new Intl.DateTimeFormat("en-US", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date(iso));
-  const part = (type: string) => parts.find((item) => item.type === type)!.value;
-  return `${part("year")}-${part("month")}-${part("day")}`;
-}
-
 const isNewer = (candidate: string, current: string) => Date.parse(candidate) > Date.parse(current);
 
 export function createMewsAdapter(config: MewsAdapterConfig) {
@@ -161,36 +140,15 @@ export function createMewsAdapter(config: MewsAdapterConfig) {
   const units = new Map<string, PublishedUnit>();
   const { resolve } = config.identities;
 
-  function handle(delivery: MewsDelivery): MewsMappingResult {
-    const events: HosFact[] = [];
-    const unmapped: MewsUnmapped[] = [];
+  function handle(delivery: MewsDelivery): MappingResult {
+    const unmapped: Unmapped[] = [];
     const property = config.properties.find((candidate) => candidate.enterpriseId === delivery.webhook.EnterpriseId);
+    if (!property) return { events: [], unmapped: delivery.webhook.Events.map(({ Discriminator, Value }) => ({ event: Discriminator, id: Value.Id, reason: "The enterprise is not configured as a HOS property." })) };
+    const { events, publish } = createFactWriter({ source: config.source, tenant: config.tenant, propertyId: property.propertyId, timezone: property.timezone, recordedAt: delivery.received_at, idPrefix: "mews" });
     const handled = new Set<string>();
 
-    // The event id is derived from the Mews entity, the HOS type and the occurrence time, so a retried webhook, or a
-    // restarted adapter, publishes the same id and HOS discards the duplicate.
-    function publish<T extends HosFact>(type: T["type"], key: string, time: string, subjects: string[], data: T["data"], businessDate?: string) {
-      const occurred = utc(time);
-      events.push({
-        specversion: "1.0",
-        id: `mews:${key}:${type}:${occurred.replace(/[-:]/g, "")}`,
-        source: config.source,
-        type,
-        time: occurred,
-        datacontenttype: "application/json",
-        hosschemaversion: "0.1",
-        hosrecordedat: utc(delivery.received_at),
-        hostenant: config.tenant,
-        hosproperty: property!.propertyId,
-        hospropertytimezone: property!.timezone,
-        hosbusinessdate: businessDate ?? localDate(occurred, property!.timezone),
-        hossubjects: subjects.join(" "),
-        data,
-      } as T);
-    }
-
     function reservation(mews: MewsReservation, { timezone, accommodationServiceIds }: MewsPropertyConfig) {
-      const skip = (reason: string) => unmapped.push({ discriminator: "ServiceOrderUpdated", id: mews.Id, reason });
+      const skip = (reason: string) => unmapped.push({ event: "ServiceOrderUpdated", id: mews.Id, reason });
       if (!accommodationServiceIds.includes(mews.ServiceId)) return skip("Not an accommodation service at this property.");
       let stay = stays.get(mews.Id);
       if (stay && !isNewer(mews.UpdatedUtc, stay.updatedUtc)) return skip("No change since the last fetch.");
@@ -212,7 +170,7 @@ export function createMewsAdapter(config: MewsAdapterConfig) {
           [`stay:${stayId}`, `reservation:${reservationId}`, ...(guestId ? [`guest:${guestId}`] : [])],
           { stay_id: stayId, reservation_id: reservationId, ...guest, planned_arrival_at: arrivalAt, planned_departure_at: departureAt },
           // The stay belongs to its arrival day, whenever it was announced.
-          plan.arrivalDate,
+          { businessDate: plan.arrivalDate },
         );
 
       if (!stay) {
@@ -292,7 +250,7 @@ export function createMewsAdapter(config: MewsAdapterConfig) {
     }
 
     function resource(mews: MewsResource) {
-      const skip = (reason: string) => unmapped.push({ discriminator: "ResourceUpdated", id: mews.Id, reason });
+      const skip = (reason: string) => unmapped.push({ event: "ResourceUpdated", id: mews.Id, reason });
       if (mews.Data.Discriminator !== "Space" || mews.ParentResourceId) return skip("Not a unit: only top-level space resources are units.");
       if (!mews.IsActive) return skip("Inactive resource.");
       const known = units.get(mews.Id);
@@ -323,11 +281,7 @@ export function createMewsAdapter(config: MewsAdapterConfig) {
       const id = Value.Id;
       if (handled.has(`${discriminator}|${id}`)) continue;
       handled.add(`${discriminator}|${id}`);
-      const skip = (reason: string) => unmapped.push({ discriminator, id, reason });
-      if (!property) {
-        skip("The enterprise is not configured as a HOS property.");
-        continue;
-      }
+      const skip = (reason: string) => unmapped.push({ event: discriminator, id, reason });
       if (discriminator === "ServiceOrderUpdated") {
         const fetched = delivery.reservations?.find((item) => item.Id === id);
         if (fetched) reservation(fetched, property);
@@ -349,4 +303,18 @@ export function createMewsAdapter(config: MewsAdapterConfig) {
   }
 
   return { handle };
+}
+
+// Replays a recording's Mews deliveries: each webhook message with the reservations and resources fetched for it.
+export function mewsRecordingAdapter({ adapter }: MappingRecording): RecordingAdapter {
+  const mews = createMewsAdapter({ ...(adapter as unknown as Omit<MewsAdapterConfig, "identities">), identities: createIdentityRegistry(adapter.crosswalk) });
+  return (delivery) => {
+    const fetched = responses<{ Reservations?: MewsReservation[]; Resources?: MewsResource[] }>(delivery);
+    return mews.handle({
+      received_at: delivery.received_at,
+      webhook: delivery.webhook as MewsWebhook,
+      reservations: fetched.flatMap((response) => response.Reservations ?? []),
+      resources: fetched.flatMap((response) => response.Resources ?? []),
+    });
+  };
 }

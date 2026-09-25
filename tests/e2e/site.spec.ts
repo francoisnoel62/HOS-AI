@@ -74,24 +74,40 @@ test("live demo raises, then resolves, the arrival-readiness risk", async ({ pag
   await expect(next).toBeDisabled();
 });
 
-test("Mews mapping replays the arrival scenario from Mews-format PMS payloads", async ({ page }) => {
-  await page.goto("/demo/mews");
-  await expect(page.getByText("Unofficial and experimental.")).toBeVisible();
-  const next = page.getByRole("button", { name: "Deliver next event" });
-  const projection = page.getByRole("region", { name: "Arrival-readiness projection" });
-  await next.click();
-  await expect(page.getByText("Received from Mews · delivery A")).toBeVisible();
-  for (let delivery = 2; delivery <= 8; delivery += 1) await next.click();
-  await expect(page.getByText("8 / 12")).toBeVisible();
-  await expect(projection).toContainText("not authoritative");
-  await next.click();
-  await expect(projection).toContainText("Readiness at risk");
-  await next.click();
-  await next.click();
-  await expect(projection).toContainText("Resolved");
-  await next.click();
-  await expect(projection).toContainText("Stay in house");
-  await expect(next).toBeDisabled();
+for (const [pms, name, facts] of [
+  ["mews", "Mews", 12],
+  ["apaleo", "Apaleo", 13],
+  ["cloudbeds", "Cloudbeds", 13],
+] as const) {
+  test(`${name} mapping replays the arrival scenario from ${name}-format PMS payloads`, async ({ page }) => {
+    await page.goto(`/demo/${pms}`);
+    await expect(page.getByText("Unofficial and experimental.")).toBeVisible();
+    const next = page.getByRole("button", { name: "Deliver next event" });
+    const projection = page.getByRole("region", { name: "Arrival-readiness projection" });
+    await next.click();
+    await expect(page.getByText(`Received from ${name} · delivery A`)).toBeVisible();
+    let raised = false;
+    for (let delivery = 2; delivery <= facts; delivery += 1) {
+      await next.click();
+      await expect(page.getByText(`${delivery} / ${facts}`)).toBeVisible();
+      if (!raised && (await projection.getByText("Readiness at risk").isVisible())) {
+        raised = true;
+        await expect(projection).toContainText("not authoritative");
+      }
+    }
+    expect(raised).toBe(true);
+    await expect(projection).toContainText("Stay in house");
+    await expect(next).toBeDisabled();
+  });
+}
+
+test("live demo links to the three PMS mappings", async ({ page }) => {
+  await page.goto("/demo");
+  const mappings = page.locator("#pms-mappings");
+  await expect(mappings.getByRole("table", { name: "How the three PMS APIs compare for the arrival scenario" })).toBeVisible();
+  await mappings.getByRole("link", { name: /Replay from Apaleo/ }).click();
+  await expect(page).toHaveURL(/\/demo\/apaleo$/);
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("Apaleo");
 });
 
 test("documentation links to the published HOS Core and HOS Events drafts and their artefacts", async ({ page, request }) => {

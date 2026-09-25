@@ -1,0 +1,122 @@
+import { describe, expect, it } from "vitest";
+
+import { loadArrivalScenario } from "@/lib/hos/conformance";
+import { type CloudbedsAdapterConfig, type CloudbedsReservation, type CloudbedsRoomStatus, type CloudbedsWebhook, createCloudbedsAdapter } from "@/lib/hos/mappings/cloudbeds";
+import { createIdentityRegistry } from "@/lib/hos/mappings/common";
+import { loadRecording } from "@/lib/hos/mappings/replay";
+import { replayArrivalReadiness } from "@/lib/hos/projection";
+import type { HosFact } from "@/lib/hos/types";
+
+import { errors, validateEvent } from "./hos-schemas";
+
+const { scenario, manifests } = loadArrivalScenario();
+const recording = loadRecording("cloudbeds");
+const config = recording.adapter as unknown as Omit<CloudbedsAdapterConfig, "identities">;
+const webhook = (index: number) => recording.deliveries[index].webhook as CloudbedsWebhook;
+const data = <T>(index: number) => (recording.deliveries[index].fetched[0].response as { data: T }).data;
+const seconds = (iso: string) => Date.parse(iso) / 1000;
+
+describe("Cloudbeds adapter", () => {
+  const reservation = data<CloudbedsReservation>(0);
+  const assigned = data<CloudbedsReservation>(1);
+  const room = data<CloudbedsRoomStatus[]>(2)[0];
+  const adapter = () => createCloudbedsAdapter({ ...config, identities: createIdentityRegistry(recording.adapter.crosswalk) });
+  const types = (events: HosFact[]) => events.map((event) => event.type);
+  const status = (event: HosFact) => event.data as { dimension?: string; previous?: string; current?: string };
+
+  function send(target: ReturnType<typeof adapter>, hook: Partial<CloudbedsWebhook>, change: Partial<CloudbedsReservation>, at: string, base = reservation) {
+    const result = target.handle({ received_at: at, webhook: { ...webhook(0), timestamp: seconds(at), ...hook }, reservation: { ...base, ...change } });
+    for (const event of result.events) expect(validateEvent(event), errors(validateEvent)).toBe(true);
+    return result;
+  }
+
+  function sense(target: ReturnType<typeof adapter>, change: Partial<CloudbedsRoomStatus>, at: string, hook: Partial<CloudbedsWebhook> = {}) {
+    const result = target.handle({ received_at: at, webhook: { ...webhook(2), timestamp: seconds(at), ...hook }, rooms: [{ ...room, ...change }] });
+    for (const event of result.events) expect(validateEvent(event), errors(validateEvent)).toBe(true);
+    return result;
+  }
+
+  const created = (target: ReturnType<typeof adapter>) => send(target, {}, {}, "2026-07-12T14:03:00Z");
+  const statusChanged = (status: string) => ({ event: "reservation/status_changed", status, actor: { type: "user", id: "70311" } });
+
+  it("publishes nothing new when Cloudbeds redelivers a webhook", () => {
+    const target = adapter();
+    expect(types(created(target).events)).toEqual(["reservation.created", "stay.expected"]);
+    const again = created(target);
+    expect(again.events).toEqual([]);
+    expect(again.unmapped).toEqual([{ event: "reservation/created", id: reservation.reservationID, reason: "No change since the last fetch." }]);
+  });
+
+  it("gives a restarted adapter the same event ids, so HOS discards the redelivery", () => {
+    const first = created(adapter()).events;
+    const again = created(adapter()).events;
+    expect(again.map((event) => event.id)).toEqual(first.map((event) => event.id));
+    expect(replayArrivalReadiness([...first, ...again], manifests, scenario.projection).map((step) => step.disposition)).toEqual(["applied", "applied", "duplicate", "duplicate"]);
+  });
+
+  it("keeps the precision of Cloudbeds timestamps", () => {
+    const [fact] = send(adapter(), { timestamp: 1783864980.816514 }, {}, "2026-07-12T14:03:01Z").events;
+    expect(fact.time).toBe("2026-07-12T14:03:00.817Z");
+  });
+
+  it("dates what an event reports, and marks the rest as recorded when the adapter learns it", () => {
+    const late = send(adapter(), statusChanged("checked_in"), { ...assigned, status: "checked_in" }, "2026-07-30T10:35:00Z");
+    expect(late.events.map((event) => [event.type, event.hostimebasis ?? "occurred"])).toEqual([
+      ["reservation.created", "recorded"],
+      ["stay.expected", "recorded"],
+      ["stay.unit_assigned", "recorded"],
+      ["stay.checked_in", "occurred"],
+    ]);
+  });
+
+  it("turns arrival and departure days into instants with the property's check-in and check-out times", () => {
+    const [, winter] = send(adapter(), {}, { startDate: "2026-12-20", endDate: "2026-12-22" }, "2026-11-02T10:00:00Z").events;
+    expect(winter.data).toMatchObject({ planned_arrival_at: "2026-12-20T14:00:00Z", planned_departure_at: "2026-12-22T10:00:00Z" });
+  });
+
+  it("maps cancellations without a reason, and no-shows as a status", () => {
+    const cancelled = adapter();
+    created(cancelled);
+    expect(send(cancelled, statusChanged("canceled"), { status: "canceled" }, "2026-07-20T09:00:00Z").events).toEqual([
+      expect.objectContaining({ type: "reservation.cancelled", time: "2026-07-20T09:00:00Z", data: { reservation_id: "res_1042" } }),
+    ]);
+
+    const noShow = adapter();
+    created(noShow);
+    expect(send(noShow, statusChanged("no_show"), { status: "no_show" }, "2026-07-31T02:00:00Z").events).toMatchObject([{ type: "reservation.updated", data: { status: "no_show" } }]);
+  });
+
+  it("keeps the assignment history and reports the unassignment HOS 0.1 cannot express", () => {
+    const target = adapter();
+    created(target);
+    const moved = { ...assigned.assigned![0], roomID: "418204-15", roomName: "207" };
+    send(target, { event: "reservation/accommodation_changed" }, assigned, "2026-07-30T06:06:00Z");
+    expect(send(target, { event: "reservation/accommodation_changed" }, { ...assigned, assigned: [moved] }, "2026-07-30T07:00:00Z").events).toMatchObject([{ type: "stay.unit_assigned", data: { previous_unit_id: "unit_204" } }]);
+    const unassigned = send(target, { event: "reservation/accommodation_changed" }, reservation, "2026-07-30T07:30:00Z");
+    expect(unassigned.unmapped[0].reason).toMatch(/no event that removes an assignment/);
+  });
+
+  it("reports a reservation with several rooms instead of guessing its stays", () => {
+    const result = send(adapter(), {}, { unassigned: [...reservation.unassigned!, { roomTypeID: "501233", subReservationID: "5830021042-2" }] }, "2026-07-12T14:03:00Z");
+    expect(result.events).toEqual([]);
+    expect(result.unmapped[0].reason).toMatch(/several rooms/);
+  });
+
+  it("maps a blocked room to not sellable, and accepts either spelling of the ids", () => {
+    const target = adapter();
+    const blocked = sense(target, { roomBlocked: true }, "2026-07-29T09:00:00Z", { propertyID: undefined, propertyID_str: undefined, propertyId: 418204, roomID: undefined, roomId: "418204-12" });
+    expect(blocked.events.map((event) => [status(event).dimension, status(event).current, event.hostimebasis ?? "occurred"])).toEqual([
+      ["occupancy", "vacant", "recorded"],
+      ["housekeeping", "clean", "occurred"],
+      ["commercial", "not_sellable", "recorded"],
+    ]);
+    expect(sense(target, { roomBlocked: false }, "2026-07-29T16:00:00Z").events).toMatchObject([{ data: { dimension: "commercial", previous: "not_sellable", current: "sellable" } }]);
+  });
+
+  it("leaves other properties and guest profiles out of HOS", () => {
+    const target = adapter();
+    expect(send(target, { propertyID: 999 }, {}, "2026-07-12T14:03:00Z").unmapped[0].reason).toBe("The property is not configured as a HOS property.");
+    expect(target.handle({ received_at: "2026-07-12T14:03:01Z", webhook: { version: "1.0", event: "guest/created", timestamp: 1783864981, propertyId: 418204 } }).unmapped[0].reason).toMatch(/pseudonymous guest_id/);
+    expect(JSON.stringify(created(target).events)).not.toMatch(/Synthetic|example\.com/);
+  });
+});

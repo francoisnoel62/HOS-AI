@@ -10,13 +10,18 @@ export const metadata: Metadata = { title: "Changelog", description: "Published 
 const entries = [
   {
     date: "25 September 2026",
-    title: "An experimental Mews mapping replays the arrival scenario.",
+    title: "Experimental Mews, Apaleo and Cloudbeds mappings replay the arrival scenario.",
     items: [
-      "An unofficial reference adapter maps Mews Connector API General Webhooks, reservations (ver 2023-06-06) and resources to HOS Events 0.1. It was written from Mews's public documentation and is not endorsed by Mews.",
-      "The PMS deliveries of the arrival scenario are recorded in Mews format. Replayed through the adapter, they reach the scenario's expected outcome. Delivery 7, a PMS task, has no Mews counterpart.",
-      "The mapping exposed gaps to discuss for HOS 0.1: no way to remove a unit assignment, no defined moment for stay.expected, and limited provenance for room states mirrored by a PMS.",
+      "Unofficial reference adapters map Mews Connector API, Apaleo API and Cloudbeds API v1.3 webhooks, and the entities an integration fetches for them, to HOS Events 0.1. They were written from each PMS's published documentation, packages or SDK, and are not endorsed by any of them.",
+      "The PMS deliveries of the arrival scenario are recorded in each PMS's format. Replayed through each adapter, they reach the scenario's expected outcome. Delivery 7, a PMS task, has no counterpart in any of the three; Apaleo and Cloudbeds add the room's occupancy.",
+      "The mappings exposed gaps to discuss for HOS 0.1: no event to remove a unit assignment or revert a check-in, no defined moment for stay.expected, no place for the actor of a change, and limited provenance for room states mirrored by a PMS.",
     ],
-    links: [["/demo/mews", "Replay the Mews mapping"]],
+    links: [
+      ["/demo#pms-mappings", "Compare the three mappings"],
+      ["/demo/mews", "Mews"],
+      ["/demo/apaleo", "Apaleo"],
+      ["/demo/cloudbeds", "Cloudbeds"],
+    ],
   },
   {
     date: "24 September 2026",

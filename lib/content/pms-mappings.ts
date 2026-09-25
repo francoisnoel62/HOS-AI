@@ -1,0 +1,112 @@
+import type { PmsMapping } from "@/lib/hos/mappings/replay";
+
+// Copy for the experimental PMS mapping pages. Each row of mapping is [PMS event, when, HOS Events 0.1, how]; each
+// finding is [title, text].
+
+export type PmsMappingCopy = {
+  name: string;
+  api: string;
+  title: string;
+  description: string;
+  // Labels a recorded webhook in the replay, such as its event name.
+  eventLabel: (webhook: never) => string;
+  mapping: string[][];
+  findings: string[][];
+};
+
+export const pmsMappingCopy: Record<PmsMapping, PmsMappingCopy> = {
+  mews: {
+    name: "Mews",
+    api: "Mews Connector API",
+    title: "The same early arrival, with the PMS speaking Mews.",
+    description: "Webhook messages that carry only ids, then the reservation and room the integration fetches.",
+    eventLabel: (webhook: { Events: Array<{ Discriminator: string }> }) => webhook.Events.map((event) => event.Discriminator).join(", "),
+    mapping: [
+      ["ServiceOrderUpdated", "First seen Optional or Confirmed", "reservation.created, stay.expected", "time is CreatedUtc. The confirmation Number and the reservation Id become typed external references; AccountId becomes a pseudonymous guest_id through the crosswalk."],
+      ["ServiceOrderUpdated", "Inquired or Requested", "Nothing yet", "Not a commitment: published once the reservation becomes Optional or Confirmed."],
+      ["ServiceOrderUpdated", "State, schedule or owner changed", "reservation.updated, stay.expected", "Only the changed fields travel, at UpdatedUtc. The stay is announced again when its planned times move."],
+      ["ServiceOrderUpdated", "AssignedResourceId changed", "stay.unit_assigned", "previous_unit_id is the unit already published; the reason is known only for the first assignment. time is UpdatedUtc."],
+      ["ServiceOrderUpdated", "Started", "stay.checked_in", "time is ActualStartUtc, the actual arrival."],
+      ["ServiceOrderUpdated", "Processed", "stay.checked_out", "time is ActualEndUtc. A check-in the adapter missed is published first."],
+      ["ServiceOrderUpdated", "Canceled", "reservation.cancelled, or reservation.updated", "CancellationReason NoShow becomes status no_show; the other reasons map to guest_request, property_request, payment_issue or other."],
+      ["ResourceUpdated", "Dirty, Clean, Inspected", "unit.status_changed · housekeeping", "time is UpdatedUtc; previous only when the adapter saw it. The manifest, not the adapter, decides whether the PMS is authoritative."],
+      ["ResourceUpdated", "OutOfService, OutOfOrder", "unit.status_changed · maintenance", "out_of_service; leaving it publishes operational, then the housekeeping state."],
+      ["Other events", "CustomerAdded, CustomerUpdated, MessageAdded, PaymentUpdated, ResourceBlockUpdated", "Not mapped", "Profiles stay in Mews; an arrival signal must be extracted from a message; the others have no HOS 0.1 counterpart yet."],
+    ],
+    findings: [
+      ["Webhooks say what changed, not how.", "Mews sends entity ids only. The adapter fetches each entity and compares it with what it already published, so its memory is part of the integration and must be persisted."],
+      ["A stay has no expected moment in Mews.", "The stay is published with the reservation, at CreatedUtc; hosbusinessdate keeps the arrival day. HOS Events could say when stay.expected is due."],
+      ["HOS 0.1 cannot remove an assignment.", "stay.unit_assigned requires a unit, and Mews can unassign one. The adapter reports it as unmapped. HOS needs a nullable unit or an unassignment event."],
+      ["One Mews state, four HOS dimensions.", "OutOfOrder replaces the housekeeping state in Mews. HOS keeps both dimensions; the source simply stops reporting one of them."],
+      ["Occurrence times are approximate.", "Assignments and room states only carry the entity's last update, UpdatedUtc: an upper bound when several changes arrive in one fetch."],
+      ["Provenance stops at the PMS.", "Mews does not say who changed a room state, why, what it was before or what caused it. The manifest's authority rule is what keeps a mirrored status from overriding the housekeeping system."],
+      ["Tasks are out of reach.", "There is no task webhook, and a Mews task points to a reservation, not a room. This integration publishes no housekeeping tasks."],
+    ],
+  },
+  apaleo: {
+    name: "Apaleo",
+    api: "Apaleo API",
+    title: "The same early arrival, with the PMS speaking Apaleo.",
+    description: "Webhooks that name what happened and when, then the reservation or unit the integration fetches.",
+    eventLabel: (webhook: { topic: string; type: string }) => `${webhook.topic}/${webhook.type}`,
+    mapping: [
+      ["Reservation/created", "Confirmed", "reservation.created, stay.expected", "time is the reservation's created time. The reservation and booking ids become typed external references. No guest_id: Apaleo embeds guest details without a guest id."],
+      ["Reservation/amended, changed", "Arrival or departure moved", "reservation.updated, stay.expected", "Only the changed fields travel, at the event's timestamp."],
+      ["Reservation/unit-assigned", "A unit is assigned", "stay.unit_assigned", "time is the event's timestamp; previous_unit_id is the unit already published."],
+      ["Reservation/checked-in, checked-out", "InHouse, CheckedOut", "stay.checked_in, stay.checked_out", "time is checkInTime or checkOutTime."],
+      ["Reservation/canceled, set-to-no-show", "Canceled, NoShow", "reservation.cancelled, reservation.updated", "At cancellationTime or noShowTime; no-show becomes status no_show. No cancellation reason is mapped."],
+      ["Reservation/unit-unassigned, check-in-reverted", "An undo", "Not mapped", "HOS 0.1 has no event that removes an assignment or reverts a check-in."],
+      ["Unit/changed", "isOccupied", "unit.status_changed · occupancy", "occupied or vacant, at the event's timestamp."],
+      ["Unit/changed", "condition", "unit.status_changed · housekeeping", "Dirty → dirty; CleanToBeInspected → clean; Clean → inspected where the property inspects, clean otherwise."],
+      ["Unit/changed", "maintenance", "unit.status_changed · maintenance, commercial", "Any maintenance → out_of_service; OutOfOrder and OutOfInventory also → not_sellable."],
+      ["Other topics", "Folio, invoice, rate plan, block, company…", "Not mapped", "No HOS 0.1 counterpart yet."],
+    ],
+    findings: [
+      ["Events say what happened, and when.", "Apaleo names each change, such as unit-assigned or checked-in, and stamps it. Assignments get exact times, where Mews only gives the reservation's last update."],
+      ["There is no guest identity to link.", "An Apaleo reservation embeds its guest's details without an id, so HOS gets no guest_id. Linking stays to a guest needs an identity service, not a field mapping."],
+      ["Rooms already look like HOS.", "Occupancy, cleanliness and maintenance are separate in Apaleo, as in HOS, and its maintenance types even say whether the unit can still be sold."],
+      ["A status name is not its meaning.", "Clean means inspected only where the property inspects. The adapter takes that workflow from its configuration."],
+      ["HOS 0.1 cannot undo.", "Apaleo can unassign a unit and revert a check-in. HOS 0.1 has no event for either; the adapter reports both as unmapped."],
+      ["Tasks are out of reach.", "Apaleo's webhook events include no housekeeping task. This integration publishes none."],
+    ],
+  },
+  cloudbeds: {
+    name: "Cloudbeds",
+    api: "Cloudbeds API v1.3",
+    title: "The same early arrival, with the PMS speaking Cloudbeds.",
+    description: "Webhooks that name what happened and when, then the reservation or housekeeping status the integration fetches.",
+    eventLabel: (webhook: { event: string }) => webhook.event,
+    mapping: [
+      ["reservation/created", "confirmed, not_confirmed", "reservation.created, stay.expected", "time is the webhook timestamp. The main guest's id becomes a pseudonymous guest_id; the planned check-in combines startDate with the property's check-in time."],
+      ["reservation/status_changed", "confirmed", "reservation.updated", "status confirmed, at the webhook timestamp."],
+      ["reservation/status_changed", "checked_in, checked_out", "stay.checked_in, stay.checked_out", "At the webhook timestamp. The actor who made the change has no place in HOS 0.1."],
+      ["reservation/status_changed", "canceled, no_show", "reservation.cancelled, reservation.updated", "Cloudbeds gives no cancellation reason; no-show becomes status no_show."],
+      ["reservation/dates_changed", "Dates moved", "reservation.updated, stay.expected", "Only the changed fields travel."],
+      ["reservation/accommodation_changed", "A room is assigned", "stay.unit_assigned", "The room comes from getReservation; time is the webhook timestamp."],
+      ["housekeeping/room_condition_changed", "dirty, clean, inspected", "unit.status_changed · housekeeping", "The same three conditions as HOS, read from getHousekeepingStatus."],
+      ["housekeeping/*", "roomOccupied", "unit.status_changed · occupancy", "Dated when the occupancy event reports it; otherwise hostimebasis is recorded."],
+      ["housekeeping/*", "roomBlocked", "unit.status_changed · commercial", "A blocked room is not sellable; Cloudbeds does not say whether maintenance is why."],
+      ["Other events", "guest/*, accounting, notes, custom fields…", "Not mapped", "Guest profiles are personal data and stay in Cloudbeds; the others have no HOS 0.1 counterpart yet."],
+    ],
+    findings: [
+      ["Stays are planned in days.", "startDate and endDate have no time. The adapter adds the property's check-in and check-out times, which getHotelDetails reports."],
+      ["Events are precise; fetches are not always.", "A webhook timestamp dates what its event reports. A fact only noticed in a fetch, such as occupancy during a condition change, gets hostimebasis recorded: HOS 0.1 already had the right tool."],
+      ["Housekeeping already speaks HOS.", "Cloudbeds has the same three room conditions as HOS, inspected included."],
+      ["Who did it has nowhere to go.", "Status webhooks name the user or system that acted. HOS 0.1 records provenance by system, not by actor."],
+      ["One reservation, several rooms.", "A Cloudbeds reservation can hold several rooms. HOS could give each room its own stay; this adapter maps single-room reservations and reports the others."],
+      ["Payload spelling varies.", "Reservation events say propertyID, guest events propertyId. The adapter accepts both, and the recording marks the two payloads it had to reconstruct."],
+      ["Tasks are out of reach.", "Cloudbeds assigns housekeepers to rooms rather than publishing tasks. This integration publishes no tasks."],
+    ],
+  },
+};
+
+// How the three APIs compare on what mattered for the arrival scenario: [question, Mews, Apaleo, Cloudbeds].
+export const pmsComparison = [
+  ["What a webhook says", "Entity ids only", "Event name, entity id, timestamp", "Event name, entity id, timestamp, some fields"],
+  ["When a room was assigned", "The reservation's last update", "Exactly, from the event", "Exactly, from the event"],
+  ["Guest identity", "Customer id, as a pseudonymous guest_id", "None: guest details embedded", "Main guest id, as a pseudonymous guest_id"],
+  ["Room state", "One state for cleanliness and maintenance", "Occupancy, condition and maintenance apart", "Condition, occupancy and blocking apart"],
+  ["Planned arrival", "Date and time", "Date and time", "Day only, plus the property's check-in time"],
+  ["What HOS 0.1 cannot express", "Unassigning a room", "Unassigning a room, reverting a check-in", "Unassigning a room, the actor of a change"],
+  ["Housekeeping tasks", "No webhook", "No webhook", "Housekeeper assignments, no tasks"],
+];

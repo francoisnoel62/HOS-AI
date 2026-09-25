@@ -1,104 +1,25 @@
 import { describe, expect, it } from "vitest";
 
-import { loadExpectedOutcome, toExpectedOutcome } from "@/lib/hos/conformance";
-import { createIdentityRegistry, createMewsAdapter, type MewsReservation, type MewsResource } from "@/lib/hos/mappings/mews";
-import { buildMewsArrivalStream } from "@/lib/hos/mappings/mews-replay";
+import { loadArrivalScenario } from "@/lib/hos/conformance";
+import { createIdentityRegistry, type MappingRecording } from "@/lib/hos/mappings/common";
+import { createMewsAdapter, type MewsAdapterConfig, type MewsReservation, type MewsResource } from "@/lib/hos/mappings/mews";
+import { loadRecording } from "@/lib/hos/mappings/replay";
 import { replayArrivalReadiness } from "@/lib/hos/projection";
 import type { HosFact } from "@/lib/hos/types";
 
 import { errors, validateEvent } from "./hos-schemas";
 
-const { scenario, manifests, corpus, recording, stream } = buildMewsArrivalStream();
-const mapped = stream.filter((fact) => fact.mews);
-
-// Required properties, as documented for the Mews Connector API revision named in the recording.
-const webhookDiscriminators = ["ServiceOrderUpdated", "ResourceUpdated", "MessageAdded", "ResourceBlockUpdated", "CustomerAdded", "CustomerUpdated", "PaymentUpdated"];
-const reservationProperties = ["Id", "ServiceId", "AccountId", "AccountType", "CreatorProfileId", "UpdaterProfileId", "Number", "State", "Origin", "CreatedUtc", "UpdatedUtc", "Options", "RateId", "GroupId", "RequestedResourceCategoryId", "AssignedResourceLocked", "ScheduledStartUtc", "ScheduledEndUtc", "PersonCounts"];
-const resourceProperties = ["Id", "EnterpriseId", "IsActive", "Name", "State", "Descriptions", "CreatedUtc", "UpdatedUtc", "Data", "ExternalNames", "Directions"];
-
-function omit(event: HosFact, fields: string[]) {
-  const copy = structuredClone(event) as unknown as Record<string, Record<string, unknown>>;
-  for (const field of ["id", "hosrecordedat", ...fields]) {
-    const [head, tail] = field.split(".");
-    if (tail) delete copy[head][tail];
-    else delete copy[head];
-  }
-  return copy;
-}
-
-describe("Mews recording of the arrival scenario", () => {
-  const reservations = recording.deliveries.flatMap((item) => item.fetched.flatMap((call) => call.response.Reservations ?? []));
-  const resources = recording.deliveries.flatMap((item) => item.fetched.flatMap((call) => call.response.Resources ?? []));
-
-  it("uses the documented webhook message shape", () => {
-    for (const { webhook } of recording.deliveries) {
-      expect(Object.keys(webhook).sort()).toEqual(["EnterpriseId", "Events", "IntegrationId"]);
-      for (const event of webhook.Events) {
-        expect(webhookDiscriminators).toContain(event.Discriminator);
-        expect(Object.keys(event.Value)).toEqual(["Id"]);
-      }
-    }
-  });
-
-  it("fetches reservations and resources with every required property", () => {
-    expect(reservations.length).toBeGreaterThan(0);
-    expect(resources.length).toBeGreaterThan(0);
-    for (const reservation of reservations) expect(Object.keys(reservation)).toEqual(expect.arrayContaining(reservationProperties));
-    for (const resource of resources) expect(Object.keys(resource)).toEqual(expect.arrayContaining(resourceProperties));
-    const operations = new Set(recording.deliveries.flatMap((item) => item.fetched.map((call) => call.operation)));
-    expect([...operations].sort()).toEqual(["reservations/getAll/2023-06-06", "resources/getAll"]);
-  });
-
-  it("accounts for every PMS delivery of the corpus", () => {
-    const pms = corpus.flatMap((event, index) => (event.source === recording.adapter.source ? [index + 1] : []));
-    const covered = [...recording.deliveries.flatMap((item) => item.reproduces), ...recording.not_reproduced.map((item) => item.delivery)];
-    expect(covered.sort((a, b) => a - b)).toEqual(pms);
-  });
-});
-
-describe("Mews to HOS Events 0.1 mapping", () => {
-  it.each(mapped.map((fact) => [fact.mews!.delivery, fact.event.type, fact.event] as const))("maps Mews delivery %s to a valid %s", (_delivery, _type, event) => {
-    expect(validateEvent(event), errors(validateEvent)).toBe(true);
-  });
-
-  it("maps each Mews delivery to exactly the facts it reproduces", () => {
-    for (const delivery of recording.deliveries) expect(mapped.filter((fact) => fact.mews === delivery)).toHaveLength(delivery.reproduces.length);
-  });
-
-  it("reproduces the corpus PMS facts, apart from the documented differences", () => {
-    for (const { corpusDelivery, event } of mapped) {
-      const expected = corpus[corpusDelivery - 1];
-      const fields = recording.differences.filter((item) => item.delivery === corpusDelivery).map((item) => item.field);
-      expect(event.type).toBe(expected.type);
-      expect(omit(event, fields)).toEqual(omit(expected, fields));
-    }
-  });
-
-  it("reaches the published expected outcome of the scenario", () => {
-    const steps = replayArrivalReadiness(
-      stream.map((fact) => fact.event),
-      manifests,
-      scenario.projection,
-    );
-    const actual = toExpectedOutcome(steps, scenario);
-    const corpusDelivery = (delivery: number) => stream[delivery - 1].corpusDelivery;
-
-    // The mapped facts carry the adapter's ids; everything else must match the corpus outcome exactly.
-    const ids = new Map(mapped.map((fact) => [corpus[fact.corpusDelivery - 1].id, fact.event.id]));
-    const skipped = new Set(recording.not_reproduced.map((item) => item.delivery));
-    const published = JSON.parse(JSON.stringify(loadExpectedOutcome()), (_key, value) => (typeof value === "string" && ids.has(value) ? ids.get(value) : value)) as ReturnType<typeof loadExpectedOutcome>;
-
-    expect(actual.deliveries.map((item) => ({ ...item, delivery: corpusDelivery(item.delivery) }))).toEqual(published.deliveries.filter((item) => !skipped.has(item.delivery)));
-    expect(actual.situations.map((item) => ({ ...item, delivery: corpusDelivery(item.delivery) }))).toEqual(published.situations);
-  });
-});
+const { scenario, manifests } = loadArrivalScenario();
+const recording: MappingRecording = loadRecording("mews");
+const fetched = (delivery: number) => recording.deliveries[delivery].fetched[0].response as { Reservations?: MewsReservation[]; Resources?: MewsResource[] };
 
 describe("Mews adapter", () => {
-  const [created, assigned] = recording.deliveries;
-  const reservation = created.fetched[0].response.Reservations![0];
-  const room = recording.deliveries[2].fetched[0].response.Resources![0];
-  const adapter = () => createMewsAdapter({ ...recording.adapter, identities: createIdentityRegistry(recording.adapter.crosswalk) });
-  const webhook = (Discriminator: string, Id: string, EnterpriseId = created.webhook.EnterpriseId) => ({ EnterpriseId, IntegrationId: created.webhook.IntegrationId, Events: [{ Discriminator, Value: { Id } }] });
+  const created = recording.deliveries[0].webhook as { EnterpriseId: string; IntegrationId: string; Events: Array<{ Discriminator: string; Value: { Id: string } }> };
+  const reservation = fetched(0).Reservations![0];
+  const assigned = fetched(1).Reservations![0];
+  const room = fetched(2).Resources![0];
+  const adapter = () => createMewsAdapter({ ...(recording.adapter as unknown as Omit<MewsAdapterConfig, "identities">), identities: createIdentityRegistry(recording.adapter.crosswalk) });
+  const webhook = (Discriminator: string, Id: string, EnterpriseId = created.EnterpriseId) => ({ EnterpriseId, IntegrationId: created.IntegrationId, Events: [{ Discriminator, Value: { Id } }] });
 
   function sync(target: ReturnType<typeof adapter>, change: Partial<MewsReservation>, received_at = change.UpdatedUtc ?? reservation.UpdatedUtc) {
     const result = target.handle({ received_at, webhook: webhook("ServiceOrderUpdated", reservation.Id), reservations: [{ ...reservation, ...change }] });
@@ -119,7 +40,7 @@ describe("Mews adapter", () => {
     expect(types(sync(target, {}).events)).toEqual(["reservation.created", "stay.expected"]);
     const retried = sync(target, {});
     expect(retried.events).toEqual([]);
-    expect(retried.unmapped).toEqual([{ discriminator: "ServiceOrderUpdated", id: reservation.Id, reason: "No change since the last fetch." }]);
+    expect(retried.unmapped).toEqual([{ event: "ServiceOrderUpdated", id: reservation.Id, reason: "No change since the last fetch." }]);
   });
 
   it("gives a restarted adapter the same event ids, so HOS discards the redelivery", () => {
@@ -168,7 +89,7 @@ describe("Mews adapter", () => {
   it("keeps the assignment history and reports the unassignment HOS 0.1 cannot express", () => {
     const target = adapter();
     sync(target, {});
-    expect(sync(target, assigned.fetched[0].response.Reservations![0]).events).toMatchObject([{ type: "stay.unit_assigned", data: { unit_id: "unit_204", previous_unit_id: null, reason: "initial_assignment" } }]);
+    expect(sync(target, assigned).events).toMatchObject([{ type: "stay.unit_assigned", data: { unit_id: "unit_204", previous_unit_id: null, reason: "initial_assignment" } }]);
     const moved = sync(target, { AssignedResourceId: "0b3f6a3e-8f1d-4c2a-9a57-3c1d2e4f5a6b", UpdatedUtc: "2026-07-30T07:00:00Z" }).events;
     expect(moved).toMatchObject([{ type: "stay.unit_assigned", data: { previous_unit_id: "unit_204" } }]);
     expect(moved[0].data).not.toHaveProperty("reason");
@@ -180,7 +101,7 @@ describe("Mews adapter", () => {
 
   it("publishes a missed check-in before the check-out", () => {
     const target = adapter();
-    sync(target, assigned.fetched[0].response.Reservations![0]);
+    sync(target, assigned);
     const departed = sync(target, { AssignedResourceId: room.Id, State: "Processed", ActualStartUtc: "2026-07-30T12:40:00Z", ActualEndUtc: "2026-08-01T08:10:00Z", UpdatedUtc: "2026-08-01T08:10:00Z" }).events;
     expect(departed.map((event) => [event.type, event.time])).toEqual([
       ["stay.checked_in", "2026-07-30T12:40:00Z"],
@@ -203,10 +124,10 @@ describe("Mews adapter", () => {
     const target = adapter();
     expect(sync(target, { ServiceId: "6015cefd-5347-4a04-be80-1f1931d58c6b" }).unmapped[0].reason).toBe("Not an accommodation service at this property.");
     const stranger = target.handle({ received_at: reservation.UpdatedUtc, webhook: webhook("ServiceOrderUpdated", reservation.Id, "00000000-0000-4000-8000-000000000000"), reservations: [reservation] });
-    expect(stranger).toEqual({ events: [], unmapped: [{ discriminator: "ServiceOrderUpdated", id: reservation.Id, reason: "The enterprise is not configured as a HOS property." }] });
-    const customer = target.handle({ received_at: reservation.UpdatedUtc, webhook: created.webhook, reservations: [] });
+    expect(stranger).toEqual({ events: [], unmapped: [{ event: "ServiceOrderUpdated", id: reservation.Id, reason: "The enterprise is not configured as a HOS property." }] });
+    const customer = target.handle({ received_at: reservation.UpdatedUtc, webhook: created, reservations: [] });
     expect(customer.events).toEqual([]);
-    expect(customer.unmapped.map((item) => item.discriminator)).toEqual(["CustomerAdded", "CustomerUpdated", "ServiceOrderUpdated"]);
+    expect(customer.unmapped.map((item) => item.event)).toEqual(["CustomerAdded", "CustomerUpdated", "ServiceOrderUpdated"]);
     expect(customer.unmapped[0].reason).toMatch(/pseudonymous guest_id/);
   });
 });

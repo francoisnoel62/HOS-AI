@@ -1,0 +1,582 @@
+{
+  "mapping": "apaleo-api",
+  "pms": "Apaleo",
+  "hosschemaversion": "0.1",
+  "status": "experimental",
+  "title": "Arrival readiness with the PMS side in Apaleo API format",
+  "summary": "Synthetic Apaleo webhook events and the Booking and Inventory API responses an integration would fetch for them, replacing the PMS deliveries of the arrival-readiness conformance scenario. Run through the reference Apaleo adapter, they must reproduce the scenario's expected outcome. Unofficial: written from Apaleo's published packages and documentation, not affiliated with, reviewed or endorsed by Apaleo, and not yet run against a live Apaleo account.",
+  "sources": [
+    {
+      "label": "Apaleo official n8n node",
+      "url": "https://www.npmjs.com/package/@apaleo/n8n-nodes-apaleo-official",
+      "revision": "1.0.37",
+      "official": true,
+      "covers": "The webhook events an integration can subscribe to, such as reservation/unit-assigned, reservation/checked-in and unit/changed."
+    },
+    {
+      "label": "Apaleo Booking API models",
+      "url": "https://www.npmjs.com/package/@apaleo/angular-api-proxy-booking",
+      "revision": "19.0.29",
+      "official": true,
+      "covers": "ReservationModel: status, arrival, departure, created, modified, unit, and check-in, check-out, cancellation and no-show times. The typings are generated from the evolving Booking API; the fields used here are those of v1."
+    },
+    {
+      "label": "Apaleo Inventory API models",
+      "url": "https://www.npmjs.com/package/@apaleo/angular-api-proxy-inventory",
+      "revision": "19.0.29",
+      "official": true,
+      "covers": "UnitModel: occupancy, condition (Clean, CleanToBeInspected, Dirty) and maintenance (OutOfService, OutOfOrder, OutOfInventory)."
+    },
+    {
+      "label": "Apaleo developer guide: webhook payload",
+      "url": "https://apaleo.dev/guides/webhook/webhooks-payload.html",
+      "official": true,
+      "covers": "The webhook message: topic, type, id, accountId, propertyId, timestamp in milliseconds, clientId, subjectId and data.entityId. Read through a search excerpt: the site was not reachable from the build environment."
+    }
+  ],
+  "scenario": "../../conformance/arrival-readiness/scenario.json",
+  "adapter": {
+    "source": "urn:hos:pms:demo",
+    "tenant": "tenant_demo",
+    "accountId": "HOSX",
+    "properties": [
+      {
+        "apaleoPropertyId": "HOSX-PAR",
+        "propertyId": "prop_demo",
+        "timezone": "Europe/Paris",
+        "inspections": true
+      }
+    ],
+    "crosswalk": {
+      "reservation": {
+        "HOSXKQPT-1": "res_1042"
+      },
+      "stay": {
+        "HOSXKQPT-1": "stay_1042"
+      },
+      "unit": {
+        "HOSX-PAR-QZRJVT": "unit_204"
+      }
+    }
+  },
+  "identity": "Each event id is derived from the Apaleo entity id, the HOS type and Apaleo's own time for the change, so a redelivered webhook yields the same id. HOS ids come from the integration's crosswalk and are never the Apaleo ids. Access tokens are omitted from the recorded requests.",
+  "deliveries": [
+    {
+      "delivery": "A",
+      "reproduces": [
+        1,
+        2
+      ],
+      "received_at": "2026-07-12T14:03:01Z",
+      "note": "The booking engine creates the reservation. The webhook names the event and the reservation; the integration fetches it from the Booking API. Its guest details are left out: Apaleo has no guest id to link. Apaleo has no separate expected-arrival moment, so the stay is published with the reservation.",
+      "webhook": {
+        "topic": "Reservation",
+        "type": "created",
+        "id": "5d0f6a2e-8c34-4b71-9e2a-6c1b7d4f3a90",
+        "accountId": "HOSX",
+        "propertyId": "HOSX-PAR",
+        "timestamp": 1783864980000,
+        "clientId": "HOSX-SP-IBE",
+        "subjectId": "2b7e3f0a-5c1d-4e8b-9a64-0f3c2d1e8b57",
+        "data": {
+          "entityId": "HOSXKQPT-1"
+        }
+      },
+      "fetched": [
+        {
+          "operation": "GET /booking/v1/reservations/{id}",
+          "request": {
+            "id": "HOSXKQPT-1"
+          },
+          "response": {
+            "id": "HOSXKQPT-1",
+            "bookingId": "HOSXKQPT",
+            "status": "Confirmed",
+            "property": {
+              "id": "HOSX-PAR",
+              "code": "PAR",
+              "name": "Synthetic Paris Hotel",
+              "description": "Synthetic property for the HOS arrival-readiness scenario"
+            },
+            "ratePlan": {
+              "id": "HOSX-PAR-BAR-DBL",
+              "code": "BAR",
+              "name": "Best available rate",
+              "description": "Flexible rate",
+              "isSubjectToCityTax": false
+            },
+            "unitGroup": {
+              "id": "HOSX-PAR-DBL",
+              "code": "DBL",
+              "name": "Double room",
+              "description": "Double room",
+              "type": "BedRoom"
+            },
+            "totalGrossAmount": {
+              "amount": 360.0,
+              "currency": "EUR"
+            },
+            "arrival": "2026-07-30T15:00:00+02:00",
+            "departure": "2026-08-01T11:00:00+02:00",
+            "created": "2026-07-12T16:03:00+02:00",
+            "modified": "2026-07-12T16:03:00+02:00",
+            "adults": 2,
+            "channelCode": "Ibe",
+            "primaryGuest": {
+              "firstName": "Synthetic",
+              "lastName": "Guest",
+              "email": "guest@example.com"
+            },
+            "guaranteeType": "CreditCard",
+            "cancellationFee": {
+              "id": "HOSX-PAR-FLEX",
+              "code": "FLEX",
+              "name": "Free cancellation",
+              "description": "Free until the day before arrival",
+              "dueDateTime": "2026-07-29T15:00:00+02:00",
+              "fee": {
+                "amount": 0.0,
+                "currency": "EUR"
+              }
+            },
+            "noShowFee": {
+              "id": "HOSX-PAR-NOSHOW",
+              "code": "NOSHOW",
+              "name": "No-show",
+              "description": "First night",
+              "fee": {
+                "amount": 180.0,
+                "currency": "EUR"
+              }
+            },
+            "balance": {
+              "amount": -360.0,
+              "currency": "EUR"
+            },
+            "taxDetails": [
+              {
+                "vatType": "Reduced",
+                "vatPercent": 10.0,
+                "net": {
+                  "amount": 327.27,
+                  "currency": "EUR"
+                },
+                "tax": {
+                  "amount": 32.73,
+                  "currency": "EUR"
+                }
+              }
+            ],
+            "hasCityTax": false,
+            "payableAmount": {
+              "guest": {
+                "amount": 360.0,
+                "currency": "EUR"
+              }
+            },
+            "isOpenForCharges": true
+          }
+        }
+      ]
+    },
+    {
+      "delivery": "B",
+      "reproduces": [
+        3
+      ],
+      "received_at": "2026-07-30T06:06:01Z",
+      "note": "The front desk assigns room 204. Apaleo says so in the event itself, reservation/unit-assigned, with the exact time.",
+      "webhook": {
+        "topic": "Reservation",
+        "type": "unit-assigned",
+        "id": "a8e41c77-2f5b-4d0e-b3c6-91d2e5f07a14",
+        "accountId": "HOSX",
+        "propertyId": "HOSX-PAR",
+        "timestamp": 1785391560000,
+        "clientId": "HOSX-FRONTOFFICE",
+        "subjectId": "2b7e3f0a-5c1d-4e8b-9a64-0f3c2d1e8b57",
+        "data": {
+          "entityId": "HOSXKQPT-1"
+        }
+      },
+      "fetched": [
+        {
+          "operation": "GET /booking/v1/reservations/{id}",
+          "request": {
+            "id": "HOSXKQPT-1"
+          },
+          "response": {
+            "id": "HOSXKQPT-1",
+            "bookingId": "HOSXKQPT",
+            "status": "Confirmed",
+            "property": {
+              "id": "HOSX-PAR",
+              "code": "PAR",
+              "name": "Synthetic Paris Hotel",
+              "description": "Synthetic property for the HOS arrival-readiness scenario"
+            },
+            "ratePlan": {
+              "id": "HOSX-PAR-BAR-DBL",
+              "code": "BAR",
+              "name": "Best available rate",
+              "description": "Flexible rate",
+              "isSubjectToCityTax": false
+            },
+            "unitGroup": {
+              "id": "HOSX-PAR-DBL",
+              "code": "DBL",
+              "name": "Double room",
+              "description": "Double room",
+              "type": "BedRoom"
+            },
+            "totalGrossAmount": {
+              "amount": 360.0,
+              "currency": "EUR"
+            },
+            "arrival": "2026-07-30T15:00:00+02:00",
+            "departure": "2026-08-01T11:00:00+02:00",
+            "created": "2026-07-12T16:03:00+02:00",
+            "modified": "2026-07-30T08:06:00+02:00",
+            "adults": 2,
+            "channelCode": "Ibe",
+            "primaryGuest": {
+              "firstName": "Synthetic",
+              "lastName": "Guest",
+              "email": "guest@example.com"
+            },
+            "guaranteeType": "CreditCard",
+            "cancellationFee": {
+              "id": "HOSX-PAR-FLEX",
+              "code": "FLEX",
+              "name": "Free cancellation",
+              "description": "Free until the day before arrival",
+              "dueDateTime": "2026-07-29T15:00:00+02:00",
+              "fee": {
+                "amount": 0.0,
+                "currency": "EUR"
+              }
+            },
+            "noShowFee": {
+              "id": "HOSX-PAR-NOSHOW",
+              "code": "NOSHOW",
+              "name": "No-show",
+              "description": "First night",
+              "fee": {
+                "amount": 180.0,
+                "currency": "EUR"
+              }
+            },
+            "balance": {
+              "amount": -360.0,
+              "currency": "EUR"
+            },
+            "taxDetails": [
+              {
+                "vatType": "Reduced",
+                "vatPercent": 10.0,
+                "net": {
+                  "amount": 327.27,
+                  "currency": "EUR"
+                },
+                "tax": {
+                  "amount": 32.73,
+                  "currency": "EUR"
+                }
+              }
+            ],
+            "hasCityTax": false,
+            "payableAmount": {
+              "guest": {
+                "amount": 360.0,
+                "currency": "EUR"
+              }
+            },
+            "isOpenForCharges": true,
+            "unit": {
+              "id": "HOSX-PAR-QZRJVT",
+              "name": "204",
+              "description": "Double room, courtyard side",
+              "unitGroupId": "HOSX-PAR-DBL"
+            },
+            "assignedUnits": [
+              {
+                "unit": {
+                  "id": "HOSX-PAR-QZRJVT",
+                  "name": "204",
+                  "description": "Double room, courtyard side",
+                  "unitGroupId": "HOSX-PAR-DBL"
+                },
+                "timeRanges": [
+                  {
+                    "from": "2026-07-30T15:00:00+02:00",
+                    "to": "2026-08-01T11:00:00+02:00"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "delivery": "C",
+      "reproduces": [
+        null,
+        9
+      ],
+      "received_at": "2026-07-30T08:21:03Z",
+      "note": "Room 204 turns CleanToBeInspected once the cleaning task closes: cleaned, but not released, because this property inspects. Apaleo keeps occupancy apart, so the vacant room is a fact of its own. The manifest names the housekeeping system as the authority, so HOS records the disagreement instead of trusting the PMS.",
+      "webhook": {
+        "topic": "Unit",
+        "type": "changed",
+        "id": "f13b9d45-7a0c-4e2f-8d61-3b5e9c2a7f08",
+        "accountId": "HOSX",
+        "propertyId": "HOSX-PAR",
+        "timestamp": 1785399660000,
+        "clientId": "HOSX-HOUSEKEEPING",
+        "subjectId": "2b7e3f0a-5c1d-4e8b-9a64-0f3c2d1e8b57",
+        "data": {
+          "entityId": "HOSX-PAR-QZRJVT"
+        }
+      },
+      "fetched": [
+        {
+          "operation": "GET /inventory/v1/units/{id}",
+          "request": {
+            "id": "HOSX-PAR-QZRJVT"
+          },
+          "response": {
+            "id": "HOSX-PAR-QZRJVT",
+            "name": "204",
+            "description": {
+              "en": "Double room, courtyard side"
+            },
+            "property": {
+              "id": "HOSX-PAR",
+              "code": "PAR",
+              "name": "Synthetic Paris Hotel"
+            },
+            "unitGroup": {
+              "id": "HOSX-PAR-DBL",
+              "code": "DBL",
+              "name": "Double room",
+              "type": "BedRoom"
+            },
+            "status": {
+              "isOccupied": false,
+              "condition": "CleanToBeInspected"
+            },
+            "maxPersons": 2,
+            "created": "2024-03-01T10:00:00+01:00"
+          }
+        }
+      ]
+    },
+    {
+      "delivery": "D",
+      "reproduces": [
+        13
+      ],
+      "received_at": "2026-07-30T10:35:01Z",
+      "note": "The guest checks in. The reservation is InHouse and checkInTime is the actual arrival.",
+      "webhook": {
+        "topic": "Reservation",
+        "type": "checked-in",
+        "id": "0c7e2a19-4b8d-4f36-a5e0-d9f1b3c6e742",
+        "accountId": "HOSX",
+        "propertyId": "HOSX-PAR",
+        "timestamp": 1785407700000,
+        "clientId": "HOSX-FRONTOFFICE",
+        "subjectId": "2b7e3f0a-5c1d-4e8b-9a64-0f3c2d1e8b57",
+        "data": {
+          "entityId": "HOSXKQPT-1"
+        }
+      },
+      "fetched": [
+        {
+          "operation": "GET /booking/v1/reservations/{id}",
+          "request": {
+            "id": "HOSXKQPT-1"
+          },
+          "response": {
+            "id": "HOSXKQPT-1",
+            "bookingId": "HOSXKQPT",
+            "status": "InHouse",
+            "property": {
+              "id": "HOSX-PAR",
+              "code": "PAR",
+              "name": "Synthetic Paris Hotel",
+              "description": "Synthetic property for the HOS arrival-readiness scenario"
+            },
+            "ratePlan": {
+              "id": "HOSX-PAR-BAR-DBL",
+              "code": "BAR",
+              "name": "Best available rate",
+              "description": "Flexible rate",
+              "isSubjectToCityTax": false
+            },
+            "unitGroup": {
+              "id": "HOSX-PAR-DBL",
+              "code": "DBL",
+              "name": "Double room",
+              "description": "Double room",
+              "type": "BedRoom"
+            },
+            "totalGrossAmount": {
+              "amount": 360.0,
+              "currency": "EUR"
+            },
+            "arrival": "2026-07-30T15:00:00+02:00",
+            "departure": "2026-08-01T11:00:00+02:00",
+            "created": "2026-07-12T16:03:00+02:00",
+            "modified": "2026-07-30T12:35:00+02:00",
+            "adults": 2,
+            "channelCode": "Ibe",
+            "primaryGuest": {
+              "firstName": "Synthetic",
+              "lastName": "Guest",
+              "email": "guest@example.com"
+            },
+            "guaranteeType": "CreditCard",
+            "cancellationFee": {
+              "id": "HOSX-PAR-FLEX",
+              "code": "FLEX",
+              "name": "Free cancellation",
+              "description": "Free until the day before arrival",
+              "dueDateTime": "2026-07-29T15:00:00+02:00",
+              "fee": {
+                "amount": 0.0,
+                "currency": "EUR"
+              }
+            },
+            "noShowFee": {
+              "id": "HOSX-PAR-NOSHOW",
+              "code": "NOSHOW",
+              "name": "No-show",
+              "description": "First night",
+              "fee": {
+                "amount": 180.0,
+                "currency": "EUR"
+              }
+            },
+            "balance": {
+              "amount": -360.0,
+              "currency": "EUR"
+            },
+            "taxDetails": [
+              {
+                "vatType": "Reduced",
+                "vatPercent": 10.0,
+                "net": {
+                  "amount": 327.27,
+                  "currency": "EUR"
+                },
+                "tax": {
+                  "amount": 32.73,
+                  "currency": "EUR"
+                }
+              }
+            ],
+            "hasCityTax": false,
+            "payableAmount": {
+              "guest": {
+                "amount": 360.0,
+                "currency": "EUR"
+              }
+            },
+            "isOpenForCharges": true,
+            "unit": {
+              "id": "HOSX-PAR-QZRJVT",
+              "name": "204",
+              "description": "Double room, courtyard side",
+              "unitGroupId": "HOSX-PAR-DBL"
+            },
+            "assignedUnits": [
+              {
+                "unit": {
+                  "id": "HOSX-PAR-QZRJVT",
+                  "name": "204",
+                  "description": "Double room, courtyard side",
+                  "unitGroupId": "HOSX-PAR-DBL"
+                },
+                "timeRanges": [
+                  {
+                    "from": "2026-07-30T15:00:00+02:00",
+                    "to": "2026-08-01T11:00:00+02:00"
+                  }
+                ]
+              }
+            ],
+            "checkInTime": "2026-07-30T12:35:00+02:00"
+          }
+        }
+      ]
+    }
+  ],
+  "not_reproduced": [
+    {
+      "delivery": 7,
+      "reason": "Apaleo's published webhook events include no housekeeping task. This integration publishes none, which the property's manifest already expects: the PMS is not a declared task source."
+    }
+  ],
+  "differences": [
+    {
+      "delivery": 1,
+      "field": "data.external_refs",
+      "reason": "The Apaleo reservation and booking ids replace the corpus reference DEMO-1042."
+    },
+    {
+      "delivery": 1,
+      "field": "data.guest_id",
+      "reason": "An Apaleo reservation embeds its guest's details without a guest id, so there is no pseudonymous guest to link."
+    },
+    {
+      "delivery": 1,
+      "field": "hossubjects",
+      "reason": "No guest subject, for the same reason."
+    },
+    {
+      "delivery": 2,
+      "field": "time",
+      "reason": "Published with the reservation, at its creation. hosbusinessdate is still the arrival day."
+    },
+    {
+      "delivery": 2,
+      "field": "data.guest_id",
+      "reason": "No guest id in Apaleo."
+    },
+    {
+      "delivery": 2,
+      "field": "hossubjects",
+      "reason": "No guest subject."
+    },
+    {
+      "delivery": 9,
+      "field": "data.previous",
+      "reason": "Apaleo does not report the previous condition, and the adapter had not seen the unit before."
+    },
+    {
+      "delivery": 9,
+      "field": "data.reason",
+      "reason": "Apaleo does not say why the condition changed."
+    },
+    {
+      "delivery": 9,
+      "field": "hoscausationsource",
+      "reason": "Apaleo does not link the change to the task that caused it."
+    },
+    {
+      "delivery": 9,
+      "field": "hoscausationid",
+      "reason": "Apaleo does not link the change to the task that caused it."
+    }
+  ],
+  "additions": [
+    {
+      "delivery": "C",
+      "type": "unit.status_changed",
+      "disposition": "applied",
+      "reason": "Occupancy: vacant. Apaleo reports it with every unit, and the manifest makes the PMS the occupancy authority. Readiness does not depend on it."
+    }
+  ]
+}

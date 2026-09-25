@@ -17,7 +17,7 @@ Status: draft for review. Names and fields may change before 0.1 is final. The s
   - `producers/*.json` — manifests of the three synthetic producers;
   - `events.jsonl` — thirteen deliveries, in delivery order, one CloudEvent per line;
   - `expected.json` — the dispositions, readiness and situations an implementation must reproduce.
-- `mappings/mews/` — an experimental, unofficial Mews Connector API mapping. The arrival scenario's PMS deliveries are recorded as Mews webhook messages and fetched reservations and resources, alongside the mapping notes. Replayed through the reference adapter, they reach `expected.json`.
+- `mappings/` — experimental, unofficial PMS mappings for Mews, Apaleo and Cloudbeds. For each PMS, the arrival scenario's PMS deliveries are recorded in that PMS's format: webhooks and the entities an integration fetches for them. Mapping notes sit alongside. Replayed through each reference adapter, the deliveries reach `expected.json`.
 
 The schemas reference each other by `$id` (`urn:hos:schema:0.1:*`); load all of them into your validator.
 

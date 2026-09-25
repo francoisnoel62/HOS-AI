@@ -1,0 +1,408 @@
+{
+  "mapping": "cloudbeds-api-v1.3",
+  "pms": "Cloudbeds",
+  "hosschemaversion": "0.1",
+  "status": "experimental",
+  "title": "Arrival readiness with the PMS side in Cloudbeds API format",
+  "summary": "Synthetic Cloudbeds webhooks and the getReservation and getHousekeepingStatus responses an integration would fetch for them, replacing the PMS deliveries of the arrival-readiness conformance scenario. Run through the reference Cloudbeds adapter, they must reproduce the scenario's expected outcome. Unofficial: written from Cloudbeds's official SDK and published webhook samples, not affiliated with, reviewed or endorsed by Cloudbeds, and not yet run against a live Cloudbeds property. Two webhook payloads are reconstructed; each says so.",
+  "sources": [
+    {
+      "label": "Cloudbeds official Python SDK, API v1.3",
+      "url": "https://github.com/cloudbeds/cloudbeds-api-python/tree/release/v1",
+      "revision": "abbc43bdcec310ebdd8e923908fd58431994d02a",
+      "official": true,
+      "covers": "Generated from Cloudbeds's OpenAPI description: getReservation, getHousekeepingStatus and getHotelDetails responses, reservation statuses, and webhook subscriptions by object and action."
+    },
+    {
+      "label": "Pipedream Cloudbeds components",
+      "url": "https://www.npmjs.com/package/@pipedream/cloudbeds",
+      "revision": "0.1.0",
+      "official": false,
+      "covers": "Sample reservation/created and reservation/status_changed webhook payloads."
+    },
+    {
+      "label": "n8n-nodes-cloudbeds (community)",
+      "url": "https://www.npmjs.com/package/n8n-nodes-cloudbeds",
+      "revision": "0.3.30",
+      "official": false,
+      "covers": "Webhook event names, including reservation/accommodation_changed and housekeeping/room_condition_changed."
+    },
+    {
+      "label": "Cloudbeds developer documentation: webhooks",
+      "url": "https://developers.cloudbeds.com/docs/webhooks-1",
+      "official": true,
+      "covers": "Read through search excerpts only: the site was not reachable from the build environment. It names roomID and old_roomID for accommodation changes."
+    }
+  ],
+  "scenario": "../../conformance/arrival-readiness/scenario.json",
+  "adapter": {
+    "source": "urn:hos:pms:demo",
+    "tenant": "tenant_demo",
+    "properties": [
+      {
+        "cloudbedsPropertyId": "418204",
+        "propertyId": "prop_demo",
+        "timezone": "Europe/Paris",
+        "checkInTime": "15:00",
+        "checkOutTime": "11:00"
+      }
+    ],
+    "crosswalk": {
+      "reservation": {
+        "5830021042": "res_1042"
+      },
+      "stay": {
+        "5830021042": "stay_1042"
+      },
+      "unit": {
+        "418204-12": "unit_204"
+      },
+      "guest": {
+        "98120733": "guest_7q2k"
+      }
+    }
+  },
+  "identity": "Each event id is derived from the Cloudbeds entity id, the HOS type and the webhook timestamp, so a redelivered webhook yields the same id. HOS ids come from the integration's crosswalk and are never the Cloudbeds ids. API keys are omitted from the recorded requests.",
+  "deliveries": [
+    {
+      "delivery": "A",
+      "reproduces": [
+        1,
+        2
+      ],
+      "received_at": "2026-07-12T14:03:01Z",
+      "note": "The booking engine creates the reservation. The webhook carries its id, dates and time; the integration fetches it with getReservation. The main guest's id becomes a pseudonymous guest_id; the name and email stay in Cloudbeds. The stay is published with the reservation, and its planned check-in combines the arrival day with the property's 15:00 check-in time.",
+      "webhook": {
+        "reservationID": "5830021042",
+        "propertyID": 418204,
+        "propertyID_str": "418204",
+        "startDate": "2026-07-30",
+        "endDate": "2026-08-01",
+        "version": "1.0",
+        "event": "reservation/created",
+        "timestamp": 1783864980.0
+      },
+      "fetched": [
+        {
+          "operation": "GET /getReservation",
+          "request": {
+            "propertyID": "418204",
+            "reservationID": "5830021042"
+          },
+          "response": {
+            "success": true,
+            "data": {
+              "propertyID": "418204",
+              "guestName": "Synthetic Guest",
+              "guestEmail": "guest@example.com",
+              "isAnonymized": false,
+              "guestList": {
+                "98120733": {
+                  "guestID": "98120733",
+                  "guestFirstName": "Synthetic",
+                  "guestLastName": "Guest",
+                  "guestEmail": "guest@example.com",
+                  "guestStatus": "not_checked_in",
+                  "assignedRoom": false,
+                  "isAnonymized": false,
+                  "isMainGuest": true
+                }
+              },
+              "reservationID": "5830021042",
+              "dateCreated": "2026-07-12 14:03:00",
+              "dateModified": "2026-07-12 14:03:00",
+              "estimatedArrivalTime": null,
+              "source": "Website/Booking Engine",
+              "thirdPartyIdentifier": "",
+              "status": "confirmed",
+              "total": 360,
+              "balance": 360,
+              "assigned": [],
+              "unassigned": [
+                {
+                  "roomTypeName": "Double room",
+                  "roomTypeNameShort": "DBL",
+                  "roomTypeID": "501233",
+                  "subReservationID": "5830021042-1",
+                  "startDate": "2026-07-30",
+                  "endDate": "2026-08-01",
+                  "adults": "2",
+                  "children": "0",
+                  "roomTotal": "360.00"
+                }
+              ],
+              "startDate": "2026-07-30",
+              "endDate": "2026-08-01",
+              "origin": "booking engine"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "delivery": "B",
+      "reproduces": [
+        3
+      ],
+      "received_at": "2026-07-30T06:06:01Z",
+      "note": "The front desk assigns room 204. The accommodation event dates the assignment; getReservation says which room.",
+      "webhook": {
+        "reservationID": "5830021042",
+        "propertyID": 418204,
+        "propertyID_str": "418204",
+        "roomID": "418204-12",
+        "version": "1.0",
+        "event": "reservation/accommodation_changed",
+        "timestamp": 1785391560.0
+      },
+      "webhook_verification": "Reconstructed: no published sample was reachable. The event name comes from community integrations; the fields follow the published reservation samples, plus roomID, which Cloudbeds documents for this event. The adapter reads only reservationID, propertyID and timestamp from it.",
+      "fetched": [
+        {
+          "operation": "GET /getReservation",
+          "request": {
+            "propertyID": "418204",
+            "reservationID": "5830021042"
+          },
+          "response": {
+            "success": true,
+            "data": {
+              "propertyID": "418204",
+              "guestName": "Synthetic Guest",
+              "guestEmail": "guest@example.com",
+              "isAnonymized": false,
+              "guestList": {
+                "98120733": {
+                  "guestID": "98120733",
+                  "guestFirstName": "Synthetic",
+                  "guestLastName": "Guest",
+                  "guestEmail": "guest@example.com",
+                  "guestStatus": "not_checked_in",
+                  "assignedRoom": true,
+                  "isAnonymized": false,
+                  "isMainGuest": true,
+                  "roomID": "418204-12",
+                  "roomName": "204",
+                  "roomTypeName": "Double room"
+                }
+              },
+              "reservationID": "5830021042",
+              "dateCreated": "2026-07-12 14:03:00",
+              "dateModified": "2026-07-30 06:06:00",
+              "estimatedArrivalTime": null,
+              "source": "Website/Booking Engine",
+              "thirdPartyIdentifier": "",
+              "status": "confirmed",
+              "total": 360,
+              "balance": 360,
+              "assigned": [
+                {
+                  "roomTypeName": "Double room",
+                  "roomTypeNameShort": "DBL",
+                  "roomTypeID": "501233",
+                  "subReservationID": "5830021042-1",
+                  "startDate": "2026-07-30",
+                  "endDate": "2026-08-01",
+                  "adults": "2",
+                  "children": "0",
+                  "roomTotal": "360.00",
+                  "reservationRoomID": "5830021042-1",
+                  "roomTypeIsVirtual": false,
+                  "isRoomLocked": false,
+                  "roomName": "204",
+                  "roomID": "418204-12"
+                }
+              ],
+              "unassigned": [],
+              "startDate": "2026-07-30",
+              "endDate": "2026-08-01",
+              "origin": "booking engine"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "delivery": "C",
+      "reproduces": [
+        null,
+        9
+      ],
+      "received_at": "2026-07-30T08:21:03Z",
+      "note": "Room 204 turns clean once the cleaning task closes; Cloudbeds has a separate inspected condition, not reached yet. The event dates the condition change. getHousekeepingStatus also reports the room vacant, but that event does not date it, so its time is when the adapter recorded it. The manifest names the housekeeping system as the authority, so HOS records the disagreement instead of trusting the PMS.",
+      "webhook": {
+        "propertyID": 418204,
+        "propertyID_str": "418204",
+        "roomID": "418204-12",
+        "roomCondition": "clean",
+        "version": "1.0",
+        "event": "housekeeping/room_condition_changed",
+        "timestamp": 1785399660.0
+      },
+      "webhook_verification": "Reconstructed: no published sample was reachable. The event name comes from community integrations. The adapter reads only the property id, the room id and the timestamp, in either spelling Cloudbeds uses, and takes the condition from getHousekeepingStatus.",
+      "fetched": [
+        {
+          "operation": "GET /getHousekeepingStatus",
+          "request": {
+            "propertyID": "418204",
+            "roomTypeIDs": "501233"
+          },
+          "response": {
+            "success": true,
+            "data": [
+              {
+                "date": "2026-07-30",
+                "roomTypeID": "501233",
+                "roomTypeName": "Double room",
+                "roomID": "418204-12",
+                "roomName": "204",
+                "roomCondition": "clean",
+                "roomOccupied": false,
+                "roomBlocked": false,
+                "frontdeskStatus": "check-in",
+                "housekeeperID": "7710",
+                "housekeeper": "Synthetic Housekeeper",
+                "doNotDisturb": false,
+                "refusedService": false,
+                "vacantPickup": false,
+                "roomComments": ""
+              }
+            ],
+            "count": 1,
+            "total": 1
+          }
+        }
+      ]
+    },
+    {
+      "delivery": "D",
+      "reproduces": [
+        13
+      ],
+      "received_at": "2026-07-30T10:35:01Z",
+      "note": "The guest checks in. The status event dates it and names the user who did it; HOS 0.1 has nowhere to put that actor.",
+      "webhook": {
+        "reservationID": "5830021042",
+        "propertyID": 418204,
+        "propertyID_str": "418204",
+        "status": "checked_in",
+        "actor": {
+          "type": "user",
+          "id": "70311"
+        },
+        "version": "1.0",
+        "event": "reservation/status_changed",
+        "timestamp": 1785407700.0
+      },
+      "fetched": [
+        {
+          "operation": "GET /getReservation",
+          "request": {
+            "propertyID": "418204",
+            "reservationID": "5830021042"
+          },
+          "response": {
+            "success": true,
+            "data": {
+              "propertyID": "418204",
+              "guestName": "Synthetic Guest",
+              "guestEmail": "guest@example.com",
+              "isAnonymized": false,
+              "guestList": {
+                "98120733": {
+                  "guestID": "98120733",
+                  "guestFirstName": "Synthetic",
+                  "guestLastName": "Guest",
+                  "guestEmail": "guest@example.com",
+                  "guestStatus": "in_house",
+                  "assignedRoom": true,
+                  "isAnonymized": false,
+                  "isMainGuest": true,
+                  "roomID": "418204-12",
+                  "roomName": "204",
+                  "roomTypeName": "Double room"
+                }
+              },
+              "reservationID": "5830021042",
+              "dateCreated": "2026-07-12 14:03:00",
+              "dateModified": "2026-07-30 10:35:00",
+              "estimatedArrivalTime": null,
+              "source": "Website/Booking Engine",
+              "thirdPartyIdentifier": "",
+              "status": "checked_in",
+              "total": 360,
+              "balance": 360,
+              "assigned": [
+                {
+                  "roomTypeName": "Double room",
+                  "roomTypeNameShort": "DBL",
+                  "roomTypeID": "501233",
+                  "subReservationID": "5830021042-1",
+                  "startDate": "2026-07-30",
+                  "endDate": "2026-08-01",
+                  "adults": "2",
+                  "children": "0",
+                  "roomTotal": "360.00",
+                  "reservationRoomID": "5830021042-1",
+                  "roomTypeIsVirtual": false,
+                  "isRoomLocked": false,
+                  "roomName": "204",
+                  "roomID": "418204-12"
+                }
+              ],
+              "unassigned": [],
+              "startDate": "2026-07-30",
+              "endDate": "2026-08-01",
+              "origin": "booking engine"
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "not_reproduced": [
+    {
+      "delivery": 7,
+      "reason": "Cloudbeds assigns housekeepers to rooms rather than publishing housekeeping tasks, and none of the webhooks used here carries a task. This integration publishes no tasks, which the property's manifest already expects."
+    }
+  ],
+  "differences": [
+    {
+      "delivery": 1,
+      "field": "data.external_refs",
+      "reason": "The Cloudbeds reservation id replaces the corpus reference DEMO-1042."
+    },
+    {
+      "delivery": 2,
+      "field": "time",
+      "reason": "Published with the reservation, at its creation. hosbusinessdate is still the arrival day."
+    },
+    {
+      "delivery": 9,
+      "field": "data.previous",
+      "reason": "Cloudbeds does not report the previous condition, and the adapter had not seen the room before."
+    },
+    {
+      "delivery": 9,
+      "field": "data.reason",
+      "reason": "Cloudbeds does not say why the condition changed."
+    },
+    {
+      "delivery": 9,
+      "field": "hoscausationsource",
+      "reason": "Cloudbeds does not link the change to the task that caused it."
+    },
+    {
+      "delivery": 9,
+      "field": "hoscausationid",
+      "reason": "Cloudbeds does not link the change to the task that caused it."
+    }
+  ],
+  "additions": [
+    {
+      "delivery": "C",
+      "type": "unit.status_changed",
+      "disposition": "applied",
+      "reason": "Occupancy: vacant, from getHousekeepingStatus. The condition event does not date it, so hostimebasis is recorded. The manifest makes the PMS the occupancy authority; readiness does not depend on it."
+    }
+  ]
+}

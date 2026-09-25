@@ -1,18 +1,19 @@
 {
   "mapping": "mews-connector-api",
+  "pms": "Mews",
   "hosschemaversion": "0.1",
   "status": "experimental",
   "title": "Arrival readiness with the PMS side in Mews Connector API format",
   "summary": "Synthetic Mews General Webhook messages and the Get all reservations (ver 2023-06-06) and Get all resources responses an integration would fetch for them, replacing the PMS deliveries of the arrival-readiness conformance scenario. Run through the reference Mews adapter, they must reproduce the scenario's expected outcome. Unofficial: written from Mews's public documentation, not affiliated with, reviewed or endorsed by Mews, and not yet run against a live Mews environment.",
-  "documentation": {
-    "source": "https://github.com/MewsSystems/gitbook-connector-api",
-    "revision": "e8732c7d48b3df39e5a39fc459f56beab541158a",
-    "pages": [
-      "events/wh-general.md",
-      "operations/reservations.md",
-      "operations/resources.md"
-    ]
-  },
+  "sources": [
+    {
+      "label": "Mews Connector API documentation",
+      "url": "https://github.com/MewsSystems/gitbook-connector-api",
+      "revision": "e8732c7d48b3df39e5a39fc459f56beab541158a",
+      "official": true,
+      "covers": "General Webhooks (events/wh-general.md), Get all reservations ver 2023-06-06 (operations/reservations.md) and Get all resources (operations/resources.md)."
+    }
+  ],
   "scenario": "../../conformance/arrival-readiness/scenario.json",
   "adapter": {
     "source": "urn:hos:pms:demo",
@@ -445,5 +446,6 @@
       "field": "hoscausationid",
       "reason": "Mews does not link the state change to the task that caused it."
     }
-  ]
+  ],
+  "additions": []
 }

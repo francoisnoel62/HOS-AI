@@ -11,13 +11,13 @@ The mapping covers the facts the arrival-readiness scenario needs from a PMS: re
 ## Contents
 
 - `arrival-readiness.json` holds the PMS deliveries of the [arrival-readiness scenario](../../conformance/arrival-readiness/scenario.json), recorded as Mews would send them. Each delivery has a webhook message plus the reservations and resources an integration fetches for it. The file also carries the adapter configuration, the id crosswalk, and every documented difference from the synthetic corpus.
-- The reference adapter is `lib/hos/mappings/mews.ts` in the repository. `lib/hos/mappings/mews-replay.ts` rebuilds the scenario with it.
-- `tests/unit/mews-mapping.test.ts` checks three things:
+- The reference adapter is `lib/hos/mappings/mews.ts` in the repository. `lib/hos/mappings/replay.ts` rebuilds the scenario with it, as it does for the [Apaleo](../apaleo/README.md) and [Cloudbeds](../cloudbeds/README.md) mappings.
+- `tests/unit/pms-mappings.test.ts` checks three things:
   - every mapped fact is a valid HOS event;
   - the mapped facts equal the corpus PMS facts, except for the documented differences;
   - the replay reaches the scenario's `expected.json`, with the adapter's event ids in place of the corpus ids.
 
-The live replay is at `/demo/mews` on the HOS AI website.
+`tests/unit/mews-adapter.test.ts` covers the adapter's behaviour beyond the scenario. The live replay is at `/demo/mews` on the HOS AI website.
 
 ## How the adapter works
 
