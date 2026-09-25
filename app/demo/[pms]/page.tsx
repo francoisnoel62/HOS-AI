@@ -78,7 +78,7 @@ export default async function PmsMappingPage({ params }: Props) {
         <div className="border-l-2 border-[var(--warning)] bg-[var(--warning-soft)] p-5 text-sm leading-7 text-[var(--muted-foreground)]">
           <p className="font-semibold text-[var(--foreground)]">Unofficial and experimental.</p>
           <p className="mt-1">
-            Written from {copy.name}&apos;s published documentation and packages, listed below. HOS AI is not affiliated with {copy.name}, and {copy.name} has not reviewed or endorsed this mapping. Every payload is synthetic, and the adapter has not yet run against a live {copy.name} environment.
+            Written from {copy.name}&apos;s published documentation and packages, listed below. HOS AI is not affiliated with {copy.name}, and {copy.name} has not reviewed or endorsed this mapping. Every payload is synthetic{copy.liveCheck ? `. ${copy.liveCheck}` : `, and the adapter has not yet run against a live ${copy.name} environment.`}
             {reconstructed ? ` ${reconstructed} webhook payloads are reconstructed, and each says so.` : null}
           </p>
         </div>

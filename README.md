@@ -67,7 +67,7 @@ Each scenario's files are in [`public/spec/0.1/conformance/`](public/spec/0.1/co
 - rules for when `stay.expected` is due and for producers without a guest identity;
 - scheduled maintenance windows, which all three PMSs have: a ninth Core entity and the `unit.maintenance_scheduled` and `unit.maintenance_cancelled` events.
 
-`npm run mews:live`, `npm run apaleo:live` and `npm run cloudbeds:live` run each mapping, read-only, against a live environment: Mews's public demo, a free Apaleo developer account, or a Cloudbeds sandbox or property key. They report whether real data maps to valid HOS events. None has run yet; see the [Mews](public/spec/0.1/mappings/mews/README.md#live-check), [Apaleo](public/spec/0.1/mappings/apaleo/README.md#live-check) and [Cloudbeds](public/spec/0.1/mappings/cloudbeds/README.md#live-check) notes.
+`npm run mews:live`, `npm run apaleo:live` and `npm run cloudbeds:live` run each mapping, read-only, against a live environment: Mews's public demo, a free Apaleo developer account, or a Cloudbeds sandbox or property key. They report whether real data maps to valid HOS events. The Mews check has run against both Mews demo enterprises; the Apaleo and Cloudbeds checks have not run yet. See the [Mews](public/spec/0.1/mappings/mews/README.md#live-check), [Apaleo](public/spec/0.1/mappings/apaleo/README.md#live-check) and [Cloudbeds](public/spec/0.1/mappings/cloudbeds/README.md#live-check) notes.
 
 A validator CLI, SDKs, a production event processor and live PMS connectors are future work.
 

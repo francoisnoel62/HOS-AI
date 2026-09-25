@@ -1,7 +1,8 @@
+import { setTimeout as sleep } from "node:timers/promises";
 import { parseArgs } from "node:util";
 
 import type { MewsReservation, MewsResource, MewsResourceBlock } from "../lib/hos/mappings/mews";
-import { type MewsSnapshot, syncMews } from "../lib/hos/mappings/mews-sync";
+import { accommodationServices, type MewsResourceCategory, type MewsService, type MewsSnapshot, syncMews } from "../lib/hos/mappings/mews-sync";
 import { runLiveCheck, writeLiveReport } from "./live-report";
 
 // Runs the experimental Mews mapping against a live Mews Connector API environment, read-only: it calls Get operations
@@ -22,20 +23,30 @@ const client = "HOS AI mapping check 0.1";
 // Mews allows 1,000 items a page; ten pages is more than a live check needs.
 const pageSize = 1000;
 const maxPages = 10;
+// Mews allows 200 requests per access token in 30 seconds, and everyone who tries the public demo tokens shares them: a
+// 429 waits for Retry-After, or backs off, and retries.
+const retries = 5;
 
 type Page = { Cursor?: string | null };
 
 async function call<T>(operation: string, body: Record<string, unknown> = {}): Promise<T> {
-  const response = await fetch(`${platform}/api/connector/v1/${operation}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ ClientToken: clientToken, AccessToken: accessToken, Client: client, ...body }),
-  });
-  if (!response.ok) {
-    const detail = await response.text();
-    throw new Error(`${operation} answered ${response.status}: ${detail.slice(0, 300)}`);
+  for (let attempt = 0; ; attempt++) {
+    const response = await fetch(`${platform}/api/connector/v1/${operation}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ClientToken: clientToken, AccessToken: accessToken, Client: client, ...body }),
+    });
+    if (response.status === 429 && attempt < retries) {
+      await response.body?.cancel();
+      await sleep(1000 * (Number(response.headers.get("retry-after")) || 2 ** attempt));
+      continue;
+    }
+    if (!response.ok) {
+      const detail = await response.text();
+      throw new Error(`${operation} answered ${response.status}: ${detail.slice(0, 300)}`);
+    }
+    return (await response.json()) as T;
   }
-  return (await response.json()) as T;
 }
 
 async function getAll<T>(operation: string, key: string, body: Record<string, unknown>): Promise<T[]> {
@@ -52,8 +63,6 @@ async function getAll<T>(operation: string, key: string, body: Record<string, un
   return items;
 }
 
-type MewsService = { Id: string; IsActive: boolean; Names?: Record<string, string>; Name?: string; Data: { Discriminator: string; Value?: { TimeUnitPeriod?: string } } };
-
 async function main() {
   if (!clientToken || !accessToken) {
     console.error("Set MEWS_CLIENT_TOKEN and MEWS_ACCESS_TOKEN. The Mews Connector API documentation publishes demo tokens under Getting started, Environments.");
@@ -69,11 +78,16 @@ async function main() {
 
   const services = await getAll<MewsService>("services/getAll", "Services", scope);
   const bookable = services.filter((service) => service.IsActive && service.Data.Discriminator === "Bookable");
-  // Nightly bookable services are stays; hourly ones are meeting rooms, parking and the like. MEWS_SERVICE_IDS overrides.
+  // Bookable services with rooms, beds, apartments or pitches are stays; the others are parking, meeting rooms and the
+  // like. MEWS_SERVICE_IDS overrides.
   const override = process.env.MEWS_SERVICE_IDS?.split(",")
     .map((id) => id.trim())
     .filter(Boolean);
-  const accommodation = override ?? bookable.filter((service) => (service.Data.Value?.TimeUnitPeriod ?? "Day") === "Day").map((service) => service.Id);
+  const categories =
+    override || !bookable.length
+      ? []
+      : await getAll<MewsResourceCategory>("resourceCategories/getAll", "ResourceCategories", { ...scope, ServiceIds: bookable.map((service) => service.Id), ActivityStates: ["Active"] });
+  const accommodation = override ?? accommodationServices(bookable, categories);
   if (!accommodation.length) throw new Error("No accommodation service found; set MEWS_SERVICE_IDS.");
 
   // Yesterday to the end of the window, so stays in house today and their rooms are included.

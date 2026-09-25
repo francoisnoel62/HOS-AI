@@ -24,7 +24,12 @@ export async function writeLiveReport(
   };
 
   const arrivals = report.arrivals.stays;
-  const count = (predicate: (stay: (typeof arrivals)[number]) => boolean) => arrivals.filter(predicate).length;
+  // Readiness is a question for a guest still to arrive: a stay already in house or gone reads not ready in its used room.
+  const expected = arrivals.filter((stay) => stay.stay_status === "expected");
+  const count = (predicate: (stay: (typeof arrivals)[number]) => boolean) => expected.filter(predicate).length;
+  const started = Object.entries(
+    arrivals.filter((stay) => stay.stay_status !== "expected").reduce<Record<string, number>>((counts, stay) => ({ ...counts, [stay.stay_status]: (counts[stay.stay_status] ?? 0) + 1 }), {}),
+  ).map(([status, total]) => `${total} ${status.replaceAll("_", " ")}`);
   console.log(heading);
   console.log(`Fetched ${Object.entries(report.fetched).map(([entity, total]) => `${total} ${entity.replaceAll("_", " ")}`).join(", ")}.`);
   for (const note of notes) console.log(note);
@@ -34,7 +39,7 @@ export async function writeLiveReport(
   for (const { event, reason, count: total } of report.unmapped) console.log(`  ${String(total).padStart(5)}  ${event}: ${reason}`);
   console.log(`Dispositions: ${JSON.stringify(report.dispositions)}; situations: ${JSON.stringify(report.situations)}`);
   console.log(
-    `Arrivals on ${report.arrivals.business_date}: ${arrivals.length} — ready ${count((stay) => stay.readiness === "ready")}, not ready ${count((stay) => stay.readiness === "not_ready")}, unknown ${count((stay) => stay.readiness === "unknown")}, blocked by maintenance ${count((stay) => Boolean(stay.maintenance))}, at risk ${count((stay) => stay.situation === "at_risk")}`,
+    `Arrivals on ${report.arrivals.business_date}: ${arrivals.length}${started.length ? ` (${started.join(", ")})` : ""}; still expected ${expected.length} — ready ${count((stay) => stay.readiness === "ready")}, not ready ${count((stay) => stay.readiness === "not_ready")}, unknown ${count((stay) => stay.readiness === "unknown")}, blocked by maintenance ${count((stay) => Boolean(stay.maintenance))}, at risk ${count((stay) => stay.situation === "at_risk")}`,
   );
   if (out) {
     await writeFile(out, `${JSON.stringify(events ? { ...summary, events: report.events } : summary, null, 2)}\n`);
@@ -48,6 +53,7 @@ export function runLiveCheck(main: () => Promise<void>) {
     // fetch reports network failures, such as a refused proxy tunnel, in its cause.
     const cause = error instanceof Error && error.cause instanceof Error ? ` (${error.cause.message})` : "";
     console.error(error instanceof Error ? `${error.message}${cause}` : error);
-    process.exit(1);
+    // Not process.exit: on Windows, exiting while fetch still holds its sockets aborts Node on a libuv assertion.
+    process.exitCode = 1;
   });
 }

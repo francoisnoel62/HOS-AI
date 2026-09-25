@@ -12,6 +12,8 @@ export type PmsMappingCopy = {
   eventLabel: (webhook: never) => string;
   mapping: string[][];
   findings: string[][];
+  // What the live check found, once it has run against a live environment of the PMS.
+  liveCheck?: string;
 };
 
 export const pmsMappingCopy: Record<PmsMapping, PmsMappingCopy> = {
@@ -21,6 +23,7 @@ export const pmsMappingCopy: Record<PmsMapping, PmsMappingCopy> = {
     title: "The same early arrival, with the PMS speaking Mews.",
     description: "Webhook messages that carry only ids, then the reservation and room the integration fetches.",
     eventLabel: (webhook: { Events: Array<{ Discriminator: string }> }) => webhook.Events.map((event) => event.Discriminator).join(", "),
+    liveCheck: "The adapter has also run, read-only, against Mews's two public demo enterprises on 25 September 2026: 3,485 facts, every one valid HOS 0.1, and none published twice.",
     mapping: [
       ["ServiceOrderUpdated", "First seen Optional or Confirmed", "reservation.created, stay.expected", "time is CreatedUtc. The confirmation Number and the reservation Id become typed external references; AccountId becomes a pseudonymous guest_id through the crosswalk."],
       ["ServiceOrderUpdated", "Inquired or Requested", "Nothing yet", "Not a commitment: published once the reservation becomes Optional or Confirmed."],

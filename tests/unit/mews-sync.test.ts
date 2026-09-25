@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { MappingRecording } from "@/lib/hos/mappings/common";
 import type { MewsReservation, MewsResource, MewsResourceBlock } from "@/lib/hos/mappings/mews";
-import { type MewsSnapshot, syncMews } from "@/lib/hos/mappings/mews-sync";
+import { accommodationServices, type MewsResourceCategory, type MewsService, type MewsSnapshot, syncMews } from "@/lib/hos/mappings/mews-sync";
 import { loadRecording } from "@/lib/hos/mappings/replay";
 
 const recording: MappingRecording = loadRecording("mews");
@@ -30,12 +30,9 @@ describe("Mews live synchronisation", () => {
     expect(report.schema_errors).toEqual([]);
     expect(report.failures).toEqual([]);
     expect(report.resync_events).toBe(0);
-    expect(report.events_by_type).toEqual({ "reservation.created": 1, "stay.expected": 1, "stay.unit_assigned": 1, "unit.status_changed": 1, "unit.maintenance_scheduled": 1 });
-    expect(report.unmapped).toEqual([
-      { event: "ResourceUpdated", reason: "Not a unit: only top-level space resources are units.", count: 1 },
-      { event: "ServiceOrderUpdated", reason: "Not an accommodation service at this property.", count: 1 },
-    ]);
-    expect(report.dispositions).toEqual({ applied: 5 });
+    expect(report.events_by_type).toEqual({ "reservation.created": 1, "stay.expected": 1, "stay.unit_assigned": 1, "unit.status_changed": 2, "unit.maintenance_scheduled": 1 });
+    expect(report.unmapped).toEqual([{ event: "ServiceOrderUpdated", reason: "Not an accommodation service at this property.", count: 1 }]);
+    expect(report.dispositions).toEqual({ applied: 6 });
     // HOS ids are minted, never the Mews GUIDs; only the room name comes back for people to read.
     expect(JSON.stringify(report.arrivals)).not.toContain(room.Id);
   });
@@ -49,6 +46,44 @@ describe("Mews live synchronisation", () => {
     const clear = syncMews(snapshot([]), options);
     expect(clear.arrivals.stays).toEqual([expect.objectContaining({ unit: "204", readiness: "ready", situation: "none", maintenance: null })]);
     expect(clear.situations).toEqual({});
+  });
+
+  it("makes a bed a unit, since Mews assigns a dorm stay to the bed", () => {
+    // The Mews demo enterprises assign dorm stays to beds, the child resources of their rooms.
+    const dorm: MewsReservation = { ...assigned, Id: "e4a6c8d0-2f4b-4d6e-8a0c-1b3d5f7a9c2e", Number: "5712", AssignedResourceId: bed.Id };
+    const report = syncMews({ ...snapshot([]), reservations: [dorm] }, options);
+    expect(report.unmapped).toEqual([]);
+    expect(report.arrivals.stays).toEqual([expect.objectContaining({ unit: "204-A", housekeeping: room.State.toLowerCase(), readiness: "ready" })]);
+  });
+
+  it("takes as accommodation the bookable services with a place to stay, whatever their time unit", () => {
+    // The shapes the Mews demo enterprise returned: parking and full-day meeting rooms are sold by the day, long stays by the month.
+    const service = (Id: string, TimeUnitPeriod: string, IsActive = true): MewsService => ({ Id, IsActive, Data: { Discriminator: "Bookable", Value: { TimeUnitPeriod } } });
+    const category = (ServiceId: string, Type: string, IsActive = true): MewsResourceCategory => ({ Id: `${ServiceId}-${Type}`, ServiceId, IsActive, Type });
+    const services = [
+      service("stay", "Day"),
+      service("long-stay", "Month"),
+      service("hostel", "Day"),
+      service("parking", "Day"),
+      service("meeting", "Day"),
+      service("membership", "Day"),
+      service("tours", "Hour"),
+      service("closed", "Day", false),
+      { Id: "breakfast", IsActive: true, Data: { Discriminator: "Additional" } },
+    ];
+    const categories = [
+      category("stay", "Room"),
+      category("stay", "Suite"),
+      category("long-stay", "Apartment"),
+      category("hostel", "Dorm"),
+      category("hostel", "Bed"),
+      category("parking", "ParkingSpot"),
+      category("parking", "Room", false),
+      category("meeting", "MeetingRoom"),
+      category("tours", "Site"),
+      category("closed", "Room"),
+    ];
+    expect(accommodationServices(services, categories)).toEqual(["stay", "long-stay", "hostel"]);
   });
 
   it("skips a resource state the mapping does not know instead of failing", () => {

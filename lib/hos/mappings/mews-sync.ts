@@ -17,6 +17,24 @@ export type MewsSnapshot = {
 
 export type MewsSyncReport = SyncReport<{ reservations: number; resources: number; resource_blocks: number }>;
 
+// The documented properties the live check reads from Get all services and Get all resource categories.
+export type MewsService = { Id: string; IsActive: boolean; Names?: Record<string, string>; Name?: string; Data: { Discriminator: string; Value?: { TimeUnitPeriod?: string } } };
+export type MewsResourceCategory = { Id: string; ServiceId: string; IsActive: boolean; Type: string };
+
+// The resource category types a guest spends the night in. The others are parking spots, meeting rooms, desks,
+// memberships, equipment and the like.
+const overnightCategoryTypes = new Set(["Room", "Bed", "Dorm", "Apartment", "Suite", "Villa", "Site", "Tent", "CaravanOrRV", "UnequippedCampsite"]);
+
+// Accommodation services are the active bookable services, sold by the day or the month, that have a category of a place
+// to stay. A service's time unit alone does not say it: parking and full-day meeting rooms are sold by the day too, and
+// long stays by the month.
+export function accommodationServices(services: MewsService[], categories: MewsResourceCategory[]): string[] {
+  const overnight = new Set(categories.filter((category) => category.IsActive && overnightCategoryTypes.has(category.Type)).map((category) => category.ServiceId));
+  return services
+    .filter((service) => service.IsActive && service.Data.Discriminator === "Bookable" && service.Data.Value?.TimeUnitPeriod !== "Hour" && overnight.has(service.Id))
+    .map((service) => service.Id);
+}
+
 export function mewsManifest(options: SyncOptions): ProducerManifest {
   return liveManifest(options, {
     name: "Mews Connector API (live check)",
