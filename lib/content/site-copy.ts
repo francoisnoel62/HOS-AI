@@ -119,6 +119,12 @@ export const documentationItems: Array<{
     href: "/demo",
   },
   {
+    title: "HOS, HTNG and OpenTravel",
+    description: "What OpenTravel, HTNG and HOS each answer, the six answers HOS writes into the contract, how the three fit together, and where HOS is still behind. Sourced from the public specifications.",
+    status: "Draft",
+    href: "/standard/htng-opentravel",
+  },
+  {
     title: "Mews mapping",
     description: "Mews Connector API webhooks and fetched reservations and resources, mapped to HOS Events 0.1 by an unofficial adapter. It replays the arrival scenario to the same expected outcome.",
     status: "Experimental",

@@ -10,6 +10,15 @@ export const metadata: Metadata = { title: "Changelog", description: "Published 
 const entries = [
   {
     date: "25 September 2026",
+    title: "HOS, HTNG and OpenTravel: where HOS fits.",
+    items: [
+      "A new page sets HOS beside OpenTravel and HTNG: the question each one answers, the six answers HOS writes into the contract, how the three layers fit together, and where HOS is still behind.",
+      "Every statement about OpenTravel and HTNG is sourced from their public specifications and repositories, listed on the page.",
+    ],
+    links: [["/standard/htng-opentravel", "Read HOS, HTNG and OpenTravel"]],
+  },
+  {
+    date: "25 September 2026",
     title: "Two more arrival scenarios: a room out of order and a late check-out.",
     items: [
       "Room out of order: a leak takes the assigned room out of order on the arrival morning. A maintenance system plans the repair, the PMS copies it without being the authority, an older revision syncs late, and the front desk moves the guest. Fourteen deliveries at a property in Lisbon.",

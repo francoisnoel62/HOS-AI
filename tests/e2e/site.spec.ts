@@ -154,6 +154,18 @@ test("live demo links to the three PMS mappings", async ({ page }) => {
   await expect(page.getByRole("heading", { level: 1 })).toContainText("Apaleo");
 });
 
+test("the standard page leads to a sourced comparison with HTNG and OpenTravel", async ({ page }) => {
+  await page.goto("/standard");
+  await page.getByRole("link", { name: /Read the comparison/ }).click();
+  await expect(page).toHaveURL(/\/standard\/htng-opentravel$/);
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("They carry the messages. HOS makes the facts trustworthy.");
+  await expect(page.getByText("status_front_office_occupancy")).toBeVisible();
+  await expect(page.getByText("urn:hos:housekeeping:demo")).toBeVisible();
+  await expect(page.getByRole("link", { name: /HTNG Express, official repository/ })).toHaveAttribute("href", "https://github.com/HTNG/htng-express");
+  await page.getByRole("link", { name: /Replay delivery 8/ }).click();
+  await expect(page).toHaveURL(/\/demo\/late-checkout$/);
+});
+
 test("documentation links to the published HOS Core and HOS Events drafts and their artefacts", async ({ page, request }) => {
   await page.goto("/docs");
   await page.getByRole("link", { name: "HOS Core 0.1", exact: true }).click();
