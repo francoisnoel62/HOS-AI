@@ -16,7 +16,7 @@ type Envelope<TType extends string, TData> = {
   dataschema?: string;
   hosschemaversion: "0.1";
   hosrecordedat: string;
-  hostimebasis?: "occurred" | "recorded";
+  hostimebasis?: "occurred" | "modified" | "recorded";
   hostenant: string;
   hosproperty: string;
   hospropertytimezone: string;
@@ -26,6 +26,7 @@ type Envelope<TType extends string, TData> = {
   hossensitivity?: SensitivityClass;
   hoscausationsource?: string;
   hoscausationid?: string;
+  hosactor?: string;
   data: TData & Extensions;
 };
 
@@ -51,8 +52,10 @@ export type StayExpected = Envelope<
   { stay_id: string; reservation_id: string; guest_id?: string; planned_arrival_at: string; planned_departure_at: string }
 >;
 export type StayCheckedIn = Envelope<"stay.checked_in", { stay_id: string; unit_id: string }>;
+export type StayCheckInReverted = Envelope<"stay.check_in_reverted", { stay_id: string; unit_id?: string }>;
 export type StayCheckedOut = Envelope<"stay.checked_out", { stay_id: string; unit_id: string }>;
 export type StayUnitAssigned = Envelope<"stay.unit_assigned", { stay_id: string; unit_id: string; previous_unit_id: string | null; reason?: string }>;
+export type StayUnitUnassigned = Envelope<"stay.unit_unassigned", { stay_id: string; unit_id: string; reason?: string }>;
 export type UnitStatusChanged = Envelope<
   "unit.status_changed",
   | { unit_id: string; dimension: UnitStatusDimension; previous?: string; current: string; authority_source: string; reason?: string }
@@ -84,8 +87,10 @@ export type HosFact =
   | ReservationCancelled
   | StayExpected
   | StayCheckedIn
+  | StayCheckInReverted
   | StayCheckedOut
   | StayUnitAssigned
+  | StayUnitUnassigned
   | UnitStatusChanged
   | HousekeepingTaskCreated
   | HousekeepingTaskCompleted

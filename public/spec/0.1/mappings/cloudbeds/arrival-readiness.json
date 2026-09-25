@@ -52,24 +52,24 @@
         "5830021042": "res_1042"
       },
       "stay": {
-        "5830021042": "stay_1042"
+        "5830021042-1": "stay_1042"
       },
       "unit": {
         "418204-12": "unit_204"
       },
       "guest": {
         "98120733": "guest_7q2k"
+      },
+      "actor": {
+        "70311": "staff_r7"
       }
     }
   },
-  "identity": "Each event id is derived from the Cloudbeds entity id, the HOS type and the webhook timestamp, so a redelivered webhook yields the same id. HOS ids come from the integration's crosswalk and are never the Cloudbeds ids. API keys are omitted from the recorded requests.",
+  "identity": "Each event id is derived from the Cloudbeds entity id, the HOS type and the webhook timestamp, so a redelivered webhook yields the same id. HOS ids come from the integration's crosswalk, with one stay per booked room, and are never the Cloudbeds ids; so do the pseudonymous actor references. API keys are omitted from the recorded requests.",
   "deliveries": [
     {
       "delivery": "A",
-      "reproduces": [
-        1,
-        2
-      ],
+      "reproduces": [1, 2],
       "received_at": "2026-07-12T14:03:01Z",
       "note": "The booking engine creates the reservation. The webhook carries its id, dates and time; the integration fetches it with getReservation. The main guest's id becomes a pseudonymous guest_id; the name and email stay in Cloudbeds. The stay is published with the reservation, and its planned check-in combines the arrival day with the property's 15:00 check-in time.",
       "webhook": {
@@ -141,9 +141,7 @@
     },
     {
       "delivery": "B",
-      "reproduces": [
-        3
-      ],
+      "reproduces": [3],
       "received_at": "2026-07-30T06:06:01Z",
       "note": "The front desk assigns room 204. The accommodation event dates the assignment; getReservation says which room.",
       "webhook": {
@@ -223,10 +221,7 @@
     },
     {
       "delivery": "C",
-      "reproduces": [
-        null,
-        9
-      ],
+      "reproduces": [null, 9],
       "received_at": "2026-07-30T08:21:03Z",
       "note": "Room 204 turns clean once the cleaning task closes; Cloudbeds has a separate inspected condition, not reached yet. The event dates the condition change. getHousekeepingStatus also reports the room vacant, but that event does not date it, so its time is when the adapter recorded it. The manifest names the housekeeping system as the authority, so HOS records the disagreement instead of trusting the PMS.",
       "webhook": {
@@ -275,9 +270,7 @@
     },
     {
       "delivery": "D",
-      "reproduces": [
-        13
-      ],
+      "reproduces": [13],
       "received_at": "2026-07-30T10:35:01Z",
       "note": "The guest checks in. The status event dates it and names the user who did it; HOS 0.1 has nowhere to put that actor.",
       "webhook": {
@@ -395,6 +388,11 @@
       "delivery": 9,
       "field": "hoscausationid",
       "reason": "Cloudbeds does not link the change to the task that caused it."
+    },
+    {
+      "delivery": 13,
+      "field": "hosactor",
+      "reason": "user:staff_r7: Cloudbeds names the user who checked the guest in."
     }
   ],
   "additions": [

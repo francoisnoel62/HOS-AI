@@ -51,7 +51,12 @@ The illustrative output is `arrival.room_readiness_at_risk`. Conflicting facts r
 
 The website replays this scenario at `/demo` with a small, non-normative reference projection run against a synthetic conformance corpus.
 
-`/demo/mews`, `/demo/apaleo` and `/demo/cloudbeds` replay the same scenario with its PMS side recorded in a real PMS API's format: webhooks, then the entities an integration fetches. For each PMS, an experimental reference adapter turns them into HOS events and reaches the same expected outcome. The mappings are unofficial. They are built with synthetic data from each PMS's published documentation, packages or SDK, and none has run against a live system. Their notes list what each taught us about HOS 0.1: [Mews](public/spec/0.1/mappings/mews/README.md), [Apaleo](public/spec/0.1/mappings/apaleo/README.md) and [Cloudbeds](public/spec/0.1/mappings/cloudbeds/README.md).
+`/demo/mews`, `/demo/apaleo` and `/demo/cloudbeds` replay the same scenario with its PMS side recorded in a real PMS API's format: webhooks, then the entities an integration fetches. For each PMS, an experimental reference adapter turns them into HOS events and reaches the same expected outcome. The mappings are unofficial. They are built with synthetic data from each PMS's published documentation, packages or SDK, and none has run against a live system. Their notes list what each taught us about HOS 0.1: [Mews](public/spec/0.1/mappings/mews/README.md), [Apaleo](public/spec/0.1/mappings/apaleo/README.md) and [Cloudbeds](public/spec/0.1/mappings/cloudbeds/README.md). Those findings added the following to the HOS 0.1 draft:
+
+- `stay.unit_unassigned` and `stay.check_in_reverted`;
+- the `hosactor` envelope attribute and the `modified` time basis;
+- standard check-in and check-out times on the Property;
+- rules for when `stay.expected` is due and for producers without a guest identity.
 
 A validator CLI, SDKs, a production event processor and live PMS connectors are future work.
 

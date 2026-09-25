@@ -97,7 +97,7 @@ export default function CoreSpecificationPage() {
           <Card className="p-6">
             <h3 className="font-semibold">Guest identity</h3>
             <p className="mt-3 text-sm leading-6 text-[var(--muted-foreground)]">
-              HOS issues no global person identity. Matching two guest references creates a reversible link that names its source, confidence, author and rationale; records are linked, never merged.
+              HOS issues no global person identity. Matching two guest references creates a reversible link that names its source, confidence, author and rationale; records are linked, never merged. A producer without a stable guest identity publishes no guest_id and never derives one from names or contact details.
             </p>
           </Card>
         </div>
@@ -126,7 +126,7 @@ export default function CoreSpecificationPage() {
           <Card className="p-6">
             <h3 className="font-semibold">Time</h3>
             <p className="mt-3 text-sm leading-6 text-[var(--muted-foreground)]">
-              Occurrence and recording times use RFC 3339. The Property declares an IANA time zone and a business-date policy, and the business date is explicit whenever it matters.
+              Occurrence and recording times use RFC 3339. The Property declares an IANA time zone, a business-date policy and the standard check-in and check-out times that turn stays planned in days into instants. The business date is explicit whenever it matters.
             </p>
           </Card>
           <Card className="p-6">

@@ -4,7 +4,8 @@ import type { HosFact } from "@/lib/hos/types";
 // Shared by the experimental PMS mappings: identities, time handling, the HOS envelope, and the recording format that
 // replays a PMS's own payloads through its adapter.
 
-export type HosEntityKind = "reservation" | "stay" | "unit" | "guest";
+// actor ids become the pseudonymous references of hosactor.
+export type HosEntityKind = "reservation" | "stay" | "unit" | "guest" | "actor";
 export type IdentityRegistry = { resolve(kind: HosEntityKind, pmsId: string): string };
 export type Crosswalk = Partial<Record<HosEntityKind, Record<string, string>>>;
 
@@ -56,16 +57,17 @@ export function zonedTimeToUtc(date: string, time: string, timeZone: string) {
 
 export type FactContext = { source: string; tenant: string; propertyId: string; timezone: string; recordedAt: string; idPrefix: string };
 
-// businessDate overrides the local date of time. recorded marks a fact the PMS did not date: its time is then when the
-// adapter recorded it, as HOS Events requires.
-export type FactOptions = { businessDate?: string; recorded?: boolean };
+// businessDate overrides the local date of time. timeBasis qualifies a time the PMS did not give as the moment of the
+// change: modified when it is the entity's last modification, recorded when the PMS gave none, in which case time is
+// when the adapter recorded the fact, as HOS Events requires. actor is the hosactor of the change, when known.
+export type FactOptions = { businessDate?: string; timeBasis?: "modified" | "recorded"; actor?: string };
 
 // Collects the HOS facts of one PMS delivery. The id is derived from the PMS key, the HOS type and the PMS's own time for
 // the event, so a redelivered PMS event, or a restarted adapter, publishes the same id and HOS discards the duplicate.
 export function createFactWriter(context: FactContext) {
   const events: HosFact[] = [];
-  function publish<T extends HosFact>(type: T["type"], key: string, time: string, subjects: string[], data: T["data"], { businessDate, recorded }: FactOptions = {}) {
-    const occurred = utc(recorded ? context.recordedAt : time);
+  function publish<T extends HosFact>(type: T["type"], key: string, time: string, subjects: string[], data: T["data"], { businessDate, timeBasis, actor }: FactOptions = {}) {
+    const occurred = utc(timeBasis === "recorded" ? context.recordedAt : time);
     events.push({
       specversion: "1.0",
       id: `${context.idPrefix}:${key}:${type}:${utc(time).replace(/[-:]/g, "")}`,
@@ -75,12 +77,13 @@ export function createFactWriter(context: FactContext) {
       datacontenttype: "application/json",
       hosschemaversion: "0.1",
       hosrecordedat: utc(context.recordedAt),
-      ...(recorded ? { hostimebasis: "recorded" } : {}),
+      ...(timeBasis ? { hostimebasis: timeBasis } : {}),
       hostenant: context.tenant,
       hosproperty: context.propertyId,
       hospropertytimezone: context.timezone,
       hosbusinessdate: businessDate ?? localDate(occurred, context.timezone),
       hossubjects: subjects.join(" "),
+      ...(actor ? { hosactor: actor } : {}),
       data,
     } as T);
   }

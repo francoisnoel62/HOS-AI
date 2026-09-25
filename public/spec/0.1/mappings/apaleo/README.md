@@ -4,12 +4,12 @@ Status: **experimental and unofficial**. HOS AI is not affiliated with Apaleo, a
 
 The mapping covers the facts the arrival-readiness scenario needs from a PMS: reservations, stays, unit assignment, check-in and check-out, and unit status. It is written from these sources:
 
-| Source | By Apaleo | What it covers |
-| :-- | :-- | :-- |
-| [`@apaleo/n8n-nodes-apaleo-official`](https://www.npmjs.com/package/@apaleo/n8n-nodes-apaleo-official) 1.0.37 | Yes | The webhook events an integration can subscribe to, such as `reservation/unit-assigned`, `reservation/checked-in` and `unit/changed`. |
-| [`@apaleo/angular-api-proxy-booking`](https://www.npmjs.com/package/@apaleo/angular-api-proxy-booking) 19.0.29 | Yes | `ReservationModel`. The typings are generated from the evolving Booking API; the fields used here are those of v1. |
-| [`@apaleo/angular-api-proxy-inventory`](https://www.npmjs.com/package/@apaleo/angular-api-proxy-inventory) 19.0.29 | Yes | `UnitModel`: occupancy, condition and maintenance. |
-| [Webhook payload guide](https://apaleo.dev/guides/webhook/webhooks-payload.html) | Yes | The webhook message: `topic`, `type`, `id`, `accountId`, `propertyId`, `timestamp` in milliseconds, `clientId`, `subjectId` and `data.entityId`. Read through a search excerpt: the site was not reachable from the build environment. |
+| Source                                                                                                             | By Apaleo | What it covers                                                                                                                                                                                                                         |
+| :----------------------------------------------------------------------------------------------------------------- | :-------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`@apaleo/n8n-nodes-apaleo-official`](https://www.npmjs.com/package/@apaleo/n8n-nodes-apaleo-official) 1.0.37      | Yes       | The webhook events an integration can subscribe to, such as `reservation/unit-assigned`, `reservation/checked-in` and `unit/changed`.                                                                                                  |
+| [`@apaleo/angular-api-proxy-booking`](https://www.npmjs.com/package/@apaleo/angular-api-proxy-booking) 19.0.29     | Yes       | `ReservationModel`. The typings are generated from the evolving Booking API; the fields used here are those of v1.                                                                                                                     |
+| [`@apaleo/angular-api-proxy-inventory`](https://www.npmjs.com/package/@apaleo/angular-api-proxy-inventory) 19.0.29 | Yes       | `UnitModel`: occupancy, condition and maintenance.                                                                                                                                                                                     |
+| [Webhook payload guide](https://apaleo.dev/guides/webhook/webhooks-payload.html)                                   | Yes       | The webhook message: `topic`, `type`, `id`, `accountId`, `propertyId`, `timestamp` in milliseconds, `clientId`, `subjectId` and `data.entityId`. Read through a search excerpt: the site was not reachable from the build environment. |
 
 ## Contents
 
@@ -34,23 +34,23 @@ An Apaleo webhook names the event, such as `Reservation` / `unit-assigned`, and 
 
 ## Field mapping
 
-| Apaleo | HOS Events 0.1 | Notes |
-| :-- | :-- | :-- |
-| Reservation first seen, not `Canceled` or `NoShow` | `reservation.created` + `stay.expected` | `time` = `created`. `status` = `confirmed`. Planned dates are the local dates of `arrival` / `departure`. |
-| `id`, `bookingId` | `external_refs` | `reservation_id` and `booking_id`, `verified`, issued by the PMS producer. |
-| `primaryGuest`, `additionalGuests`, `booker` | — | Personal data without an id: there is no pseudonymous `guest_id` to publish. |
-| `arrival` or `departure` moved | `reservation.updated` + `stay.expected` | Only the changed dates, at the event's timestamp. |
-| `reservation/unit-assigned`, or `unit` changed | `stay.unit_assigned` | At the event's timestamp for `unit-assigned`, at `modified` otherwise. `reason` is `initial_assignment` for the first unit. |
-| `reservation/unit-unassigned` | — | HOS 0.1 has no event that removes an assignment. |
-| `status` `InHouse` | `stay.checked_in` | `time` = `checkInTime`. |
-| `reservation/check-in-reverted` | — | HOS 0.1 has no event that reverts a check-in. |
-| `status` `CheckedOut` | `stay.checked_out` | `time` = `checkOutTime`. |
-| `status` `Canceled` | `reservation.cancelled` | `time` = `cancellationTime`. No reason is mapped. |
-| `status` `NoShow` | `reservation.updated` | `status` = `no_show`, at `noShowTime`. |
-| Unit `status.isOccupied` | `unit.status_changed`, `occupancy` | `occupied` / `vacant`. |
-| Unit `status.condition` | `unit.status_changed`, `housekeeping` | `Dirty` → `dirty`; `CleanToBeInspected` → `clean`; `Clean` → `inspected` where the property inspects, `clean` otherwise. |
-| Unit `status.maintenance` | `unit.status_changed`, `maintenance` and `commercial` | Any maintenance → `out_of_service`. `OutOfOrder` and `OutOfInventory` also → `not_sellable`. Leaving it publishes `operational` and `sellable`. |
-| Other topics: folio, invoice, rate plan, block, company… | — | No HOS 0.1 counterpart in this mapping. |
+| Apaleo                                                   | HOS Events 0.1                                        | Notes                                                                                                                                                          |
+| :------------------------------------------------------- | :---------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Reservation first seen, not `Canceled` or `NoShow`       | `reservation.created` + `stay.expected`               | `time` = `created`. `status` = `confirmed`. Planned dates are the local dates of `arrival` / `departure`.                                                      |
+| `id`, `bookingId`                                        | `external_refs`                                       | `reservation_id` and `booking_id`, `verified`, issued by the PMS producer.                                                                                     |
+| `primaryGuest`, `additionalGuests`, `booker`             | —                                                     | Personal data without an id. As HOS 0.1 requires, no `guest_id` is published, and none is derived from names or contact details.                               |
+| `arrival` or `departure` moved                           | `reservation.updated` + `stay.expected`               | Only the changed dates, at the event's timestamp.                                                                                                              |
+| `reservation/unit-assigned`, or `unit` changed           | `stay.unit_assigned`                                  | At the event's timestamp for `unit-assigned`; at `modified`, with `hostimebasis` = `modified`, otherwise. `reason` is `initial_assignment` for the first unit. |
+| `reservation/unit-unassigned`, or `unit` removed         | `stay.unit_unassigned`                                | At the event's timestamp for `unit-unassigned`; at `modified`, with `hostimebasis` = `modified`, otherwise.                                                    |
+| `status` `InHouse`                                       | `stay.checked_in`                                     | `time` = `checkInTime`.                                                                                                                                        |
+| `reservation/check-in-reverted`                          | `stay.check_in_reverted`                              | At the event's timestamp. The stay is expected again, and a later check-in is published anew.                                                                  |
+| `status` `CheckedOut`                                    | `stay.checked_out`                                    | `time` = `checkOutTime`.                                                                                                                                       |
+| `status` `Canceled`                                      | `reservation.cancelled`                               | `time` = `cancellationTime`. No reason is mapped.                                                                                                              |
+| `status` `NoShow`                                        | `reservation.updated`                                 | `status` = `no_show`, at `noShowTime`.                                                                                                                         |
+| Unit `status.isOccupied`                                 | `unit.status_changed`, `occupancy`                    | `occupied` / `vacant`.                                                                                                                                         |
+| Unit `status.condition`                                  | `unit.status_changed`, `housekeeping`                 | `Dirty` → `dirty`; `CleanToBeInspected` → `clean`; `Clean` → `inspected` where the property inspects, `clean` otherwise.                                       |
+| Unit `status.maintenance`                                | `unit.status_changed`, `maintenance` and `commercial` | Any maintenance → `out_of_service`. `OutOfOrder` and `OutOfInventory` also → `not_sellable`. Leaving it publishes `operational` and `sellable`.                |
+| Other topics: folio, invoice, rate plan, block, company… | —                                                     | No HOS 0.1 counterpart in this mapping.                                                                                                                        |
 
 Only `BedRoom` unit groups become stays and units; Apaleo also rents parking lots, meeting rooms and event spaces.
 
@@ -68,10 +68,10 @@ The dispositions, readiness and situations are the same as in the scenario's `ex
 ## What the mapping taught us about HOS 0.1
 
 1. **Events say what happened, and when.** Assignments get exact times, where Mews only gives the reservation's last update.
-2. **There is no guest identity to link.** Linking stays to a guest needs an identity service, not a field mapping.
+2. **There is no guest identity to link.** HOS 0.1 now states the rule: without a stable guest identity, no `guest_id`, and never one derived from names or contact details. Linking stays to a guest needs an identity service.
 3. **Rooms already look like HOS.** Occupancy, cleanliness and maintenance are separate in Apaleo, as in HOS.
 4. **A status name is not its meaning.** `Clean` means inspected only where the property inspects.
-5. **HOS 0.1 cannot undo.** There is no event to remove an assignment or revert a check-in.
+5. **Undo needed events of its own.** HOS 0.1 now has `stay.unit_unassigned` and `stay.check_in_reverted`.
 6. **Tasks are out of reach.** This integration publishes no housekeeping tasks.
 
 ## Not covered yet

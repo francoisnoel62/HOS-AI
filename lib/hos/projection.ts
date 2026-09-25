@@ -13,8 +13,10 @@ import type {
   Situation,
   StayCheckedIn,
   StayCheckedOut,
+  StayCheckInReverted,
   StayExpected,
   StayUnitAssigned,
+  StayUnitUnassigned,
   TaskRef,
   UnitStatusChanged,
   UnitStatusDimension,
@@ -97,8 +99,8 @@ export function replayArrivalReadiness(events: HosFact[], manifests: ProducerMan
   const seen = new Set<string>();
   const reservationStatuses = new Map<string, Timed<string>>();
   const stays = new Map<string, Timed<StayExpected>>();
-  const assignments = new Map<string, Timed<StayUnitAssigned>>();
-  const lifecycles = new Map<string, Timed<StayCheckedIn | StayCheckedOut>>();
+  const assignments = new Map<string, Timed<StayUnitAssigned | StayUnitUnassigned>>();
+  const lifecycles = new Map<string, Timed<StayCheckedIn | StayCheckInReverted | StayCheckedOut>>();
   const statuses = new Map<string, Timed<string>>();
   const observations = new Map<string, Map<string, Timed<string>>>();
   const tasks = new Map<string, Timed<HousekeepingTaskCreated | HousekeepingTaskCompleted>>();
@@ -157,7 +159,14 @@ export function replayArrivalReadiness(events: HosFact[], manifests: ProducerMan
         return keepLatest(stays, event.data.stay_id, event, event);
       case "stay.unit_assigned":
         return keepLatest(assignments, event.data.stay_id, event, event);
+      case "stay.unit_unassigned": {
+        // A release frees only the unit the stay holds; releasing another unit changes nothing.
+        const held = assignments.get(event.data.stay_id)?.value;
+        if (held?.type === "stay.unit_assigned" && held.data.unit_id !== event.data.unit_id) return "superseded";
+        return keepLatest(assignments, event.data.stay_id, event, event);
+      }
       case "stay.checked_in":
+      case "stay.check_in_reverted":
       case "stay.checked_out":
         return keepLatest(lifecycles, event.data.stay_id, event, event);
       case "housekeeping.task.created":
@@ -172,7 +181,7 @@ export function replayArrivalReadiness(events: HosFact[], manifests: ProducerMan
     const reservation = reservationStatuses.get(stay.data.reservation_id);
     const assignment = assignments.get(stay.data.stay_id);
     const lifecycle = lifecycles.get(stay.data.stay_id);
-    const unitId = assignment?.value.data.unit_id ?? null;
+    const unitId = assignment?.value.type === "stay.unit_assigned" ? assignment.value.data.unit_id : null;
     const status = unitId ? statuses.get(statusKey(unitId, "housekeeping")) : undefined;
     const conflicting =
       unitId && status
@@ -184,7 +193,8 @@ export function replayArrivalReadiness(events: HosFact[], manifests: ProducerMan
     const signal = arrivals.get(stay.data.stay_id);
 
     const reservationActive = !reservation || reservation.value === "confirmed" || reservation.value === "tentative";
-    const stayStatus: StayStatus = !reservationActive ? "cancelled" : lifecycle?.value.type === "stay.checked_out" ? "departed" : lifecycle ? "in_house" : "expected";
+    // A reverted check-in makes the stay expected again.
+    const stayStatus: StayStatus = !reservationActive ? "cancelled" : lifecycle?.value.type === "stay.checked_out" ? "departed" : lifecycle?.value.type === "stay.checked_in" ? "in_house" : "expected";
     const early = Boolean(signal) && Date.parse(signal!.value.expected_arrival_at) < Date.parse(stay.data.planned_arrival_at);
     const readiness: Readiness = !status || status.value === "unknown" ? "unknown" : config.ready_housekeeping_statuses.includes(status.value) ? "ready" : "not_ready";
 

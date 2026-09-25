@@ -1,6 +1,7 @@
 import {
   createFactWriter,
   createIdentityRegistry,
+  type FactOptions,
   type IdentityRegistry,
   type MappingRecording,
   type MappingResult,
@@ -9,7 +10,18 @@ import {
   utc,
   zonedTimeToUtc,
 } from "@/lib/hos/mappings/common";
-import type { ReservationCancelled, ReservationCreated, ReservationUpdated, StayCheckedIn, StayCheckedOut, StayExpected, StayUnitAssigned, UnitStatusChanged, UnitStatusDimension } from "@/lib/hos/types";
+import type {
+  ReservationCancelled,
+  ReservationCreated,
+  ReservationUpdated,
+  StayCheckedIn,
+  StayCheckedOut,
+  StayExpected,
+  StayUnitAssigned,
+  StayUnitUnassigned,
+  UnitStatusChanged,
+  UnitStatusDimension,
+} from "@/lib/hos/types";
 
 // Experimental, unofficial mapping from the Cloudbeds API (v1.3) to HOS Events 0.1, written against Cloudbeds's official
 // SDK models and published webhook samples. It is not affiliated with, reviewed or endorsed by Cloudbeds. A webhook names
@@ -43,9 +55,12 @@ export type CloudbedsReservation = {
   startDate: string;
   endDate: string;
   guestList?: Record<string, { guestID?: string; isMainGuest?: boolean }>;
-  assigned?: Array<{ roomID?: string; roomName?: string; roomTypeID?: string; subReservationID?: string }>;
-  unassigned?: Array<{ roomTypeID?: string; subReservationID?: string }>;
+  // One entry per booked room, assigned to a physical room or not yet.
+  assigned?: Array<CloudbedsRoomLine & { roomID?: string; roomName?: string }>;
+  unassigned?: CloudbedsRoomLine[];
 };
+
+export type CloudbedsRoomLine = { roomTypeID?: string; subReservationID?: string; startDate?: string; endDate?: string };
 
 // One room of getHousekeepingStatus.
 export type CloudbedsRoomStatus = { roomID?: string; roomName?: string; roomCondition?: string; roomOccupied?: boolean; roomBlocked?: boolean; date?: string };
@@ -72,18 +87,9 @@ export type CloudbedsDelivery = { received_at: string; webhook: CloudbedsWebhook
 
 type PublishedStatus = "tentative" | "confirmed" | "cancelled" | "no_show";
 
-// What HOS has been told about a reservation and its stay.
-type PublishedStay = {
-  status: PublishedStatus;
-  arrivalAt: string;
-  departureAt: string;
-  arrivalDate: string;
-  departureDate: string;
-  guestId?: string;
-  unitId: string | null;
-  checkedIn: boolean;
-  checkedOut: boolean;
-};
+// What HOS has been told about a reservation and each of its stays, one per booked room.
+type PublishedReservation = { status: PublishedStatus; arrivalDate: string; departureDate: string; guestId?: string; stays: Map<string, PublishedStay> };
+type PublishedStay = { arrivalAt: string; departureAt: string; unitId: string | null; assignedBefore: boolean; checkedIn: boolean; checkedOut: boolean };
 
 type Statuses = Partial<Record<UnitStatusDimension, string>>;
 
@@ -97,7 +103,7 @@ const reservationStatuses: Partial<Record<CloudbedsReservationStatus, "tentative
 const roomConditions: Record<string, string> = { dirty: "dirty", clean: "clean", inspected: "inspected" };
 
 export function createCloudbedsAdapter(config: CloudbedsAdapterConfig) {
-  const stays = new Map<string, PublishedStay>();
+  const reservations = new Map<string, PublishedReservation>();
   const units = new Map<string, Statuses>();
   const { resolve } = config.identities;
 
@@ -117,42 +123,24 @@ export function createCloudbedsAdapter(config: CloudbedsAdapterConfig) {
     const { events, publish } = createFactWriter({ source: config.source, tenant: config.tenant, propertyId: property.propertyId, timezone: property.timezone, recordedAt: delivery.received_at, idPrefix: "cloudbeds" });
     // Cloudbeds stamps each event with the moment it happened.
     const occurred = utc(Math.round(webhook.timestamp * 1000));
-    // A fact the event itself reports occurred at the event's time; one only noticed while handling another event did
-    // not, so its time is when the adapter learned it.
-    const timing = (reportedBy: boolean) => (reportedBy ? {} : { recorded: true });
+    // A fact the event itself reports occurred at the event's time, and its actor made it. One only noticed while
+    // handling another event did not, so its time is when the adapter learned it.
+    const kind = webhook.actor?.type;
+    const actor = webhook.actor && (kind === "user" || kind === "guest" || kind === "system" || kind === "integration") ? `${kind}:${resolve("actor", webhook.actor.id)}` : undefined;
+    const timing = (reportedBy: boolean): FactOptions => (reportedBy ? (actor ? { actor } : {}) : { timeBasis: "recorded" });
 
     function reservation(cloudbeds: CloudbedsReservation) {
-      const published = events.length;
-      const rooms = [...(cloudbeds.assigned ?? []), ...(cloudbeds.unassigned ?? [])];
-      if (rooms.length > 1) return skip("A reservation with several rooms; this adapter maps one stay per reservation.");
-      let stay = stays.get(cloudbeds.reservationID);
+      const before = events.length;
       const reservationId = resolve("reservation", cloudbeds.reservationID);
-      const stayId = resolve("stay", cloudbeds.reservationID);
       const mainGuest = Object.values(cloudbeds.guestList ?? {}).find((guest) => guest.isMainGuest)?.guestID;
       const guestId = mainGuest ? resolve("guest", mainGuest) : undefined;
       const guest = guestId ? { guest_id: guestId } : {};
-      // Cloudbeds plans stays in days; the property's check-in and check-out times make them instants.
-      const plan = {
-        arrivalAt: zonedTimeToUtc(cloudbeds.startDate, property!.checkInTime, property!.timezone),
-        departureAt: zonedTimeToUtc(cloudbeds.endDate, property!.checkOutTime, property!.timezone),
-        arrivalDate: cloudbeds.startDate,
-        departureDate: cloudbeds.endDate,
-      };
       const status = reservationStatuses[cloudbeds.status];
       const statusEvent = (value: string) => event === "reservation/status_changed" && webhook.status === value;
-      const expected = (recorded: boolean) =>
-        publish<StayExpected>(
-          "stay.expected",
-          cloudbeds.reservationID,
-          occurred,
-          [`stay:${stayId}`, `reservation:${reservationId}`, ...(guestId ? [`guest:${guestId}`] : [])],
-          { stay_id: stayId, reservation_id: reservationId, ...guest, planned_arrival_at: plan.arrivalAt, planned_departure_at: plan.departureAt },
-          { businessDate: plan.arrivalDate, recorded },
-        );
+      let published = reservations.get(cloudbeds.reservationID);
 
-      if (!stay) {
+      if (!published) {
         if (!status) return skip("Closed before HOS knew the reservation.");
-        const created = event === "reservation/created";
         publish<ReservationCreated>(
           "reservation.created",
           cloudbeds.reservationID,
@@ -161,67 +149,97 @@ export function createCloudbedsAdapter(config: CloudbedsAdapterConfig) {
           {
             reservation_id: reservationId,
             status,
-            planned_arrival_date: plan.arrivalDate,
-            planned_departure_date: plan.departureDate,
+            planned_arrival_date: cloudbeds.startDate,
+            planned_departure_date: cloudbeds.endDate,
             ...guest,
             external_refs: [{ source_system: config.source, id_type: "reservation_id", source_id: cloudbeds.reservationID, verification: "verified" }],
           },
-          timing(created),
+          timing(event === "reservation/created"),
         );
-        // Cloudbeds has no separate expected-arrival moment: a committed reservation is an expected stay.
-        expected(!created);
-        stay = { status, ...plan, guestId, unitId: null, checkedIn: false, checkedOut: false };
-        stays.set(cloudbeds.reservationID, stay);
+        published = { status, arrivalDate: cloudbeds.startDate, departureDate: cloudbeds.endDate, guestId, stays: new Map() };
+        reservations.set(cloudbeds.reservationID, published);
       } else {
-        const closed = stay.status === "cancelled" || stay.status === "no_show";
+        const closed = published.status === "cancelled" || published.status === "no_show";
         if (cloudbeds.status === "canceled") {
           // Cloudbeds reports no cancellation reason.
           if (!closed) publish<ReservationCancelled>("reservation.cancelled", cloudbeds.reservationID, occurred, [`reservation:${reservationId}`], { reservation_id: reservationId }, timing(statusEvent("canceled")));
-          stay.status = "cancelled";
+          published.status = "cancelled";
           return;
         }
         if (cloudbeds.status === "no_show") {
           if (!closed) publish<ReservationUpdated>("reservation.updated", cloudbeds.reservationID, occurred, [`reservation:${reservationId}`], { reservation_id: reservationId, changed_fields: ["status"], status: "no_show" }, timing(statusEvent("no_show")));
-          stay.status = "no_show";
+          published.status = "no_show";
           return;
         }
         const update: ReservationUpdated["data"] = { reservation_id: reservationId, changed_fields: [] };
-        if (status && status !== stay.status) Object.assign(update, { status }).changed_fields.push("status");
-        if (plan.arrivalDate !== stay.arrivalDate) Object.assign(update, { planned_arrival_date: plan.arrivalDate }).changed_fields.push("planned_arrival_date");
-        if (plan.departureDate !== stay.departureDate) Object.assign(update, { planned_departure_date: plan.departureDate }).changed_fields.push("planned_departure_date");
-        if (guestId && guestId !== stay.guestId) Object.assign(update, guest).changed_fields.push("guest_id");
+        if (status && status !== published.status) Object.assign(update, { status }).changed_fields.push("status");
+        if (cloudbeds.startDate !== published.arrivalDate) Object.assign(update, { planned_arrival_date: cloudbeds.startDate }).changed_fields.push("planned_arrival_date");
+        if (cloudbeds.endDate !== published.departureDate) Object.assign(update, { planned_departure_date: cloudbeds.endDate }).changed_fields.push("planned_departure_date");
+        if (guestId && guestId !== published.guestId) Object.assign(update, guest).changed_fields.push("guest_id");
         const reported = event === "reservation/dates_changed" || event === "reservation/status_changed";
         if (update.changed_fields.length) publish<ReservationUpdated>("reservation.updated", cloudbeds.reservationID, occurred, [`reservation:${reservationId}`], update, timing(reported));
-        if (plan.arrivalAt !== stay.arrivalAt || plan.departureAt !== stay.departureAt) expected(event !== "reservation/dates_changed");
-        Object.assign(stay, plan, { guestId }, status ? { status } : {});
+        Object.assign(published, { arrivalDate: cloudbeds.startDate, departureDate: cloudbeds.endDate, guestId }, status ? { status } : {});
       }
 
-      const roomId = cloudbeds.assigned?.[0]?.roomID;
-      const unitId = roomId ? resolve("unit", roomId) : null;
-      if (unitId && unitId !== stay.unitId) {
-        publish<StayUnitAssigned>(
-          "stay.unit_assigned",
-          cloudbeds.reservationID,
-          occurred,
-          [`stay:${stayId}`, `unit:${unitId}`],
-          { stay_id: stayId, unit_id: unitId, previous_unit_id: stay.unitId, ...(stay.unitId ? {} : { reason: "initial_assignment" }) },
-          timing(event === "reservation/accommodation_changed" || event === "reservation/created"),
-        );
-        stay.unitId = unitId;
-      } else if (!unitId && stay.unitId) {
-        skip("The room was unassigned; HOS 0.1 has no event that removes an assignment.");
-      }
+      // Each booked room is a stay of its own, as HOS Core allows.
+      const lines = [...(cloudbeds.assigned ?? []), ...(cloudbeds.unassigned ?? [])];
+      for (const line of lines) {
+        const key = line.subReservationID ?? cloudbeds.reservationID;
+        const stayId = resolve("stay", key);
+        // Cloudbeds plans stays in days; the property's check-in and check-out times make them instants.
+        const arrivalDate = line.startDate ?? cloudbeds.startDate;
+        const plan = {
+          arrivalAt: zonedTimeToUtc(arrivalDate, property!.checkInTime, property!.timezone),
+          departureAt: zonedTimeToUtc(line.endDate ?? cloudbeds.endDate, property!.checkOutTime, property!.timezone),
+        };
+        let stay = published.stays.get(key);
+        const expected = (options: FactOptions) =>
+          publish<StayExpected>(
+            "stay.expected",
+            key,
+            occurred,
+            [`stay:${stayId}`, `reservation:${reservationId}`, ...(guestId ? [`guest:${guestId}`] : [])],
+            { stay_id: stayId, reservation_id: reservationId, ...guest, planned_arrival_at: plan.arrivalAt, planned_departure_at: plan.departureAt },
+            { businessDate: arrivalDate, ...options },
+          );
+        if (!stay) {
+          // Cloudbeds has no separate expected-arrival moment: a committed reservation's rooms are expected stays.
+          expected(timing(event === "reservation/created"));
+          stay = { ...plan, unitId: null, assignedBefore: false, checkedIn: false, checkedOut: false };
+          published.stays.set(key, stay);
+        } else if (plan.arrivalAt !== stay.arrivalAt || plan.departureAt !== stay.departureAt) {
+          expected(timing(event === "reservation/dates_changed"));
+          Object.assign(stay, plan);
+        }
 
-      const unit = unitId ?? stay.unitId;
-      if ((cloudbeds.status === "checked_in" || cloudbeds.status === "checked_out") && !stay.checkedIn && unit) {
-        publish<StayCheckedIn>("stay.checked_in", cloudbeds.reservationID, occurred, [`stay:${stayId}`, `unit:${unit}`], { stay_id: stayId, unit_id: unit }, timing(statusEvent("checked_in")));
-        stay.checkedIn = true;
+        const roomId = (line as { roomID?: string }).roomID;
+        const unitId = roomId ? resolve("unit", roomId) : null;
+        const accommodation = timing(event === "reservation/accommodation_changed" || event === "reservation/created");
+        if (unitId && unitId !== stay.unitId) {
+          publish<StayUnitAssigned>(
+            "stay.unit_assigned",
+            key,
+            occurred,
+            [`stay:${stayId}`, `unit:${unitId}`],
+            { stay_id: stayId, unit_id: unitId, previous_unit_id: stay.unitId, ...(stay.assignedBefore ? {} : { reason: "initial_assignment" }) },
+            accommodation,
+          );
+          Object.assign(stay, { unitId, assignedBefore: true });
+        } else if (!unitId && stay.unitId) {
+          publish<StayUnitUnassigned>("stay.unit_unassigned", key, occurred, [`stay:${stayId}`, `unit:${stay.unitId}`], { stay_id: stayId, unit_id: stay.unitId }, accommodation);
+          stay.unitId = null;
+        }
+
+        if ((cloudbeds.status === "checked_in" || cloudbeds.status === "checked_out") && !stay.checkedIn && unitId) {
+          publish<StayCheckedIn>("stay.checked_in", key, occurred, [`stay:${stayId}`, `unit:${unitId}`], { stay_id: stayId, unit_id: unitId }, timing(statusEvent("checked_in")));
+          stay.checkedIn = true;
+        }
+        if (cloudbeds.status === "checked_out" && stay.checkedIn && !stay.checkedOut && unitId) {
+          publish<StayCheckedOut>("stay.checked_out", key, occurred, [`stay:${stayId}`, `unit:${unitId}`], { stay_id: stayId, unit_id: unitId }, timing(statusEvent("checked_out")));
+          stay.checkedOut = true;
+        }
       }
-      if (cloudbeds.status === "checked_out" && stay.checkedIn && !stay.checkedOut && unit) {
-        publish<StayCheckedOut>("stay.checked_out", cloudbeds.reservationID, occurred, [`stay:${stayId}`, `unit:${unit}`], { stay_id: stayId, unit_id: unit }, timing(statusEvent("checked_out")));
-        stay.checkedOut = true;
-      }
-      if (events.length === published && !unmapped.length) skip("No change since the last fetch.");
+      if (events.length === before && !unmapped.length) skip("No change since the last fetch.");
     }
 
     function room(roomId: string, cloudbeds: CloudbedsRoomStatus) {

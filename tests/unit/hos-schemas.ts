@@ -17,4 +17,5 @@ export const validateEvent = ajv.getSchema("urn:hos:schema:0.1:events")!;
 export const validateManifest = ajv.getSchema("urn:hos:schema:0.1:producer-manifest")!;
 export const validateSituation = ajv.getSchema("urn:hos:schema:0.1:reference:arrival-readiness")!;
 export const validateUnit = ajv.getSchema("urn:hos:schema:0.1:core#/$defs/Unit")!;
+export const validateProperty = ajv.getSchema("urn:hos:schema:0.1:core#/$defs/Property")!;
 export const errors = (validate: ValidateFunction) => JSON.stringify(validate.errors);

@@ -19,6 +19,7 @@ import type {
   StayCheckedOut,
   StayExpected,
   StayUnitAssigned,
+  StayUnitUnassigned,
   UnitStatusChanged,
   UnitStatusDimension,
 } from "@/lib/hos/types";
@@ -100,7 +101,7 @@ type PublishedStay = {
   departureDate: string;
   guestId?: string;
   unitId: string | null;
-  unassignedInMews: boolean;
+  assignedBefore: boolean;
   checkedIn: boolean;
   checkedOut: boolean;
 };
@@ -162,7 +163,10 @@ export function createMewsAdapter(config: MewsAdapterConfig) {
       const departureAt = utc(mews.ScheduledEndUtc);
       const plan = { arrivalAt, departureAt, arrivalDate: localDate(arrivalAt, timezone), departureDate: localDate(departureAt, timezone) };
       const status = reservationStatuses[mews.State];
-      const expected = (time: string) =>
+      // UpdatedUtc is the reservation's last modification, not the moment of the change it reveals.
+      const modified = { timeBasis: "modified" } as const;
+      const at = (time: string | null | undefined) => (time ? { time, options: {} } : { time: mews.UpdatedUtc, options: modified });
+      const expected = (time: string, options = {}) =>
         publish<StayExpected>(
           "stay.expected",
           mews.Id,
@@ -170,7 +174,7 @@ export function createMewsAdapter(config: MewsAdapterConfig) {
           [`stay:${stayId}`, `reservation:${reservationId}`, ...(guestId ? [`guest:${guestId}`] : [])],
           { stay_id: stayId, reservation_id: reservationId, ...guest, planned_arrival_at: arrivalAt, planned_departure_at: departureAt },
           // The stay belongs to its arrival day, whenever it was announced.
-          { businessDate: plan.arrivalDate },
+          { businessDate: plan.arrivalDate, ...options },
         );
 
       if (!stay) {
@@ -189,18 +193,18 @@ export function createMewsAdapter(config: MewsAdapterConfig) {
         });
         // Mews has no separate expected-arrival moment: a committed accommodation reservation is an expected stay.
         expected(mews.CreatedUtc);
-        stay = { updatedUtc: mews.UpdatedUtc, status, ...plan, guestId, unitId: null, unassignedInMews: false, checkedIn: false, checkedOut: false };
+        stay = { updatedUtc: mews.UpdatedUtc, status, ...plan, guestId, unitId: null, assignedBefore: false, checkedIn: false, checkedOut: false };
         stays.set(mews.Id, stay);
       } else if (mews.State === "Canceled") {
         stay.updatedUtc = mews.UpdatedUtc;
         if (stay.status === "cancelled" || stay.status === "no_show") return;
-        const cancelledAt = mews.CancelledUtc ?? mews.UpdatedUtc;
+        const cancelled = at(mews.CancelledUtc);
         if (mews.CancellationReason === "NoShow") {
-          publish<ReservationUpdated>("reservation.updated", mews.Id, cancelledAt, [`reservation:${reservationId}`], { reservation_id: reservationId, changed_fields: ["status"], status: "no_show" });
+          publish<ReservationUpdated>("reservation.updated", mews.Id, cancelled.time, [`reservation:${reservationId}`], { reservation_id: reservationId, changed_fields: ["status"], status: "no_show" }, cancelled.options);
           stay.status = "no_show";
         } else {
           const reason = cancellationReasons[mews.CancellationReason ?? ""] ?? "other";
-          publish<ReservationCancelled>("reservation.cancelled", mews.Id, cancelledAt, [`reservation:${reservationId}`], { reservation_id: reservationId, reason });
+          publish<ReservationCancelled>("reservation.cancelled", mews.Id, cancelled.time, [`reservation:${reservationId}`], { reservation_id: reservationId, reason }, cancelled.options);
           stay.status = "cancelled";
         }
         return;
@@ -215,38 +219,40 @@ export function createMewsAdapter(config: MewsAdapterConfig) {
         if (plan.arrivalDate !== stay.arrivalDate) change("planned_arrival_date", plan.arrivalDate);
         if (plan.departureDate !== stay.departureDate) change("planned_departure_date", plan.departureDate);
         if (guestId && guestId !== stay.guestId) change("guest_id", guestId);
-        if (update.changed_fields.length) publish<ReservationUpdated>("reservation.updated", mews.Id, mews.UpdatedUtc, [`reservation:${reservationId}`], update);
-        if (arrivalAt !== stay.arrivalAt || departureAt !== stay.departureAt) expected(mews.UpdatedUtc);
+        if (update.changed_fields.length) publish<ReservationUpdated>("reservation.updated", mews.Id, mews.UpdatedUtc, [`reservation:${reservationId}`], update, modified);
+        if (arrivalAt !== stay.arrivalAt || departureAt !== stay.departureAt) expected(mews.UpdatedUtc, modified);
         Object.assign(stay, { updatedUtc: mews.UpdatedUtc, ...plan, guestId }, status ? { status } : {});
       }
 
-      // Mews stamps the reservation's last update, not the assignment itself: UpdatedUtc is the closest occurrence time.
+      // Mews stamps the reservation's last update, not the assignment itself.
       const unitId = mews.AssignedResourceId ? resolve("unit", mews.AssignedResourceId) : null;
       if (unitId && unitId !== stay.unitId) {
-        publish<StayUnitAssigned>("stay.unit_assigned", mews.Id, mews.UpdatedUtc, [`stay:${stayId}`, `unit:${unitId}`], {
-          stay_id: stayId,
-          unit_id: unitId,
-          previous_unit_id: stay.unitId,
-          ...(stay.unitId ? {} : { reason: "initial_assignment" }),
-        });
-        Object.assign(stay, { unitId, unassignedInMews: false });
-      } else if (!unitId && stay.unitId && !stay.unassignedInMews) {
-        skip("The unit was unassigned in Mews; HOS 0.1 has no event that removes an assignment.");
-        stay.unassignedInMews = true;
+        publish<StayUnitAssigned>(
+          "stay.unit_assigned",
+          mews.Id,
+          mews.UpdatedUtc,
+          [`stay:${stayId}`, `unit:${unitId}`],
+          { stay_id: stayId, unit_id: unitId, previous_unit_id: stay.unitId, ...(stay.assignedBefore ? {} : { reason: "initial_assignment" }) },
+          modified,
+        );
+        Object.assign(stay, { unitId, assignedBefore: true });
+      } else if (!unitId && stay.unitId) {
+        publish<StayUnitUnassigned>("stay.unit_unassigned", mews.Id, mews.UpdatedUtc, [`stay:${stayId}`, `unit:${stay.unitId}`], { stay_id: stayId, unit_id: stay.unitId }, modified);
+        stay.unitId = null;
       }
 
-      const unit = unitId ?? stay.unitId;
       // Returns whether the fact was published, so a check-in without a unit is tried again on the next fetch.
-      const lifecycle = (type: "stay.checked_in" | "stay.checked_out", time: string) => {
-        if (!unit) {
+      const lifecycle = (type: "stay.checked_in" | "stay.checked_out", actual: string | null | undefined) => {
+        if (!unitId) {
           skip(`${type} needs a unit, and none is assigned.`);
           return false;
         }
-        publish<StayCheckedIn | StayCheckedOut>(type, mews.Id, time, [`stay:${stayId}`, `unit:${unit}`], { stay_id: stayId, unit_id: unit });
+        const { time, options } = at(actual);
+        publish<StayCheckedIn | StayCheckedOut>(type, mews.Id, time, [`stay:${stayId}`, `unit:${unitId}`], { stay_id: stayId, unit_id: unitId }, options);
         return true;
       };
-      if ((mews.State === "Started" || mews.State === "Processed") && !stay.checkedIn) stay.checkedIn = lifecycle("stay.checked_in", mews.ActualStartUtc ?? mews.UpdatedUtc);
-      if (mews.State === "Processed" && stay.checkedIn && !stay.checkedOut) stay.checkedOut = lifecycle("stay.checked_out", mews.ActualEndUtc ?? mews.UpdatedUtc);
+      if ((mews.State === "Started" || mews.State === "Processed") && !stay.checkedIn) stay.checkedIn = lifecycle("stay.checked_in", mews.ActualStartUtc);
+      if (mews.State === "Processed" && stay.checkedIn && !stay.checkedOut) stay.checkedOut = lifecycle("stay.checked_out", mews.ActualEndUtc);
     }
 
     function resource(mews: MewsResource) {
@@ -265,13 +271,15 @@ export function createMewsAdapter(config: MewsAdapterConfig) {
       if (statuses[dimension] !== value) changes.push([dimension, value]);
       for (const [changed, current] of changes) {
         // Mews reports neither the previous state nor why it changed: previous is only what this adapter last published.
-        publish<UnitStatusChanged>("unit.status_changed", `${mews.Id}/${changed}`, mews.UpdatedUtc, [`unit:${unitId}`], {
-          unit_id: unitId,
-          dimension: changed,
-          ...(statuses[changed] ? { previous: statuses[changed] } : {}),
-          current,
-          authority_source: config.source,
-        });
+        publish<UnitStatusChanged>(
+          "unit.status_changed",
+          `${mews.Id}/${changed}`,
+          mews.UpdatedUtc,
+          [`unit:${unitId}`],
+          { unit_id: unitId, dimension: changed, ...(statuses[changed] ? { previous: statuses[changed] } : {}), current, authority_source: config.source },
+          // UpdatedUtc is the resource's last modification, not necessarily the moment of this change.
+          { timeBasis: "modified" },
+        );
         statuses[changed] = current;
       }
       units.set(mews.Id, { updatedUtc: mews.UpdatedUtc, statuses });

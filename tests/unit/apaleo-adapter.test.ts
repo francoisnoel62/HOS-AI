@@ -57,20 +57,22 @@ describe("Apaleo adapter", () => {
 
     const inferred = adapter();
     send(inferred, "created", {});
-    expect(send(inferred, "changed", { ...assigned, modified: "2026-07-30T08:30:00+02:00" }, "2026-07-30T07:00:00Z").events).toMatchObject([{ type: "stay.unit_assigned", time: "2026-07-30T06:30:00Z" }]);
+    expect(send(inferred, "changed", { ...assigned, modified: "2026-07-30T08:30:00+02:00" }, "2026-07-30T07:00:00Z").events).toMatchObject([{ type: "stay.unit_assigned", time: "2026-07-30T06:30:00Z", hostimebasis: "modified" }]);
   });
 
-  it("reports the unassignment and the check-in reversal HOS 0.1 cannot express", () => {
+  it("maps an unassignment and a reverted check-in to their own events, at the times Apaleo gives", () => {
     const target = adapter();
     send(target, "unit-assigned", assigned, "2026-07-30T06:06:00Z");
-    const unassigned = send(target, "unit-unassigned", { ...assigned, unit: undefined, modified: "2026-07-30T09:00:00+02:00" }, "2026-07-30T07:00:00Z");
-    expect(unassigned.events).toEqual([]);
-    expect(unassigned.unmapped[0].reason).toMatch(/no event that removes an assignment/);
+    const unassigned = send(target, "unit-unassigned", { ...assigned, unit: undefined, modified: "2026-07-30T09:00:00+02:00" }, "2026-07-30T07:00:00Z").events;
+    expect(unassigned).toEqual([expect.objectContaining({ type: "stay.unit_unassigned", time: "2026-07-30T07:00:00Z", data: { stay_id: "stay_1042", unit_id: "unit_204" } })]);
+    expect(unassigned[0]).not.toHaveProperty("hostimebasis");
 
+    send(target, "unit-assigned", { ...assigned, modified: "2026-07-30T09:30:00+02:00" }, "2026-07-30T07:30:00Z");
     send(target, "checked-in", { ...assigned, status: "InHouse", checkInTime: "2026-07-30T12:35:00+02:00", modified: "2026-07-30T12:35:00+02:00" }, "2026-07-30T10:35:00Z");
-    const reverted = send(target, "check-in-reverted", { ...assigned, status: "Confirmed", modified: "2026-07-30T12:50:00+02:00" }, "2026-07-30T10:50:00Z");
-    expect(reverted.events).toEqual([]);
-    expect(reverted.unmapped[0].reason).toMatch(/no event that reverts a check-in/);
+    const reverted = send(target, "check-in-reverted", { ...assigned, status: "Confirmed", modified: "2026-07-30T12:50:00+02:00" }, "2026-07-30T10:50:00Z").events;
+    expect(reverted).toEqual([expect.objectContaining({ type: "stay.check_in_reverted", time: "2026-07-30T10:50:00Z", data: { stay_id: "stay_1042", unit_id: "unit_204" } })]);
+    const again = send(target, "checked-in", { ...assigned, status: "InHouse", checkInTime: "2026-07-30T13:05:00+02:00", modified: "2026-07-30T13:05:00+02:00" }, "2026-07-30T11:05:00Z").events;
+    expect(again).toMatchObject([{ type: "stay.checked_in", time: "2026-07-30T11:05:00Z" }]);
   });
 
   it("maps cancellations and no-shows at the times Apaleo records", () => {

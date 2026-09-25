@@ -30,23 +30,24 @@ Mews webhooks carry entity ids only. For each id, the integration calls the matc
 
 ## Field mapping
 
-| Mews | HOS Events 0.1 | Notes |
-| :-- | :-- | :-- |
-| Reservation first seen `Optional` / `Confirmed` | `reservation.created` + `stay.expected` | `time` = `CreatedUtc`. `Optional` → `tentative`; `Confirmed`, `Started`, `Processed` → `confirmed`. Planned dates are the local dates of `ScheduledStartUtc` / `ScheduledEndUtc`. |
-| `Number`, `Id` | `external_refs` | `confirmation_number` and `reservation_id`, `verified`, issued by the PMS producer. |
-| `AccountId` (`AccountType` `Customer`) | `guest_id` | Pseudonymous, through the crosswalk. Company-owned reservations have no `guest_id`. |
-| `Inquired`, `Requested` | — | Not a commitment yet; published once `Optional` or `Confirmed`. |
-| State, schedule or owner changed | `reservation.updated` | Only the changed fields, at `UpdatedUtc`. `stay.expected` is published again when `ScheduledStartUtc` or `ScheduledEndUtc` moves. |
-| `AssignedResourceId` changed | `stay.unit_assigned` | `time` = `UpdatedUtc`. `previous_unit_id` is the unit already published. `reason` is `initial_assignment` for the first unit; otherwise it is not known. |
-| `State` `Started` | `stay.checked_in` | `time` = `ActualStartUtc`. |
-| `State` `Processed` | `stay.checked_out` | `time` = `ActualEndUtc`. A missed check-in is published first. |
-| `State` `Canceled`, reason `NoShow` | `reservation.updated` | `status` = `no_show`, at `CancelledUtc`. |
-| `State` `Canceled`, other reasons | `reservation.cancelled` | `RequestedByGuest`, `RequestedByBooker`, `BookedElsewhere`, `PriceTooHigh`, `BookingAbandoned` → `guest_request`; `ServiceNotAvailable` → `property_request`; `InvalidPayment` → `payment_issue`; others → `other`. |
-| Resource `Dirty` / `Clean` / `Inspected` | `unit.status_changed`, `housekeeping` | `time` = `UpdatedUtc`. `previous` only when the adapter published it. No `reason`. |
-| Resource `OutOfService` / `OutOfOrder` | `unit.status_changed`, `maintenance` | `out_of_service`. Leaving it publishes `operational`, then the housekeeping state. |
-| `CustomerAdded`, `CustomerUpdated` | — | Profiles are personal data and stay in Mews. |
-| `MessageAdded` | — | An arrival signal has to be extracted from the message; that is not a field mapping. |
-| `PaymentUpdated`, `ResourceBlockUpdated` | — | No HOS 0.1 counterpart in this mapping. |
+| Mews                                            | HOS Events 0.1                          | Notes                                                                                                                                                                                                               |
+| :---------------------------------------------- | :-------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Reservation first seen `Optional` / `Confirmed` | `reservation.created` + `stay.expected` | `time` = `CreatedUtc`. `Optional` → `tentative`; `Confirmed`, `Started`, `Processed` → `confirmed`. Planned dates are the local dates of `ScheduledStartUtc` / `ScheduledEndUtc`.                                   |
+| `Number`, `Id`                                  | `external_refs`                         | `confirmation_number` and `reservation_id`, `verified`, issued by the PMS producer.                                                                                                                                 |
+| `AccountId` (`AccountType` `Customer`)          | `guest_id`                              | Pseudonymous, through the crosswalk. Company-owned reservations have no `guest_id`.                                                                                                                                 |
+| `Inquired`, `Requested`                         | —                                       | Not a commitment yet; published once `Optional` or `Confirmed`.                                                                                                                                                     |
+| State, schedule or owner changed                | `reservation.updated`                   | Only the changed fields, at `UpdatedUtc`. `stay.expected` is published again when `ScheduledStartUtc` or `ScheduledEndUtc` moves.                                                                                   |
+| `AssignedResourceId` set or changed             | `stay.unit_assigned`                    | `time` = `UpdatedUtc`, `hostimebasis` = `modified`. `previous_unit_id` is the unit already published. `reason` is `initial_assignment` for the first unit; otherwise it is not known.                               |
+| `AssignedResourceId` removed                    | `stay.unit_unassigned`                  | The released unit, at `UpdatedUtc`, `hostimebasis` = `modified`.                                                                                                                                                    |
+| `State` `Started`                               | `stay.checked_in`                       | `time` = `ActualStartUtc`.                                                                                                                                                                                          |
+| `State` `Processed`                             | `stay.checked_out`                      | `time` = `ActualEndUtc`. A missed check-in is published first.                                                                                                                                                      |
+| `State` `Canceled`, reason `NoShow`             | `reservation.updated`                   | `status` = `no_show`, at `CancelledUtc`.                                                                                                                                                                            |
+| `State` `Canceled`, other reasons               | `reservation.cancelled`                 | `RequestedByGuest`, `RequestedByBooker`, `BookedElsewhere`, `PriceTooHigh`, `BookingAbandoned` → `guest_request`; `ServiceNotAvailable` → `property_request`; `InvalidPayment` → `payment_issue`; others → `other`. |
+| Resource `Dirty` / `Clean` / `Inspected`        | `unit.status_changed`, `housekeeping`   | `time` = `UpdatedUtc`, `hostimebasis` = `modified`. `previous` only when the adapter published it. No `reason`.                                                                                                     |
+| Resource `OutOfService` / `OutOfOrder`          | `unit.status_changed`, `maintenance`    | `out_of_service`. Leaving it publishes `operational`, then the housekeeping state.                                                                                                                                  |
+| `CustomerAdded`, `CustomerUpdated`              | —                                       | Profiles are personal data and stay in Mews.                                                                                                                                                                        |
+| `MessageAdded`                                  | —                                       | An arrival signal has to be extracted from the message; that is not a field mapping.                                                                                                                                |
+| `PaymentUpdated`, `ResourceBlockUpdated`        | —                                       | No HOS 0.1 counterpart in this mapping.                                                                                                                                                                             |
 
 Only accommodation services listed in the configuration become stays. Only active, top-level `Space` resources become units.
 
@@ -57,17 +58,18 @@ The Mews replay has 12 facts instead of 13:
 - **Delivery 7 is not reproduced.** Mews General Webhooks have no task event, and a Mews task points to a service order, not a resource.
 - **Delivery 1:** `external_refs` carry the Mews confirmation number and reservation id.
 - **Delivery 2:** `stay.expected` is published with the reservation, at `CreatedUtc`, not on the arrival morning.
-- **Delivery 9:** there is no `previous`, `reason` or causation. Mews reports none of them, and the adapter had not seen the room before.
+- **Delivery 3:** `hostimebasis` is `modified`: Mews dates the assignment only by the reservation's last update.
+- **Delivery 9:** `hostimebasis` is `modified`, and there is no `previous`, `reason` or causation. Mews reports none of them, and the adapter had not seen the room before.
 
 The dispositions, readiness and situations are the same as in the scenario's `expected.json`.
 
 ## What the mapping taught us about HOS 0.1
 
 1. **Webhooks say what changed, not how.** Because Mews sends ids only, the adapter's memory of what it published is part of the integration and must be persisted.
-2. **A stay has no expected moment in Mews.** HOS Events could say when `stay.expected` is due.
-3. **HOS 0.1 cannot remove an assignment.** `stay.unit_assigned` requires a unit, and Mews can unassign one. HOS needs a nullable `unit_id` or an unassignment event.
+2. **A stay has no expected moment in Mews.** HOS Events now says when `stay.expected` is due: as soon as the stay is committed, with the arrival day as its business date.
+3. **Removing an assignment needed an event.** `stay.unit_assigned` requires a unit, and Mews can unassign one. HOS 0.1 now has `stay.unit_unassigned`.
 4. **One Mews state, four HOS dimensions.** `OutOfOrder` replaces the housekeeping state in Mews. HOS keeps both, but the source stops reporting one.
-5. **Occurrence times are approximate.** Assignments and room states only carry the entity's last update, `UpdatedUtc`. That is an upper bound when several changes arrive in one fetch.
+5. **Occurrence times are approximate.** Assignments and room states only carry the entity's last update, `UpdatedUtc`. That is an upper bound when several changes arrive in one fetch. HOS 0.1 now says so with `hostimebasis` `modified`.
 6. **Provenance stops at the PMS.** Mews does not say who changed a room state, why, or what caused it. The manifest's authority rule is what keeps a mirrored status from overriding the housekeeping system.
 7. **Tasks are out of reach.** This integration publishes no housekeeping tasks.
 

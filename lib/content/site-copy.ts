@@ -102,7 +102,7 @@ export const documentationItems: Array<{
   },
   {
     title: "HOS Events 0.1",
-    description: "Eleven CloudEvents-compatible event types in five families, the envelope profile, snapshots, and delivery, ordering and replay rules.",
+    description: "Thirteen CloudEvents-compatible event types in five families, the envelope profile with time bases and actors, snapshots, and delivery, ordering and replay rules.",
     status: "Draft",
     href: "/docs/events",
   },

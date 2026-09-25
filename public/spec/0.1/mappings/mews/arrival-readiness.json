@@ -23,9 +23,7 @@
         "enterpriseId": "8e5cf371-2031-4e68-a24b-04923fd67bf6",
         "propertyId": "prop_demo",
         "timezone": "Europe/Paris",
-        "accommodationServiceIds": [
-          "e7be0201-0b45-4cae-b26b-99a7d994d1af"
-        ]
+        "accommodationServiceIds": ["e7be0201-0b45-4cae-b26b-99a7d994d1af"]
       }
     ],
     "crosswalk": {
@@ -47,10 +45,7 @@
   "deliveries": [
     {
       "delivery": "A",
-      "reproduces": [
-        1,
-        2
-      ],
+      "reproduces": [1, 2],
       "received_at": "2026-07-12T14:03:01Z",
       "note": "The booking engine creates the reservation. Mews sends ids only, so the integration fetches the reservation. The customer events are not mapped: HOS carries a pseudonymous guest_id, never the profile. Mews has no separate expected-arrival moment, so the stay is published with the reservation.",
       "webhook": {
@@ -81,12 +76,8 @@
         {
           "operation": "reservations/getAll/2023-06-06",
           "request": {
-            "EnterpriseIds": [
-              "8e5cf371-2031-4e68-a24b-04923fd67bf6"
-            ],
-            "ReservationIds": [
-              "3c123e14-464c-4e4e-a3db-8d4168b6c2da"
-            ],
+            "EnterpriseIds": ["8e5cf371-2031-4e68-a24b-04923fd67bf6"],
+            "ReservationIds": ["3c123e14-464c-4e4e-a3db-8d4168b6c2da"],
             "Limitation": {
               "Count": 100
             }
@@ -153,9 +144,7 @@
     },
     {
       "delivery": "B",
-      "reproduces": [
-        3
-      ],
+      "reproduces": [3],
       "received_at": "2026-07-30T06:06:01Z",
       "note": "The front desk assigns room 204 in Mews. AssignedResourceId differs from what the adapter published, so it emits stay.unit_assigned. Mews stamps the reservation's last update, not the assignment itself.",
       "webhook": {
@@ -174,12 +163,8 @@
         {
           "operation": "reservations/getAll/2023-06-06",
           "request": {
-            "EnterpriseIds": [
-              "8e5cf371-2031-4e68-a24b-04923fd67bf6"
-            ],
-            "ReservationIds": [
-              "3c123e14-464c-4e4e-a3db-8d4168b6c2da"
-            ],
+            "EnterpriseIds": ["8e5cf371-2031-4e68-a24b-04923fd67bf6"],
+            "ReservationIds": ["3c123e14-464c-4e4e-a3db-8d4168b6c2da"],
             "Limitation": {
               "Count": 100
             }
@@ -246,9 +231,7 @@
     },
     {
       "delivery": "C",
-      "reproduces": [
-        9
-      ],
+      "reproduces": [9],
       "received_at": "2026-07-30T08:21:03Z",
       "note": "Room 204 turns Clean in Mews once the cleaning task closes. Mews says neither why nor what it was before, and the adapter had not seen the room yet. The manifest names the housekeeping system as the authority, so HOS records the disagreement instead of trusting the PMS.",
       "webhook": {
@@ -267,12 +250,8 @@
         {
           "operation": "resources/getAll",
           "request": {
-            "EnterpriseIds": [
-              "8e5cf371-2031-4e68-a24b-04923fd67bf6"
-            ],
-            "ResourceIds": [
-              "9f9b3c0b-f7a1-4e79-80e8-95c50afb409a"
-            ],
+            "EnterpriseIds": ["8e5cf371-2031-4e68-a24b-04923fd67bf6"],
+            "ResourceIds": ["9f9b3c0b-f7a1-4e79-80e8-95c50afb409a"],
             "Extent": {
               "Resources": true,
               "Inactive": false
@@ -317,9 +296,7 @@
     },
     {
       "delivery": "D",
-      "reproduces": [
-        13
-      ],
+      "reproduces": [13],
       "received_at": "2026-07-30T10:35:01Z",
       "note": "The guest checks in. The reservation State becomes Started and ActualStartUtc, the actual arrival, becomes the time of stay.checked_in.",
       "webhook": {
@@ -338,12 +315,8 @@
         {
           "operation": "reservations/getAll/2023-06-06",
           "request": {
-            "EnterpriseIds": [
-              "8e5cf371-2031-4e68-a24b-04923fd67bf6"
-            ],
-            "ReservationIds": [
-              "3c123e14-464c-4e4e-a3db-8d4168b6c2da"
-            ],
+            "EnterpriseIds": ["8e5cf371-2031-4e68-a24b-04923fd67bf6"],
+            "ReservationIds": ["3c123e14-464c-4e4e-a3db-8d4168b6c2da"],
             "Limitation": {
               "Count": 100
             }
@@ -427,6 +400,11 @@
       "reason": "Published with the reservation, at CreatedUtc. hosbusinessdate is still the arrival day."
     },
     {
+      "delivery": 3,
+      "field": "hostimebasis",
+      "reason": "modified: Mews dates the assignment only by the reservation's last update."
+    },
+    {
       "delivery": 9,
       "field": "data.previous",
       "reason": "Mews does not report the previous state, and the adapter had not seen the room before."
@@ -445,6 +423,11 @@
       "delivery": 9,
       "field": "hoscausationid",
       "reason": "Mews does not link the state change to the task that caused it."
+    },
+    {
+      "delivery": 9,
+      "field": "hostimebasis",
+      "reason": "modified: Mews dates the state change only by the resource's last update."
     }
   ],
   "additions": []

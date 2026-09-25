@@ -4,6 +4,8 @@
   "timezone": "Europe/Paris",
   "country": "FR",
   "business_date_policy": { "rollover_local_time": "04:00" },
+  "standard_check_in_time": "15:00",
+  "standard_check_out_time": "11:00",
   "external_refs": [
     {
       "source_system": "urn:hos:pms:demo",

@@ -8,7 +8,7 @@ Status: draft for review. Names and fields may change before 0.1 is final. The s
 
 - `schemas/core.schema.json` — HOS Core 0.1 definitions: identifiers, external references, extensions, sensitivity classes, the four-dimension Unit status model and the eight Core entities.
 - `schemas/event-envelope.schema.json` — HOS Events 0.1 envelope profile: CloudEvents 1.0 structured JSON with HOS extension attributes.
-- `schemas/events.schema.json` — HOS Events 0.1 catalogue: eleven event types in five families, including snapshot mode for `unit.status_changed`.
+- `schemas/events.schema.json` — HOS Events 0.1 catalogue: thirteen event types in five families, including snapshot mode for `unit.status_changed`.
 - `schemas/producer-manifest.schema.json` — Event Producer manifests. Signing is still in progress.
 - `schemas/reference/arrival-readiness.schema.json` — non-normative reference situations produced by the arrival-readiness projection.
 - `examples/` — one valid event per type, plus Core entity examples in `examples/entities/`.

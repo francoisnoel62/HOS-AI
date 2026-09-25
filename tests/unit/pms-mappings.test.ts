@@ -133,6 +133,11 @@ describe.each(pmsMappings)("%s mapping of the arrival scenario", (pms) => {
     const ids = new Map(mapped.filter((fact) => fact.corpusDelivery !== null).map((fact) => [corpus[fact.corpusDelivery! - 1].id, fact.event.id]));
     const skipped = new Set(recording.not_reproduced.map((item) => item.delivery));
     const published = JSON.parse(JSON.stringify(loadExpectedOutcome()), (_key, value) => (typeof value === "string" && ids.has(value) ? ids.get(value) : value)) as ReturnType<typeof loadExpectedOutcome>;
+    // Evidence follows occurrence order, and facts that tie on time and source follow their ids: with the adapter's
+    // times and ids, the order is recomputed by the same rule.
+    const times = new Map(stream.map(({ event }) => [`${event.source} ${event.id}`, Date.parse(event.time)]));
+    const compare = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
+    for (const { event } of published.situations) event.data.evidence.sort((a, b) => times.get(`${a.source} ${a.id}`)! - times.get(`${b.source} ${b.id}`)! || compare(a.source, b.source) || compare(a.id, b.id));
 
     expect(actual.deliveries.map((item) => ({ ...item, delivery: corpusDelivery(item.delivery) }))).toEqual(published.deliveries.filter((item) => !skipped.has(item.delivery)));
     expect(actual.situations.map((item) => ({ ...item, delivery: corpusDelivery(item.delivery) }))).toEqual(published.situations);

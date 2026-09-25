@@ -9,7 +9,19 @@ import {
   type Unmapped,
   utc,
 } from "@/lib/hos/mappings/common";
-import type { ReservationCancelled, ReservationCreated, ReservationUpdated, StayCheckedIn, StayCheckedOut, StayExpected, StayUnitAssigned, UnitStatusChanged, UnitStatusDimension } from "@/lib/hos/types";
+import type {
+  ReservationCancelled,
+  ReservationCreated,
+  ReservationUpdated,
+  StayCheckedIn,
+  StayCheckedOut,
+  StayCheckInReverted,
+  StayExpected,
+  StayUnitAssigned,
+  StayUnitUnassigned,
+  UnitStatusChanged,
+  UnitStatusDimension,
+} from "@/lib/hos/types";
 
 // Experimental, unofficial mapping from the Apaleo API to HOS Events 0.1, written against Apaleo's published webhook
 // events and its Booking and Inventory API models. It is not affiliated with, reviewed or endorsed by Apaleo. A webhook
@@ -87,6 +99,7 @@ type PublishedStay = {
   arrivalDate: string;
   departureDate: string;
   unitId: string | null;
+  assignedBefore: boolean;
   checkedIn: boolean;
   checkedOut: boolean;
   closed: boolean;
@@ -152,7 +165,7 @@ export function createApaleoAdapter(config: ApaleoAdapterConfig) {
         });
         // Apaleo has no separate expected-arrival moment: a confirmed bedroom reservation is an expected stay.
         expected(apaleo.created);
-        stay = { modified: apaleo.modified, ...plan, unitId: null, checkedIn: false, checkedOut: false, closed: false };
+        stay = { modified: apaleo.modified, ...plan, unitId: null, assignedBefore: false, checkedIn: false, checkedOut: false, closed: false };
         stays.set(apaleo.id, stay);
       } else {
         const update: ReservationUpdated["data"] = { reservation_id: reservationId, changed_fields: [] };
@@ -172,28 +185,36 @@ export function createApaleoAdapter(config: ApaleoAdapterConfig) {
         stay.closed = true;
       }
 
+      // The event that names a change says when it happened; any other event only shows it by the last modification.
+      const when = (type: string) => (webhook.type === type ? { time: occurred, options: {} } : { time: apaleo.modified, options: { timeBasis: "modified" as const } });
       const unitId = apaleo.unit ? resolve("unit", apaleo.unit.id) : null;
       if (unitId && unitId !== stay.unitId) {
-        // The unit-assigned event says when; any other event only says the unit was assigned by the last modification.
-        publish<StayUnitAssigned>("stay.unit_assigned", apaleo.id, webhook.type === "unit-assigned" ? occurred : apaleo.modified, [`stay:${stayId}`, `unit:${unitId}`], {
-          stay_id: stayId,
-          unit_id: unitId,
-          previous_unit_id: stay.unitId,
-          ...(stay.unitId ? {} : { reason: "initial_assignment" }),
-        });
-        stay.unitId = unitId;
-      } else if (webhook.type === "unit-unassigned") {
-        skip("HOS 0.1 has no event that removes an assignment.");
+        const { time, options } = when("unit-assigned");
+        publish<StayUnitAssigned>(
+          "stay.unit_assigned",
+          apaleo.id,
+          time,
+          [`stay:${stayId}`, `unit:${unitId}`],
+          { stay_id: stayId, unit_id: unitId, previous_unit_id: stay.unitId, ...(stay.assignedBefore ? {} : { reason: "initial_assignment" }) },
+          options,
+        );
+        Object.assign(stay, { unitId, assignedBefore: true });
+      } else if (!unitId && stay.unitId) {
+        const { time, options } = when("unit-unassigned");
+        publish<StayUnitUnassigned>("stay.unit_unassigned", apaleo.id, time, [`stay:${stayId}`, `unit:${stay.unitId}`], { stay_id: stayId, unit_id: stay.unitId }, options);
+        stay.unitId = null;
       }
 
-      if (webhook.type === "check-in-reverted") skip("HOS 0.1 has no event that reverts a check-in.");
-      const unit = unitId ?? stay.unitId;
-      if ((apaleo.status === "InHouse" || apaleo.status === "CheckedOut") && !stay.checkedIn && unit) {
-        publish<StayCheckedIn>("stay.checked_in", apaleo.id, apaleo.checkInTime ?? occurred, [`stay:${stayId}`, `unit:${unit}`], { stay_id: stayId, unit_id: unit });
+      if ((apaleo.status === "InHouse" || apaleo.status === "CheckedOut") && !stay.checkedIn && unitId) {
+        publish<StayCheckedIn>("stay.checked_in", apaleo.id, apaleo.checkInTime ?? occurred, [`stay:${stayId}`, `unit:${unitId}`], { stay_id: stayId, unit_id: unitId });
         stay.checkedIn = true;
+      } else if (apaleo.status === "Confirmed" && stay.checkedIn) {
+        const { time, options } = when("check-in-reverted");
+        publish<StayCheckInReverted>("stay.check_in_reverted", apaleo.id, time, [`stay:${stayId}`, ...(unitId ? [`unit:${unitId}`] : [])], { stay_id: stayId, ...(unitId ? { unit_id: unitId } : {}) }, options);
+        stay.checkedIn = false;
       }
-      if (apaleo.status === "CheckedOut" && stay.checkedIn && !stay.checkedOut && unit) {
-        publish<StayCheckedOut>("stay.checked_out", apaleo.id, apaleo.checkOutTime ?? occurred, [`stay:${stayId}`, `unit:${unit}`], { stay_id: stayId, unit_id: unit });
+      if (apaleo.status === "CheckedOut" && stay.checkedIn && !stay.checkedOut && unitId) {
+        publish<StayCheckedOut>("stay.checked_out", apaleo.id, apaleo.checkOutTime ?? occurred, [`stay:${stayId}`, `unit:${unitId}`], { stay_id: stayId, unit_id: unitId });
         stay.checkedOut = true;
       }
     }

@@ -5,7 +5,7 @@ import { type CloudbedsAdapterConfig, type CloudbedsReservation, type CloudbedsR
 import { createIdentityRegistry } from "@/lib/hos/mappings/common";
 import { loadRecording } from "@/lib/hos/mappings/replay";
 import { replayArrivalReadiness } from "@/lib/hos/projection";
-import type { HosFact } from "@/lib/hos/types";
+import type { HosFact, StayExpected } from "@/lib/hos/types";
 
 import { errors, validateEvent } from "./hos-schemas";
 
@@ -59,18 +59,19 @@ describe("Cloudbeds adapter", () => {
     expect(fact.time).toBe("2026-07-12T14:03:00.817Z");
   });
 
-  it("dates what an event reports, and marks the rest as recorded when the adapter learns it", () => {
+  it("dates what an event reports and names its actor, and marks the rest as recorded when the adapter learns it", () => {
     const late = send(adapter(), statusChanged("checked_in"), { ...assigned, status: "checked_in" }, "2026-07-30T10:35:00Z");
-    expect(late.events.map((event) => [event.type, event.hostimebasis ?? "occurred"])).toEqual([
-      ["reservation.created", "recorded"],
-      ["stay.expected", "recorded"],
-      ["stay.unit_assigned", "recorded"],
-      ["stay.checked_in", "occurred"],
+    expect(late.events.map((event) => [event.type, event.hostimebasis ?? "occurred", event.hosactor ?? null])).toEqual([
+      ["reservation.created", "recorded", null],
+      ["stay.expected", "recorded", null],
+      ["stay.unit_assigned", "recorded", null],
+      ["stay.checked_in", "occurred", "user:staff_r7"],
     ]);
   });
 
   it("turns arrival and departure days into instants with the property's check-in and check-out times", () => {
-    const [, winter] = send(adapter(), {}, { startDate: "2026-12-20", endDate: "2026-12-22" }, "2026-11-02T10:00:00Z").events;
+    const unassigned = reservation.unassigned!.map((line) => ({ ...line, startDate: "2026-12-20", endDate: "2026-12-22" }));
+    const [, winter] = send(adapter(), {}, { startDate: "2026-12-20", endDate: "2026-12-22", unassigned }, "2026-11-02T10:00:00Z").events;
     expect(winter.data).toMatchObject({ planned_arrival_at: "2026-12-20T14:00:00Z", planned_departure_at: "2026-12-22T10:00:00Z" });
   });
 
@@ -86,20 +87,26 @@ describe("Cloudbeds adapter", () => {
     expect(send(noShow, statusChanged("no_show"), { status: "no_show" }, "2026-07-31T02:00:00Z").events).toMatchObject([{ type: "reservation.updated", data: { status: "no_show" } }]);
   });
 
-  it("keeps the assignment history and reports the unassignment HOS 0.1 cannot express", () => {
+  it("keeps the assignment history, releases included", () => {
     const target = adapter();
     created(target);
     const moved = { ...assigned.assigned![0], roomID: "418204-15", roomName: "207" };
     send(target, { event: "reservation/accommodation_changed" }, assigned, "2026-07-30T06:06:00Z");
     expect(send(target, { event: "reservation/accommodation_changed" }, { ...assigned, assigned: [moved] }, "2026-07-30T07:00:00Z").events).toMatchObject([{ type: "stay.unit_assigned", data: { previous_unit_id: "unit_204" } }]);
-    const unassigned = send(target, { event: "reservation/accommodation_changed" }, reservation, "2026-07-30T07:30:00Z");
-    expect(unassigned.unmapped[0].reason).toMatch(/no event that removes an assignment/);
+    const released = send(target, { event: "reservation/accommodation_changed" }, reservation, "2026-07-30T07:30:00Z").events;
+    expect(released).toEqual([expect.objectContaining({ type: "stay.unit_unassigned", time: "2026-07-30T07:30:00Z", data: { stay_id: "stay_1042", unit_id: expect.stringMatching(/^unit_/) } })]);
+    expect(released[0]).not.toHaveProperty("hostimebasis");
   });
 
-  it("reports a reservation with several rooms instead of guessing its stays", () => {
-    const result = send(adapter(), {}, { unassigned: [...reservation.unassigned!, { roomTypeID: "501233", subReservationID: "5830021042-2" }] }, "2026-07-12T14:03:00Z");
-    expect(result.events).toEqual([]);
-    expect(result.unmapped[0].reason).toMatch(/several rooms/);
+  it("gives each room of a reservation its own stay", () => {
+    const second = { roomTypeID: "501233", subReservationID: "5830021042-2", startDate: "2026-07-31", endDate: "2026-08-01" };
+    const result = send(adapter(), {}, { unassigned: [...reservation.unassigned!, second] }, "2026-07-12T14:03:00Z").events;
+    expect(result.map((event) => event.type)).toEqual(["reservation.created", "stay.expected", "stay.expected"]);
+    const [, first, other] = result as StayExpected[];
+    expect(first.data).toMatchObject({ stay_id: "stay_1042", reservation_id: "res_1042", planned_arrival_at: "2026-07-30T13:00:00Z" });
+    expect(other.data).toMatchObject({ reservation_id: "res_1042", planned_arrival_at: "2026-07-31T13:00:00Z" });
+    expect(other.data.stay_id).not.toBe("stay_1042");
+    expect(other.hosbusinessdate).toBe("2026-07-31");
   });
 
   it("maps a blocked room to not sellable, and accepts either spelling of the ids", () => {

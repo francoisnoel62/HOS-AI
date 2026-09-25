@@ -86,17 +86,19 @@ describe("Mews adapter", () => {
     ]);
   });
 
-  it("keeps the assignment history and reports the unassignment HOS 0.1 cannot express", () => {
+  it("keeps the assignment history, releases included, dated by the reservation's last update", () => {
     const target = adapter();
     sync(target, {});
-    expect(sync(target, assigned).events).toMatchObject([{ type: "stay.unit_assigned", data: { unit_id: "unit_204", previous_unit_id: null, reason: "initial_assignment" } }]);
+    expect(sync(target, assigned).events).toMatchObject([{ type: "stay.unit_assigned", hostimebasis: "modified", data: { unit_id: "unit_204", previous_unit_id: null, reason: "initial_assignment" } }]);
     const moved = sync(target, { AssignedResourceId: "0b3f6a3e-8f1d-4c2a-9a57-3c1d2e4f5a6b", UpdatedUtc: "2026-07-30T07:00:00Z" }).events;
     expect(moved).toMatchObject([{ type: "stay.unit_assigned", data: { previous_unit_id: "unit_204" } }]);
     expect(moved[0].data).not.toHaveProperty("reason");
     expect((moved[0].data as { unit_id: string }).unit_id).toMatch(/^unit_[0-9a-f]{16}$/);
-    const unassigned = sync(target, { AssignedResourceId: null, UpdatedUtc: "2026-07-30T07:30:00Z" });
-    expect(unassigned.events).toEqual([]);
-    expect(unassigned.unmapped[0].reason).toMatch(/no event that removes an assignment/);
+    const released = sync(target, { AssignedResourceId: null, UpdatedUtc: "2026-07-30T07:30:00Z" }).events;
+    expect(released).toMatchObject([{ type: "stay.unit_unassigned", time: "2026-07-30T07:30:00Z", hostimebasis: "modified", data: { unit_id: (moved[0].data as { unit_id: string }).unit_id } }]);
+    const reassigned = sync(target, { AssignedResourceId: room.Id, UpdatedUtc: "2026-07-30T08:00:00Z" }).events;
+    expect(reassigned).toMatchObject([{ type: "stay.unit_assigned", data: { unit_id: "unit_204", previous_unit_id: null } }]);
+    expect(reassigned[0].data).not.toHaveProperty("reason");
   });
 
   it("publishes a missed check-in before the check-out", () => {
