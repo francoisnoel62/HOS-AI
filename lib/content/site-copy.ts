@@ -96,13 +96,13 @@ export const documentationItems: Array<{
 }> = [
   {
     title: "HOS Core 0.1",
-    description: "Tenant, Property, Unit, Reservation, Stay, Task, Guest and Message; opaque identifiers, external references and the four-dimension Unit status model.",
+    description: "Tenant, Property, Unit, Maintenance window, Reservation, Stay, Task, Guest and Message; opaque identifiers, external references and the four-dimension Unit status model.",
     status: "Draft",
     href: "/docs/core",
   },
   {
     title: "HOS Events 0.1",
-    description: "Eleven CloudEvents-compatible event types in five families, the envelope profile, snapshots, and delivery, ordering and replay rules.",
+    description: "Fifteen CloudEvents-compatible event types in five families, the envelope profile with time bases and actors, snapshots, and delivery, ordering and replay rules.",
     status: "Draft",
     href: "/docs/events",
   },
@@ -113,14 +113,38 @@ export const documentationItems: Array<{
     href: "/docs/events#producers",
   },
   {
-    title: "Arrival conformance scenario",
-    description: "Thirteen synthetic deliveries covering the nominal case, a duplicate, an out-of-order event, conflicting facts, snapshot recovery and a missing capability.",
+    title: "Arrival conformance scenarios",
+    description: "Three synthetic scenarios, 42 deliveries: an early arrival to a room not yet released, an assigned room out of order, and a late check-out on a same-day turnover. They cover duplicates, out-of-order and late deliveries, conflicting and mirrored facts, snapshot recovery and a missing capability.",
     status: "Draft",
     href: "/demo",
   },
   {
-    title: "Mapping status",
-    description: "Experimental, partner-backed and certified are used only when the evidence exists.",
+    title: "HOS, HTNG and OpenTravel",
+    description: "What OpenTravel, HTNG and HOS each answer, the six answers HOS writes into the contract, how the three fit together, and where HOS is still behind. Sourced from the public specifications.",
+    status: "Draft",
+    href: "/standard/htng-opentravel",
+  },
+  {
+    title: "Mews mapping",
+    description: "Mews Connector API webhooks and fetched reservations and resources, mapped to HOS Events 0.1 by an unofficial adapter. It replays the arrival scenario to the same expected outcome.",
+    status: "Experimental",
+    href: "/demo/mews",
+  },
+  {
+    title: "Apaleo mapping",
+    description: "Apaleo webhooks and fetched reservations and units, mapped to HOS Events 0.1 by an unofficial adapter. It replays the arrival scenario to the same expected outcome.",
+    status: "Experimental",
+    href: "/demo/apaleo",
+  },
+  {
+    title: "Cloudbeds mapping",
+    description: "Cloudbeds API v1.3 webhooks and fetched reservations and housekeeping status, mapped to HOS Events 0.1 by an unofficial adapter. It replays the arrival scenario to the same expected outcome; two webhook payloads are reconstructed.",
+    status: "Experimental",
+    href: "/demo/cloudbeds",
+  },
+  {
+    title: "Partner-backed and certified mappings",
+    description: "Partner-backed and certified are used only when the evidence exists. No mapping has reached either status.",
     status: "Planned",
   },
 ];

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { ArrowRight } from "lucide-react";
 import Link from "next/link";
 
 import { CodePanel } from "@/components/content/code-panel";
@@ -26,6 +27,20 @@ export default function StandardPage() {
           ].map(([title, text]) => <Card className="p-6" key={title}><h2 className="text-xl font-semibold tracking-[-0.04em]">{title}</h2><p className="mt-3 text-sm leading-6 text-[var(--muted-foreground)]">{text}</p></Card>)}
         </div>
       </SectionFrame>
+      <section className="mx-auto max-w-6xl px-5 lg:px-8">
+        <Link className="group block" href="/standard/htng-opentravel">
+          <Card className="flex flex-col gap-4 border-[var(--accent)] bg-[var(--accent-soft)] p-6 transition-colors sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="eyebrow">HOS, HTNG and OpenTravel</p>
+              <p className="mt-2 max-w-2xl text-xl font-semibold tracking-[-0.03em]">They carry the messages. HOS makes the facts trustworthy.</p>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--muted-foreground)]">What each standard answers, where HOS adds to them, and where it is still behind.</p>
+            </div>
+            <span className="inline-flex shrink-0 items-center gap-1 text-sm text-[var(--accent-strong)] group-hover:underline">
+              Read the comparison <ArrowRight aria-hidden="true" size={15} />
+            </span>
+          </Card>
+        </Link>
+      </section>
       <SectionFrame eyebrow="How it works" title="A small Core, events with provenance, declared capabilities and a path to trust.">
         <div className="grid gap-4 lg:grid-cols-[0.8fr_1.2fr]">
           <div className="space-y-3">

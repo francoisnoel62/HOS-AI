@@ -18,6 +18,7 @@ export function SiteFooter() {
           <p className="font-mono text-xs uppercase tracking-[0.12em] text-[var(--muted-foreground)]">Project</p>
           <div className="mt-3 flex flex-col gap-2 text-sm">
             <Link href="/manifesto">Manifesto</Link>
+            <Link href="/standard/htng-opentravel">HOS, HTNG and OpenTravel</Link>
             <Link href="/governance">Governance</Link>
             <Link href="/participate">Participate</Link>
             <Link href="/contact">Contact</Link>

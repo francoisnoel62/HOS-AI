@@ -1,0 +1,108 @@
+{
+  "scenario": "late-checkout",
+  "hosschemaversion": "0.1",
+  "status": "draft",
+  "title": "Late check-out on a same-day turnover",
+  "summary": "Synthetic facts from a PMS and a housekeeping system for one property. A late check-out is granted in a unit already assigned to an arrival the same day. Replay events.jsonl in file order through an implementation and compare its dispositions, readiness and situations with expected.json. The situations are non-normative; the dispositions follow the HOS Events 0.1 processing rules.",
+  "covers": [
+    "A unit held by another guest in house is not ready",
+    "Late check-out overlapping a same-day arrival",
+    "Occupancy observed by a non-authoritative producer",
+    "Latest plan wins: an older stay plan replayed late is superseded",
+    "Delivery order differs from occurrence order",
+    "Check-out resolves the risk"
+  ],
+  "tenant": {
+    "id": "tenant_demo"
+  },
+  "property": {
+    "id": "prop_toronto",
+    "timezone": "America/Toronto",
+    "country": "CA"
+  },
+  "projection": {
+    "ready_housekeeping_statuses": ["clean", "inspected"]
+  },
+  "files": {
+    "events": "events.jsonl",
+    "expected": "expected.json",
+    "producers": ["producers/pms.json", "producers/housekeeping.json"]
+  },
+  "deliveries": [
+    {
+      "delivery": 1,
+      "checks": "Departing stay",
+      "note": "Stay stay_3088 was booked on 30 June, from 18 August at 16:00 to 21 August at the standard 11:00 check-out."
+    },
+    {
+      "delivery": 2,
+      "checks": "Departing unit",
+      "note": "The PMS assigned unit 1207 to stay_3088 on 18 August."
+    },
+    {
+      "delivery": 3,
+      "checks": "Guest in house",
+      "note": "The guest of stay_3088 checked in on 18 August at 17:10."
+    },
+    {
+      "delivery": 4,
+      "checks": "Arriving reservation",
+      "note": "The PMS created reservation res_3140 on 3 August for an arrival on 21 August."
+    },
+    {
+      "delivery": 5,
+      "checks": "Arriving stay",
+      "note": "Stay stay_3140 is expected on 21 August at the standard 16:00 check-in."
+    },
+    {
+      "delivery": 6,
+      "checks": "Held unit is not ready",
+      "note": "At 07:30 on 21 August the PMS assigns unit 1207 to the arriving stay: a same-day turnover. The guest of stay_3088 still holds the unit, so it is not ready. That guest is due to leave at 11:00, before the arrival, so there is no situation."
+    },
+    {
+      "delivery": 7,
+      "checks": "Late check-out overlaps",
+      "note": "At 09:15 a front-desk agent grants stay_3088 a late check-out at 17:00. The PMS publishes the stay's new planned times. The guest in house is now due to leave after the 16:00 check-in: the reference projection raises arrival.room_readiness_at_risk, naming the stay that holds the unit."
+    },
+    {
+      "delivery": 8,
+      "checks": "Occupancy observed, not decided",
+      "note": "At 12:40 a room attendant finds unit 1207 empty and reports it vacant. The housekeeping manifest declares occupancy non-authoritative: the guest may only be out, luggage still in the room. Only the PMS says who holds the unit."
+    },
+    {
+      "delivery": 9,
+      "checks": "Older plan, replayed late",
+      "note": "A PMS replay delivers the stay's plan from 20 August, with the 11:00 check-out. Applied, it would make the risk seem resolved. It is older than the late check-out, so it is superseded."
+    },
+    {
+      "delivery": 10,
+      "checks": "Delivery order",
+      "note": "The housekeeping system reports unit 1207 dirty after the departure at 13:55, before the PMS check-out reaches HOS. It changes the housekeeping status only: the PMS still says the guest holds the unit, so the risk remains."
+    },
+    {
+      "delivery": 11,
+      "checks": "Check-out resolves",
+      "note": "The PMS check-out, which occurred at 13:50, arrives late. The unit is vacated before the arrival: the risk is resolved as unit_vacated. The unit is dirty, but the guest is expected at 16:00, not earlier."
+    },
+    {
+      "delivery": 12,
+      "checks": "Turnover task",
+      "note": "The housekeeping system opens a high-priority cleaning task, due at check-in. Its causal link points to the dirty status."
+    },
+    {
+      "delivery": 13,
+      "checks": "Task is not a status",
+      "note": "The cleaning is done at 15:05. At this property only an inspection releases a unit, so it is still dirty."
+    },
+    {
+      "delivery": 14,
+      "checks": "Unit released",
+      "note": "Unit 1207 is inspected at 15:20. The arriving stay is ready."
+    },
+    {
+      "delivery": 15,
+      "checks": "Stay started",
+      "note": "The guest of stay_3140 checks in at 16:10."
+    }
+  ]
+}

@@ -1,0 +1,348 @@
+{
+  "scenario": "late-checkout",
+  "hosschemaversion": "0.1",
+  "compare": "Replay events.jsonl in file order. For every delivery compare the disposition and, for every known stay, its readiness and situation. For situations compare every attribute except id and hosrecordedat, which are implementation-defined.",
+  "deliveries": [
+    {
+      "delivery": 1,
+      "source": "urn:hos:pms:demo",
+      "id": "pms-030880",
+      "disposition": "applied",
+      "stays": {
+        "stay_3088": {
+          "readiness": "unknown",
+          "situation": "none"
+        }
+      }
+    },
+    {
+      "delivery": 2,
+      "source": "urn:hos:pms:demo",
+      "id": "pms-031204",
+      "disposition": "applied",
+      "stays": {
+        "stay_3088": {
+          "readiness": "unknown",
+          "situation": "none"
+        }
+      }
+    },
+    {
+      "delivery": 3,
+      "source": "urn:hos:pms:demo",
+      "id": "pms-031219",
+      "disposition": "applied",
+      "stays": {
+        "stay_3088": {
+          "readiness": "unknown",
+          "situation": "none"
+        }
+      }
+    },
+    {
+      "delivery": 4,
+      "source": "urn:hos:pms:demo",
+      "id": "pms-030955",
+      "disposition": "applied",
+      "stays": {
+        "stay_3088": {
+          "readiness": "unknown",
+          "situation": "none"
+        }
+      }
+    },
+    {
+      "delivery": 5,
+      "source": "urn:hos:pms:demo",
+      "id": "pms-030956",
+      "disposition": "applied",
+      "stays": {
+        "stay_3088": {
+          "readiness": "unknown",
+          "situation": "none"
+        },
+        "stay_3140": {
+          "readiness": "unknown",
+          "situation": "none"
+        }
+      }
+    },
+    {
+      "delivery": 6,
+      "source": "urn:hos:pms:demo",
+      "id": "pms-031402",
+      "disposition": "applied",
+      "stays": {
+        "stay_3088": {
+          "readiness": "unknown",
+          "situation": "none"
+        },
+        "stay_3140": {
+          "readiness": "not_ready",
+          "situation": "none"
+        }
+      }
+    },
+    {
+      "delivery": 7,
+      "source": "urn:hos:pms:demo",
+      "id": "pms-031418",
+      "disposition": "applied",
+      "stays": {
+        "stay_3088": {
+          "readiness": "unknown",
+          "situation": "none"
+        },
+        "stay_3140": {
+          "readiness": "not_ready",
+          "situation": "at_risk"
+        }
+      }
+    },
+    {
+      "delivery": 8,
+      "source": "urn:hos:housekeeping:demo",
+      "id": "hk-007815",
+      "disposition": "non_authoritative",
+      "stays": {
+        "stay_3088": {
+          "readiness": "unknown",
+          "situation": "none"
+        },
+        "stay_3140": {
+          "readiness": "not_ready",
+          "situation": "at_risk"
+        }
+      }
+    },
+    {
+      "delivery": 9,
+      "source": "urn:hos:pms:demo",
+      "id": "pms-031377",
+      "disposition": "superseded",
+      "stays": {
+        "stay_3088": {
+          "readiness": "unknown",
+          "situation": "none"
+        },
+        "stay_3140": {
+          "readiness": "not_ready",
+          "situation": "at_risk"
+        }
+      }
+    },
+    {
+      "delivery": 10,
+      "source": "urn:hos:housekeeping:demo",
+      "id": "hk-007830",
+      "disposition": "applied",
+      "stays": {
+        "stay_3088": {
+          "readiness": "not_ready",
+          "situation": "none"
+        },
+        "stay_3140": {
+          "readiness": "not_ready",
+          "situation": "at_risk"
+        }
+      }
+    },
+    {
+      "delivery": 11,
+      "source": "urn:hos:pms:demo",
+      "id": "pms-031466",
+      "disposition": "applied",
+      "stays": {
+        "stay_3088": {
+          "readiness": "not_ready",
+          "situation": "none"
+        },
+        "stay_3140": {
+          "readiness": "not_ready",
+          "situation": "resolved"
+        }
+      }
+    },
+    {
+      "delivery": 12,
+      "source": "urn:hos:housekeeping:demo",
+      "id": "hk-007831",
+      "disposition": "applied",
+      "stays": {
+        "stay_3088": {
+          "readiness": "not_ready",
+          "situation": "none"
+        },
+        "stay_3140": {
+          "readiness": "not_ready",
+          "situation": "resolved"
+        }
+      }
+    },
+    {
+      "delivery": 13,
+      "source": "urn:hos:housekeeping:demo",
+      "id": "hk-007862",
+      "disposition": "applied",
+      "stays": {
+        "stay_3088": {
+          "readiness": "not_ready",
+          "situation": "none"
+        },
+        "stay_3140": {
+          "readiness": "not_ready",
+          "situation": "resolved"
+        }
+      }
+    },
+    {
+      "delivery": 14,
+      "source": "urn:hos:housekeeping:demo",
+      "id": "hk-007870",
+      "disposition": "applied",
+      "stays": {
+        "stay_3088": {
+          "readiness": "ready",
+          "situation": "none"
+        },
+        "stay_3140": {
+          "readiness": "ready",
+          "situation": "resolved"
+        }
+      }
+    },
+    {
+      "delivery": 15,
+      "source": "urn:hos:pms:demo",
+      "id": "pms-031490",
+      "disposition": "applied",
+      "stays": {
+        "stay_3088": {
+          "readiness": "ready",
+          "situation": "none"
+        },
+        "stay_3140": {
+          "readiness": "ready",
+          "situation": "resolved"
+        }
+      }
+    }
+  ],
+  "situations": [
+    {
+      "delivery": 7,
+      "event": {
+        "specversion": "1.0",
+        "source": "urn:hos:projection:arrival-readiness",
+        "type": "arrival.room_readiness_at_risk",
+        "time": "2026-08-21T13:15:00Z",
+        "datacontenttype": "application/json",
+        "hosschemaversion": "0.1",
+        "hostenant": "tenant_demo",
+        "hosproperty": "prop_toronto",
+        "hospropertytimezone": "America/Toronto",
+        "hosbusinessdate": "2026-08-21",
+        "hossubjects": "stay:stay_3140 reservation:res_3140 unit:unit_1207",
+        "hoscausationsource": "urn:hos:pms:demo",
+        "hoscausationid": "pms-031418",
+        "data": {
+          "stay_id": "stay_3140",
+          "reservation_id": "res_3140",
+          "unit_id": "unit_1207",
+          "planned_arrival_at": "2026-08-21T20:00:00Z",
+          "expected_arrival_at": "2026-08-21T20:00:00Z",
+          "housekeeping": null,
+          "conflicts": [],
+          "latest_task": null,
+          "occupied_by": {
+            "stay_id": "stay_3088",
+            "planned_departure_at": "2026-08-21T21:00:00Z",
+            "source": "urn:hos:pms:demo",
+            "event_id": "pms-031219",
+            "time": "2026-08-18T21:10:00Z"
+          },
+          "evidence": [
+            {
+              "source": "urn:hos:pms:demo",
+              "id": "pms-030955"
+            },
+            {
+              "source": "urn:hos:pms:demo",
+              "id": "pms-030956"
+            },
+            {
+              "source": "urn:hos:pms:demo",
+              "id": "pms-031204"
+            },
+            {
+              "source": "urn:hos:pms:demo",
+              "id": "pms-031219"
+            },
+            {
+              "source": "urn:hos:pms:demo",
+              "id": "pms-031402"
+            },
+            {
+              "source": "urn:hos:pms:demo",
+              "id": "pms-031418"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "delivery": 11,
+      "event": {
+        "specversion": "1.0",
+        "source": "urn:hos:projection:arrival-readiness",
+        "type": "arrival.room_readiness_resolved",
+        "time": "2026-08-21T17:55:00Z",
+        "datacontenttype": "application/json",
+        "hosschemaversion": "0.1",
+        "hostenant": "tenant_demo",
+        "hosproperty": "prop_toronto",
+        "hospropertytimezone": "America/Toronto",
+        "hosbusinessdate": "2026-08-21",
+        "hossubjects": "stay:stay_3140 reservation:res_3140 unit:unit_1207",
+        "hoscausationsource": "urn:hos:pms:demo",
+        "hoscausationid": "pms-031466",
+        "data": {
+          "stay_id": "stay_3140",
+          "reservation_id": "res_3140",
+          "unit_id": "unit_1207",
+          "reason": "unit_vacated",
+          "planned_arrival_at": "2026-08-21T20:00:00Z",
+          "expected_arrival_at": null,
+          "housekeeping": {
+            "value": "dirty",
+            "source": "urn:hos:housekeeping:demo",
+            "event_id": "hk-007830",
+            "time": "2026-08-21T17:55:00Z"
+          },
+          "evidence": [
+            {
+              "source": "urn:hos:pms:demo",
+              "id": "pms-030955"
+            },
+            {
+              "source": "urn:hos:pms:demo",
+              "id": "pms-030956"
+            },
+            {
+              "source": "urn:hos:pms:demo",
+              "id": "pms-031402"
+            },
+            {
+              "source": "urn:hos:pms:demo",
+              "id": "pms-031466"
+            },
+            {
+              "source": "urn:hos:housekeeping:demo",
+              "id": "hk-007830"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

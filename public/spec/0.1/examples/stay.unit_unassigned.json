@@ -1,0 +1,20 @@
+{
+  "specversion": "1.0",
+  "id": "pms-000503",
+  "source": "urn:hos:pms:demo",
+  "type": "stay.unit_unassigned",
+  "time": "2026-07-30T07:58:00Z",
+  "datacontenttype": "application/json",
+  "hosschemaversion": "0.1",
+  "hosrecordedat": "2026-07-30T07:58:01Z",
+  "hostenant": "tenant_demo",
+  "hosproperty": "prop_demo",
+  "hospropertytimezone": "Europe/Paris",
+  "hosbusinessdate": "2026-07-30",
+  "hossubjects": "stay:stay_1043 unit:unit_205",
+  "data": {
+    "stay_id": "stay_1043",
+    "unit_id": "unit_205",
+    "reason": "room_move"
+  }
+}

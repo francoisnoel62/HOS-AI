@@ -16,7 +16,7 @@ type Envelope<TType extends string, TData> = {
   dataschema?: string;
   hosschemaversion: "0.1";
   hosrecordedat: string;
-  hostimebasis?: "occurred" | "recorded";
+  hostimebasis?: "occurred" | "modified" | "recorded";
   hostenant: string;
   hosproperty: string;
   hospropertytimezone: string;
@@ -26,6 +26,7 @@ type Envelope<TType extends string, TData> = {
   hossensitivity?: SensitivityClass;
   hoscausationsource?: string;
   hoscausationid?: string;
+  hosactor?: string;
   data: TData & Extensions;
 };
 
@@ -51,13 +52,22 @@ export type StayExpected = Envelope<
   { stay_id: string; reservation_id: string; guest_id?: string; planned_arrival_at: string; planned_departure_at: string }
 >;
 export type StayCheckedIn = Envelope<"stay.checked_in", { stay_id: string; unit_id: string }>;
+export type StayCheckInReverted = Envelope<"stay.check_in_reverted", { stay_id: string; unit_id?: string }>;
 export type StayCheckedOut = Envelope<"stay.checked_out", { stay_id: string; unit_id: string }>;
 export type StayUnitAssigned = Envelope<"stay.unit_assigned", { stay_id: string; unit_id: string; previous_unit_id: string | null; reason?: string }>;
+export type StayUnitUnassigned = Envelope<"stay.unit_unassigned", { stay_id: string; unit_id: string; reason?: string }>;
 export type UnitStatusChanged = Envelope<
   "unit.status_changed",
   | { unit_id: string; dimension: UnitStatusDimension; previous?: string; current: string; authority_source: string; reason?: string }
   | { unit_id: string; statuses: Partial<Record<UnitStatusDimension, string>>; authority_source: string; reason: string }
 >;
+// The statuses a maintenance window imposes while it lasts.
+export type MaintenanceWindowStatuses = { maintenance?: "out_of_service"; commercial?: "not_sellable" };
+export type UnitMaintenanceScheduled = Envelope<
+  "unit.maintenance_scheduled",
+  { maintenance_id: string; unit_id: string; starts_at: string; ends_at: string; statuses: MaintenanceWindowStatuses; reason?: "repair" | "renovation" | "internal_use" | "other" }
+>;
+export type UnitMaintenanceCancelled = Envelope<"unit.maintenance_cancelled", { maintenance_id: string; unit_id: string }>;
 export type HousekeepingTaskCreated = Envelope<
   "housekeeping.task.created",
   { task_id: string; unit_id?: string; stay_id?: string; task_type: TaskType; priority: string; due_at?: string }
@@ -84,9 +94,13 @@ export type HosFact =
   | ReservationCancelled
   | StayExpected
   | StayCheckedIn
+  | StayCheckInReverted
   | StayCheckedOut
   | StayUnitAssigned
+  | StayUnitUnassigned
   | UnitStatusChanged
+  | UnitMaintenanceScheduled
+  | UnitMaintenanceCancelled
   | HousekeepingTaskCreated
   | HousekeepingTaskCompleted
   | GuestMessageReceived;
@@ -94,7 +108,10 @@ export type HosFact =
 export type FactRef = { value: string; source: string; event_id: string; time: string };
 export type ConflictRef = FactRef & { dimension: UnitStatusDimension };
 export type EventRef = { source: string; id: string };
+export type MaintenanceRef = { maintenance_id: string; starts_at: string; ends_at: string; statuses: MaintenanceWindowStatuses; source: string; event_id: string; time: string };
 export type TaskRef = { task_id: string; task_type: TaskType; status: "open" | "completed"; source: string; event_id: string; time: string };
+// The in-house stay that still holds a unit: its latest planned check-out, when known, and its check-in fact.
+export type OccupantRef = { stay_id: string; planned_departure_at: string | null; source: string; event_id: string; time: string };
 
 type SituationEnvelope<TType extends string, TData> = Omit<Envelope<TType, TData>, "data"> & { data: TData };
 
@@ -109,6 +126,8 @@ export type RoomReadinessAtRisk = SituationEnvelope<
     housekeeping: FactRef | null;
     conflicts: ConflictRef[];
     latest_task: TaskRef | null;
+    maintenance?: MaintenanceRef;
+    occupied_by?: OccupantRef;
     evidence: EventRef[];
   }
 >;
@@ -119,7 +138,7 @@ export type RoomReadinessResolved = SituationEnvelope<
     stay_id: string;
     reservation_id: string;
     unit_id: string | null;
-    reason: "unit_ready" | "arrival_not_early" | "reservation_inactive" | "stay_started";
+    reason: "unit_ready" | "unit_available" | "unit_reassigned" | "unit_vacated" | "departure_before_arrival" | "arrival_not_early" | "reservation_inactive" | "stay_started";
     planned_arrival_at: string;
     expected_arrival_at: string | null;
     housekeeping: FactRef | null;

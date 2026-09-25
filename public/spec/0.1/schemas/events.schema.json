@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:hos:schema:0.1:events",
   "title": "HOS Events 0.1",
-  "description": "Draft. The initial HOS event catalogue: eleven immutable fact types in five families, on the HOS Events envelope profile. Data objects are closed so that personal or commercial data cannot travel unnoticed. Snapshot mode is allowed for unit.status_changed only.",
+  "description": "Draft. The initial HOS event catalogue: fifteen immutable fact types in five families, on the HOS Events envelope profile. Data objects are closed so that personal or commercial data cannot travel unnoticed. Snapshot mode is allowed for unit.status_changed only.",
   "allOf": [
     {
       "$ref": "urn:hos:schema:0.1:event-envelope"
@@ -16,9 +16,13 @@
             "reservation.cancelled",
             "stay.expected",
             "stay.checked_in",
+            "stay.check_in_reverted",
             "stay.checked_out",
             "stay.unit_assigned",
+            "stay.unit_unassigned",
             "unit.status_changed",
+            "unit.maintenance_scheduled",
+            "unit.maintenance_cancelled",
             "housekeeping.task.created",
             "housekeeping.task.completed",
             "guest.message.received"
@@ -116,6 +120,23 @@
         "required": ["type"],
         "properties": {
           "type": {
+            "const": "stay.check_in_reverted"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "$ref": "#/$defs/stay.check_in_reverted"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": ["type"],
+        "properties": {
+          "type": {
             "const": "stay.checked_out"
           }
         }
@@ -150,6 +171,23 @@
         "required": ["type"],
         "properties": {
           "type": {
+            "const": "stay.unit_unassigned"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "$ref": "#/$defs/stay.unit_unassigned"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": ["type"],
+        "properties": {
+          "type": {
             "const": "unit.status_changed"
           }
         }
@@ -175,6 +213,40 @@
             "data": {
               "$ref": "#/$defs/unit.status_changed"
             }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": ["type"],
+        "properties": {
+          "type": {
+            "const": "unit.maintenance_scheduled"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "$ref": "#/$defs/unit.maintenance_scheduled"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": ["type"],
+        "properties": {
+          "type": {
+            "const": "unit.maintenance_cancelled"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "$ref": "#/$defs/unit.maintenance_cancelled"
           }
         }
       }
@@ -277,7 +349,8 @@
           "format": "date"
         },
         "guest_id": {
-          "$ref": "urn:hos:schema:0.1:core#/$defs/hosId"
+          "$ref": "urn:hos:schema:0.1:core#/$defs/hosId",
+          "description": "Pseudonymous guest, when the producer has a stable guest identity. A producer without one omits it and never derives one from names or contact details."
         },
         "external_refs": {
           "$ref": "urn:hos:schema:0.1:core#/$defs/externalRefs"
@@ -325,7 +398,8 @@
           "format": "date"
         },
         "guest_id": {
-          "$ref": "urn:hos:schema:0.1:core#/$defs/hosId"
+          "$ref": "urn:hos:schema:0.1:core#/$defs/hosId",
+          "description": "Pseudonymous guest, when the producer has a stable guest identity. A producer without one omits it and never derives one from names or contact details."
         },
         "external_refs": {
           "$ref": "urn:hos:schema:0.1:core#/$defs/externalRefs"
@@ -430,7 +504,7 @@
     },
     "stay.expected": {
       "title": "stay.expected",
-      "description": "A stay is expected: the operational visit that fulfils a reservation. Unit assignment is a separate fact.",
+      "description": "A stay is expected: the operational visit that fulfils a reservation, one per booked unit. It is published as soon as the stay is committed, however early, and again whenever its planned times change; the latest occurrence wins. hosbusinessdate is the business date of the planned arrival. Unit assignment is a separate fact.",
       "x-hos-family": "Stay",
       "x-hos-authority": "PMS",
       "type": "object",
@@ -443,16 +517,18 @@
           "$ref": "urn:hos:schema:0.1:core#/$defs/hosId"
         },
         "guest_id": {
-          "$ref": "urn:hos:schema:0.1:core#/$defs/hosId"
+          "$ref": "urn:hos:schema:0.1:core#/$defs/hosId",
+          "description": "Pseudonymous guest, when the producer has a stable guest identity. A producer without one omits it and never derives one from names or contact details."
         },
         "planned_arrival_at": {
           "type": "string",
           "format": "date-time",
-          "description": "Planned check-in time."
+          "description": "Planned check-in time. When the source plans stays in days, the arrival date at the Property's standard check-in time."
         },
         "planned_departure_at": {
           "type": "string",
-          "format": "date-time"
+          "format": "date-time",
+          "description": "Planned check-out time. When the source plans stays in days, the departure date at the Property's standard check-out time."
         },
         "extensions": {
           "$ref": "urn:hos:schema:0.1:core#/$defs/extensions"
@@ -473,6 +549,27 @@
         },
         "unit_id": {
           "$ref": "urn:hos:schema:0.1:core#/$defs/hosId"
+        },
+        "extensions": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/extensions"
+        }
+      },
+      "additionalProperties": false
+    },
+    "stay.check_in_reverted": {
+      "title": "stay.check_in_reverted",
+      "description": "A check-in was reverted, for example because it was recorded in error. The stay is expected again; time is when the check-in was reverted.",
+      "x-hos-family": "Stay",
+      "x-hos-authority": "PMS",
+      "type": "object",
+      "required": ["stay_id"],
+      "properties": {
+        "stay_id": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/hosId"
+        },
+        "unit_id": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/hosId",
+          "description": "The unit of the reverted check-in, when known."
         },
         "extensions": {
           "$ref": "urn:hos:schema:0.1:core#/$defs/extensions"
@@ -502,7 +599,7 @@
     },
     "stay.unit_assigned": {
       "title": "stay.unit_assigned",
-      "description": "A unit was assigned to a stay. Successive assignments form the stay's assignment history.",
+      "description": "A unit was assigned to a stay. Successive assignments, and the releases stay.unit_unassigned records, form the stay's assignment history.",
       "x-hos-family": "Stay",
       "x-hos-authority": "PMS",
       "type": "object",
@@ -526,6 +623,30 @@
         },
         "reason": {
           "enum": ["initial_assignment", "upgrade", "room_move", "readiness", "other"]
+        },
+        "extensions": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/extensions"
+        }
+      },
+      "additionalProperties": false
+    },
+    "stay.unit_unassigned": {
+      "title": "stay.unit_unassigned",
+      "description": "A unit was released from a stay, which has no unit until the next stay.unit_assigned. unit_id is the released unit; its entry in the assignment history ends at time.",
+      "x-hos-family": "Stay",
+      "x-hos-authority": "PMS",
+      "type": "object",
+      "required": ["stay_id", "unit_id"],
+      "properties": {
+        "stay_id": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/hosId"
+        },
+        "unit_id": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/hosId",
+          "description": "The unit released."
+        },
+        "reason": {
+          "enum": ["room_move", "readiness", "maintenance", "other"]
         },
         "extensions": {
           "$ref": "urn:hos:schema:0.1:core#/$defs/extensions"
@@ -685,6 +806,62 @@
       },
       "additionalProperties": false
     },
+    "unit.maintenance_scheduled": {
+      "title": "unit.maintenance_scheduled",
+      "description": "A maintenance window was planned for a unit, or its plan changed. It is published again whenever the window changes; the latest occurrence for a maintenance_id wins. It does not change the unit's current statuses: unit.status_changed does, when the window begins.",
+      "x-hos-family": "Unit",
+      "x-hos-authority": "Declared: maintenance system or PMS",
+      "type": "object",
+      "required": ["maintenance_id", "unit_id", "starts_at", "ends_at", "statuses"],
+      "properties": {
+        "maintenance_id": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/hosId"
+        },
+        "unit_id": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/hosId"
+        },
+        "starts_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Start of the window. When the source plans windows in days, the window holds the unit as a stay would: its first day at the Property's standard check-in time."
+        },
+        "ends_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "End of the window, exclusive. When the source plans windows in days, the day that frees the unit at the Property's standard check-out time."
+        },
+        "statuses": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/maintenanceWindowStatuses"
+        },
+        "reason": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/maintenanceReason"
+        },
+        "extensions": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/extensions"
+        }
+      },
+      "additionalProperties": false
+    },
+    "unit.maintenance_cancelled": {
+      "title": "unit.maintenance_cancelled",
+      "description": "A maintenance window was withdrawn. A window that ends as planned needs no event; one cut short is published again with its new end.",
+      "x-hos-family": "Unit",
+      "x-hos-authority": "Declared: maintenance system or PMS",
+      "type": "object",
+      "required": ["maintenance_id", "unit_id"],
+      "properties": {
+        "maintenance_id": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/hosId"
+        },
+        "unit_id": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/hosId"
+        },
+        "extensions": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/extensions"
+        }
+      },
+      "additionalProperties": false
+    },
     "housekeeping.task.created": {
       "title": "housekeeping.task.created",
       "description": "A housekeeping task was created for a unit or a stay.",
@@ -780,7 +957,8 @@
           "$ref": "urn:hos:schema:0.1:core#/$defs/messageChannel"
         },
         "guest_id": {
-          "$ref": "urn:hos:schema:0.1:core#/$defs/hosId"
+          "$ref": "urn:hos:schema:0.1:core#/$defs/hosId",
+          "description": "Pseudonymous guest, when the producer has a stable guest identity. A producer without one omits it and never derives one from names or contact details."
         },
         "stay_id": {
           "$ref": "urn:hos:schema:0.1:core#/$defs/hosId"

@@ -17,7 +17,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "db:migrate": "tsx --env-file-if-exists=.env.local scripts/migrate.ts",
-    "db:seed": "tsx --env-file-if-exists=.env.local scripts/seed.ts"
+    "db:seed": "tsx --env-file-if-exists=.env.local scripts/seed.ts",
+    "mews:live": "tsx --env-file-if-exists=.env.local scripts/mews-live.ts"
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.2.0",

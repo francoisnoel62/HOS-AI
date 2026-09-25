@@ -10,13 +10,14 @@ import { SpecTable } from "@/components/content/spec-table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { examplesPath, loadArrivalScenario, scenarioPath, specVersionPath } from "@/lib/hos/conformance";
+import { scenarioDemos } from "@/lib/content/scenarios";
+import { conformanceScenarios, examplesPath, loadArrivalScenario, loadScenario, scenarioPath, specVersionPath } from "@/lib/hos/conformance";
 import envelopeSchema from "@/public/spec/0.1/schemas/event-envelope.schema.json";
 import eventsSchema from "@/public/spec/0.1/schemas/events.schema.json";
 
 export const metadata: Metadata = {
   title: "HOS Events 0.1 (draft)",
-  description: "Immutable, CloudEvents-compatible HOS events: the envelope profile, eleven event types in five families, snapshots, delivery, deduplication, ordering and replay.",
+  description: "Immutable, CloudEvents-compatible HOS events: the envelope profile, fifteen event types in five families, snapshots, delivery, deduplication, ordering and replay.",
 };
 
 type SchemaNode = { title?: string; description?: string; required?: string[]; properties?: Record<string, SchemaNode>; "x-hos-family"?: string; "x-hos-authority"?: string };
@@ -25,10 +26,12 @@ const envelope = envelopeSchema as unknown as SchemaNode;
 const catalogue = Object.entries((eventsSchema as unknown as { $defs: Record<string, SchemaNode> }).$defs);
 
 const principles = [
-  ["Immutable facts", "An event records what happened. A correction is a new event; nothing is edited in place."],
+  ["Immutable facts", "An event records what happened. A correction, a released unit, a reverted check-in or a withdrawn maintenance window is a new event; nothing is edited in place."],
   ["Named for meaning", "Types are domain.resource.past_tense, singular and vendor-neutral: housekeeping.task.completed, not a vendor's webhook name."],
   ["One dimension at a time", "A status change states only the changed dimension, the previous value when known, the new value, the authority source and an optional reason."],
   ["Explicit snapshots", "A snapshot is sent only when deltas cannot recover the state. It is declared in hosdatamode, allowed by the producer's manifest and sensitivity-classified."],
+  ["Plans are not states", "unit.maintenance_scheduled plans when a unit will be out of service or out of sale. The unit's statuses change only through unit.status_changed, when the window begins."],
+  ["Honest time and actor", "time is when the fact occurred. When the source only knows the entity's last modification, hostimebasis says modified; when it knows nothing, recorded. hosactor names who acted, pseudonymously, when the source knows."],
 ];
 
 const deliveryRules = [
@@ -40,15 +43,19 @@ const deliveryRules = [
   ["Minimal data", "Data objects are closed. People appear only as pseudonymous references, message content never enters HOS, and vendor detail lives in namespaced extensions."],
 ];
 
+const numberWords = ["no", "one", "two", "three", "four", "five", "six"];
+
 export default function EventsSpecificationPage() {
   const { events, scenario } = loadArrivalScenario();
+  const corpora = conformanceScenarios.map((id) => ({ id, ...loadScenario(id) }));
+  const deliveries = corpora.reduce((total, corpus) => total + corpus.events.length, 0);
 
   return (
     <>
       <PageHero
         eyebrow="Documentation · HOS Events"
         title="HOS Events 0.1"
-        description="Immutable, CloudEvents-compatible records of what happened in hospitality operations: one envelope profile, eleven event types in five families, and the delivery rules every producer and consumer share."
+        description="Immutable, CloudEvents-compatible records of what happened in hospitality operations: one envelope profile, fifteen event types in five families, and the delivery rules every producer and consumer share."
         badge="Draft · Observe"
       />
       <section className="mx-auto max-w-6xl px-5 lg:px-8">
@@ -104,7 +111,7 @@ export default function EventsSpecificationPage() {
         </div>
       </SectionFrame>
 
-      <SectionFrame id="catalogue" eyebrow="Event catalogue" title="Eleven event types in five families." description="Required data is listed per type; every data object also accepts namespaced extensions. Each type has a downloadable example.">
+      <SectionFrame id="catalogue" eyebrow="Event catalogue" title="Fifteen event types in five families." description="Required data is listed per type; every data object also accepts namespaced extensions. Each type has a downloadable example.">
         <SpecTable
           columns={["Type", "Family · authority", "Required data", "Meaning", "Example"]}
           label="HOS Events 0.1 catalogue"
@@ -155,7 +162,7 @@ export default function EventsSpecificationPage() {
           ))}
         </div>
         <p className="mt-6 text-sm">
-          <a className="text-[var(--accent-strong)] underline" download href={`${scenarioPath}/${scenario.files.producers[0]}`}>
+          <a className="text-[var(--accent-strong)] underline" download href={`${scenarioPath()}/${scenario.files.producers[0]}`}>
             Example: the synthetic PMS manifest
           </a>
         </p>
@@ -166,13 +173,13 @@ export default function EventsSpecificationPage() {
           <Card className="p-6">
             <h3 className="font-mono text-sm">arrival.room_readiness_at_risk</h3>
             <p className="mt-3 text-sm leading-6 text-[var(--muted-foreground)]">
-              Raised when a stay is still expected, the latest arrival signal is earlier than the planned check-in, and the authoritative housekeeping status of the assigned unit is not ready ({scenario.projection.ready_housekeeping_statuses.join(" or ")} in the scenario) or unknown. It carries the evidence, the conflicts and the latest task.
+              Raised when a stay is still expected and its assigned unit may not be ready when the guest comes: the guest is expected before the planned check-in and the unit is not ready, a maintenance window blocks the unit at that time, or another guest in house in the unit is not due to leave before then. A unit is not ready when its authoritative housekeeping status is not {scenario.projection.ready_housekeeping_statuses.join(" or ")} (in the scenarios), a window blocks it, or another guest still holds it. It carries the evidence, the conflicts, the latest task, and the window or the stay that holds the unit.
             </p>
           </Card>
           <Card className="p-6">
             <h3 className="font-mono text-sm">arrival.room_readiness_resolved</h3>
             <p className="mt-3 text-sm leading-6 text-[var(--muted-foreground)]">
-              Emitted when the risk stops holding: the unit is ready, the arrival is no longer early, the reservation is inactive or the stay has started. Situations are emitted on transitions only, and HOS 0.1 never acts on them.
+              Emitted when the risk stops holding, with the reason: the stay was given another unit, the unit is ready, the window went, the guest in house left or is now due to leave first, the arrival is no longer early, the reservation is inactive or the stay has started. Situations are emitted on transitions only, and HOS 0.1 never acts on them.
             </p>
           </Card>
         </div>
@@ -183,17 +190,37 @@ export default function EventsSpecificationPage() {
         </p>
       </SectionFrame>
 
-      <SectionFrame id="conformance" eyebrow="Conformance corpus" title={`Prove an implementation against ${events.length} synthetic deliveries.`} description="An implementation conforms when it reproduces expected.json. The corpus covers:">
-        <ul className="grid gap-2 sm:grid-cols-2">
-          {scenario.covers.map((item) => (
-            <li className="border border-[var(--border)] bg-[var(--card)] px-4 py-3 text-sm" key={item}>
-              {item}
-            </li>
+      <SectionFrame
+        id="conformance"
+        eyebrow="Conformance corpus"
+        title={`Prove an implementation against ${numberWords[corpora.length] ?? corpora.length} scenarios and ${deliveries} synthetic deliveries.`}
+        description="Each scenario is a property with its own producers and manifests. An implementation conforms when it reproduces every scenario's expected.json."
+      >
+        <div className="grid gap-4 lg:grid-cols-3">
+          {corpora.map(({ id, scenario: corpus, events }) => (
+            <Card className="flex flex-col p-6" key={id}>
+              <p className="eyebrow">
+                {events.length} deliveries · {corpus.property.timezone}
+              </p>
+              <h3 className="mt-3 font-semibold">
+                <Link className="underline decoration-[var(--border-strong)] underline-offset-4 hover:decoration-[var(--accent)]" href={scenarioDemos[id].href}>
+                  {corpus.title}
+                </Link>
+              </h3>
+              <ul className="mt-4 flex-1 space-y-2 text-sm leading-6 text-[var(--muted-foreground)]">
+                {corpus.covers.map((item) => (
+                  <li className="border-t border-[var(--border)] pt-2" key={item}>
+                    {item}
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-4 font-mono text-xs text-[var(--muted-foreground)]">{scenarioPath(id)}/</p>
+            </Card>
           ))}
-        </ul>
+        </div>
         <div className="mt-8 flex flex-wrap gap-3">
           <Link href="/demo">
-            <Button>Open the live demo and downloads</Button>
+            <Button>Open the live demos and downloads</Button>
           </Link>
           <Link href="/participate/pilot">
             <Button variant="secondary">Validate it on your own systems</Button>

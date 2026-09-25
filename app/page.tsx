@@ -49,13 +49,13 @@ export default function HomePage() {
         </div>
       </SectionFrame>
 
-      <SectionFrame eyebrow="First proof" title="Observe room readiness before it becomes an escalation." description="HOS 0.1 begins with an early-arrival, room-not-ready scenario. It projects a situation from traceable events; it does not autonomously check a guest in or alter a booking.">
+      <SectionFrame eyebrow="First proof" title="Observe room readiness before it becomes an escalation." description="HOS 0.1 begins with three arrival scenarios: an early arrival to a room not yet released, an assigned room going out of order, and a late check-out in a room promised to a same-day arrival. It projects situations from traceable events; it does not autonomously check a guest in, move a guest or alter a booking.">
         <div className="grid gap-4 lg:grid-cols-[1.35fr_0.65fr]">
           <EventFlowDiagram />
           <ReadinessRiskCard />
         </div>
         <div className="mt-6 flex flex-wrap gap-3">
-          <Link href="/demo"><Button>Replay the scenario <ArrowRight aria-hidden="true" size={16} /></Button></Link>
+          <Link href="/demo"><Button>Replay the scenarios <ArrowRight aria-hidden="true" size={16} /></Button></Link>
           <Link href="/docs/core"><Button variant="secondary">Read HOS Core 0.1</Button></Link>
         </div>
       </SectionFrame>

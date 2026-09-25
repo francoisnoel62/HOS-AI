@@ -34,7 +34,23 @@
       "authoritative": true
     },
     {
+      "type": "stay.check_in_reverted",
+      "authoritative": true
+    },
+    {
       "type": "stay.checked_out",
+      "authoritative": true
+    },
+    {
+      "type": "stay.unit_unassigned",
+      "authoritative": true
+    },
+    {
+      "type": "unit.maintenance_scheduled",
+      "authoritative": true
+    },
+    {
+      "type": "unit.maintenance_cancelled",
       "authoritative": true
     },
     {

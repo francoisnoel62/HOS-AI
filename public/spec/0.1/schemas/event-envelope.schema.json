@@ -45,7 +45,7 @@
     "time": {
       "type": "string",
       "format": "date-time",
-      "description": "When the fact occurred (occurred_at) when known; otherwise the recording time, flagged by hostimebasis."
+      "description": "When the fact occurred, when known. Otherwise the best time the producer has, qualified by hostimebasis."
     },
     "datacontenttype": {
       "const": "application/json",
@@ -66,8 +66,8 @@
       "description": "When the HOS implementation (producer or adapter) recorded the event. HOS always carries it."
     },
     "hostimebasis": {
-      "enum": ["occurred", "recorded"],
-      "description": "What time represents. Absent means occurred; recorded means the occurrence time is unknown."
+      "enum": ["occurred", "modified", "recorded"],
+      "description": "What time represents. Absent means occurred. modified means the source's last modification of the entity, when it does not date the change itself: the fact occurred at or before time. recorded means the occurrence time is unknown and time is when the producer or adapter recorded the fact."
     },
     "hostenant": {
       "$ref": "urn:hos:schema:0.1:core#/$defs/hosId",
@@ -108,6 +108,11 @@
       "type": "string",
       "minLength": 1,
       "description": "Id of the event that caused this one, when known. Used with hoscausationsource."
+    },
+    "hosactor": {
+      "type": "string",
+      "pattern": "^(?:user|guest|system|integration):[A-Za-z0-9][A-Za-z0-9._~-]{0,127}$",
+      "description": "Who made the change in the producer, when it knows: user (a staff member), guest, system (the producer itself) or integration (another system through its API), with a pseudonymous, producer-scoped reference, for example user:staff_k3. Never a name or contact detail."
     },
     "data": {
       "type": "object",

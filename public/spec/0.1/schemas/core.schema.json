@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:hos:schema:0.1:core",
   "title": "HOS Core 0.1",
-  "description": "Draft. The operational minimum required to make the arrival-readiness scenario portable: identifiers, external references, extensions, sensitivity classes, the Unit status model and eight Core entities. This file holds definitions; HOS Events reference them.",
+  "description": "Draft. The operational minimum required to make the arrival-readiness scenario portable: identifiers, external references, extensions, sensitivity classes, the Unit status model and nine Core entities. This file holds definitions; HOS Events reference them.",
   "$defs": {
     "hosId": {
       "type": "string",
@@ -97,6 +97,24 @@
       },
       "additionalProperties": false
     },
+    "maintenanceWindowStatuses": {
+      "type": "object",
+      "description": "The Unit statuses a maintenance window imposes while it lasts: maintenance out_of_service when the unit cannot be used, commercial not_sellable when it cannot be sold.",
+      "minProperties": 1,
+      "properties": {
+        "maintenance": {
+          "const": "out_of_service"
+        },
+        "commercial": {
+          "const": "not_sellable"
+        }
+      },
+      "additionalProperties": false
+    },
+    "maintenanceReason": {
+      "enum": ["repair", "renovation", "internal_use", "other"],
+      "description": "Why a maintenance window exists, when the source says."
+    },
     "reservationStatus": {
       "enum": ["tentative", "confirmed", "cancelled", "no_show"],
       "description": "Commercial status of a Reservation."
@@ -122,7 +140,7 @@
     },
     "Property": {
       "title": "Property",
-      "description": "Tenant, IANA time zone, country and business-date policy.",
+      "description": "Tenant, IANA time zone, country, business-date policy and standard check-in and check-out times.",
       "x-hos-boundary": "Establishment-level operating context.",
       "type": "object",
       "required": ["property_id", "tenant_id", "timezone", "country", "business_date_policy"],
@@ -141,6 +159,14 @@
             }
           },
           "additionalProperties": false
+        },
+        "standard_check_in_time": {
+          "$ref": "#/$defs/localTime",
+          "description": "Local time at which a stay starts when a source plans stays in days, for example 15:00."
+        },
+        "standard_check_out_time": {
+          "$ref": "#/$defs/localTime",
+          "description": "Local time at which a stay ends when a source plans stays in days, for example 11:00."
         },
         "external_refs": { "$ref": "#/$defs/externalRefs" }
       },
@@ -173,6 +199,49 @@
       },
       "additionalProperties": false
     },
+    "MaintenanceWindow": {
+      "title": "Maintenance window",
+      "description": "A planned period when a Unit is out of service or cannot be sold: a repair, a renovation or internal use. Its statuses say which dimensions it affects.",
+      "x-hos-boundary": "A plan. What holds now is the Unit's maintenance and commercial status.",
+      "type": "object",
+      "required": ["maintenance_id", "property_id", "unit_id", "starts_at", "ends_at", "statuses"],
+      "properties": {
+        "maintenance_id": {
+          "$ref": "#/$defs/hosId"
+        },
+        "property_id": {
+          "$ref": "#/$defs/hosId"
+        },
+        "unit_id": {
+          "$ref": "#/$defs/hosId"
+        },
+        "starts_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Start of the window. When the source plans windows in days, the window holds the unit as a stay would: its first day at the Property's standard check-in time."
+        },
+        "ends_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "End of the window, exclusive. When the source plans windows in days, the day that frees the unit at the Property's standard check-out time."
+        },
+        "statuses": {
+          "$ref": "#/$defs/maintenanceWindowStatuses"
+        },
+        "reason": {
+          "$ref": "#/$defs/maintenanceReason"
+        },
+        "cancelled_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the window was withdrawn, if it was."
+        },
+        "external_refs": {
+          "$ref": "#/$defs/externalRefs"
+        }
+      },
+      "additionalProperties": false
+    },
     "Reservation": {
       "title": "Reservation",
       "description": "Property, commercial status, planned arrival and departure, and external references.",
@@ -198,7 +267,7 @@
     },
     "Stay": {
       "title": "Stay",
-      "description": "Property, linked Reservation, planned and actual times, and Unit assignment history.",
+      "description": "Property, linked Reservation, planned and actual times, and Unit assignment history. A reservation for several units yields one Stay per unit.",
       "x-hos-boundary": "Operational execution of a visit.",
       "type": "object",
       "required": [
@@ -255,7 +324,7 @@
     },
     "Guest": {
       "title": "Guest",
-      "description": "Pseudonymous HOS identifiers and external references only.",
+      "description": "Pseudonymous HOS identifiers and external references only. A producer without a stable guest identity publishes no guest_id, and never derives one from names or contact details.",
       "x-hos-boundary": "No mandatory global person identity.",
       "type": "object",
       "required": ["guest_id"],

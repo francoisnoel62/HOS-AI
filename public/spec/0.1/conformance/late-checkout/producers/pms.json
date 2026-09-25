@@ -1,0 +1,82 @@
+{
+  "hosmanifestversion": "0.1",
+  "producer": "urn:hos:pms:demo",
+  "name": "Synthetic PMS",
+  "organization": {
+    "name": "HOS AI synthetic corpus"
+  },
+  "system_role": "pms",
+  "property_ids": ["prop_toronto"],
+  "entities": ["Reservation", "Stay", "Unit", "Guest"],
+  "events": [
+    {
+      "type": "reservation.created",
+      "authoritative": true
+    },
+    {
+      "type": "reservation.updated",
+      "authoritative": true
+    },
+    {
+      "type": "reservation.cancelled",
+      "authoritative": true
+    },
+    {
+      "type": "stay.expected",
+      "authoritative": true
+    },
+    {
+      "type": "stay.unit_assigned",
+      "authoritative": true
+    },
+    {
+      "type": "stay.unit_unassigned",
+      "authoritative": true
+    },
+    {
+      "type": "stay.checked_in",
+      "authoritative": true
+    },
+    {
+      "type": "stay.check_in_reverted",
+      "authoritative": true
+    },
+    {
+      "type": "stay.checked_out",
+      "authoritative": true
+    },
+    {
+      "type": "unit.status_changed",
+      "dimensions": ["occupancy", "commercial"],
+      "authoritative": true
+    },
+    {
+      "type": "unit.status_changed",
+      "dimensions": ["housekeeping"],
+      "authoritative": false,
+      "note": "The PMS mirrors housekeeping status; the housekeeping system is the authority."
+    },
+    {
+      "type": "unit.maintenance_scheduled",
+      "authoritative": true
+    },
+    {
+      "type": "unit.maintenance_cancelled",
+      "authoritative": true
+    }
+  ],
+  "delivery": {
+    "mechanisms": ["webhook"],
+    "guarantee": "at-least-once",
+    "ordering": "per-subject"
+  },
+  "replay": {
+    "supported": true,
+    "window_days": 30,
+    "format": "jsonl"
+  },
+  "retention": {
+    "event_days": 90
+  },
+  "limitations": ["Late check-outs are granted at the front desk by moving the planned departure."]
+}

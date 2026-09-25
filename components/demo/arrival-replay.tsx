@@ -29,7 +29,22 @@ const situationLabels: Record<SituationStatus, { label: string; tone: BadgeTone 
   resolved: { label: "Resolved", tone: "success" },
 };
 
-export function ArrivalReplay({ steps, notes, timezone, stayId, producerLabels }: { steps: ReplayStep[]; notes: Note[]; timezone: string; stayId: string; producerLabels: Record<string, string> }) {
+// origins, keyed by delivery, shows the payload a mapped fact was translated from, such as a PMS webhook message.
+export function ArrivalReplay({
+  steps,
+  notes,
+  timezone,
+  stayId,
+  producerLabels,
+  origins = {},
+}: {
+  steps: ReplayStep[];
+  notes: Note[];
+  timezone: string;
+  stayId: string;
+  producerLabels: Record<string, string>;
+  origins?: Record<number, { label: string; code: string }>;
+}) {
   const [position, setPosition] = useState(0);
   const [playing, setPlaying] = useState(false);
   const clock = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: timezone });
@@ -43,6 +58,7 @@ export function ArrivalReplay({ steps, notes, timezone, stayId, producerLabels }
   const step = position > 0 ? steps[position - 1] : undefined;
   const stay: StayView | undefined = step?.stays[stayId];
   const note = step ? notes.find((item) => item.delivery === step.delivery) : undefined;
+  const origin = step ? origins[step.delivery] : undefined;
   const finished = position >= steps.length;
 
   const running = playing && !finished;
@@ -218,6 +234,24 @@ export function ArrivalReplay({ steps, notes, timezone, stayId, producerLabels }
                   <Muted>None</Muted>
                 )}
               </Row>
+              {stay.maintenance ? (
+                <Row label="Maintenance window">
+                  <span className="font-semibold text-[var(--warning)]">
+                    {occurred(stay.maintenance.starts_at)} – {occurred(stay.maintenance.ends_at)}
+                  </span>
+                  <Source>
+                    {[stay.maintenance.statuses.maintenance, stay.maintenance.statuses.commercial].filter(Boolean).join(" · ")} · {producer(stay.maintenance.source)}
+                  </Source>
+                </Row>
+              ) : null}
+              {stay.occupied_by ? (
+                <Row label="Unit still held by">
+                  <span className="font-mono font-semibold text-[var(--warning)]">{stay.occupied_by.stay_id}</span>
+                  <Source>
+                    {stay.occupied_by.planned_departure_at ? `due to leave ${occurred(stay.occupied_by.planned_departure_at)}` : "departure not known"} · checked in {occurred(stay.occupied_by.time)} · {producer(stay.occupied_by.source)}
+                  </Source>
+                </Row>
+              ) : null}
               <Row label="Readiness · stay">
                 {stay.readiness === "not_ready" ? "Not ready" : stay.readiness === "ready" ? "Ready" : "Unknown"}
                 <Source>Stay {stayLabels[stay.stay_status].toLowerCase()}</Source>
@@ -225,7 +259,7 @@ export function ArrivalReplay({ steps, notes, timezone, stayId, producerLabels }
             </dl>
           ) : (
             <p className="mt-4 text-sm leading-6 text-[var(--muted-foreground)]">
-              {position === 0 ? "Deliver the first event, or play the whole scenario." : "A reservation is known, but no stay is expected yet."}
+              {position === 0 ? "Deliver the first event, or play the whole scenario." : "The stay this replay follows is not expected yet."}
             </p>
           )}
         </Card>
@@ -237,6 +271,12 @@ export function ArrivalReplay({ steps, notes, timezone, stayId, producerLabels }
             </p>
             <p className="mt-2 text-sm leading-6">{note.note}</p>
           </Card>
+        ) : null}
+
+        {origin ? (
+          <div className="[&_pre]:max-h-[26rem] [&_pre]:overflow-y-auto">
+            <CodePanel code={origin.code} label={origin.label} />
+          </div>
         ) : null}
 
         {panel ? (

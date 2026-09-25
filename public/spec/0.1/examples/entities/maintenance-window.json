@@ -1,0 +1,12 @@
+{
+  "maintenance_id": "mnt_31",
+  "property_id": "prop_demo",
+  "unit_id": "unit_207",
+  "starts_at": "2026-07-30T08:00:00Z",
+  "ends_at": "2026-07-31T14:00:00Z",
+  "statuses": {
+    "maintenance": "out_of_service",
+    "commercial": "not_sellable"
+  },
+  "reason": "repair"
+}
