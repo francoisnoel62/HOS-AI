@@ -1,8 +1,8 @@
-import { writeFile } from "node:fs/promises";
 import { parseArgs } from "node:util";
 
 import type { MewsReservation, MewsResource, MewsResourceBlock } from "../lib/hos/mappings/mews";
 import { type MewsSnapshot, syncMews } from "../lib/hos/mappings/mews-sync";
+import { runLiveCheck, writeLiveReport } from "./live-report";
 
 // Runs the experimental Mews mapping against a live Mews Connector API environment, read-only: it calls Get operations
 // only and never writes to Mews. Tokens come from the environment and are never printed. Mews publishes demo tokens in
@@ -90,51 +90,24 @@ async function main() {
   const report = syncMews(snapshot, { source: "urn:hos:pms:mews-live", tenant: "tenant_mews_live", propertyId: "prop_mews_live" });
 
   const serviceName = (service: MewsService) => service.Names?.["en-US"] ?? service.Names?.["en-GB"] ?? Object.values(service.Names ?? {})[0] ?? service.Name ?? service.Id;
-  const summary = {
-    platform,
-    fetched_at: fetchedAt,
-    window: colliding,
-    enterprise: { name: configuration.Enterprise.Name ?? null, timezone: enterprise.timezone },
-    accommodation_services: accommodation.map((id) => {
-      const service = services.find((candidate) => candidate.Id === id);
-      return service ? serviceName(service) : id;
-    }),
-    other_bookable_services: bookable.filter((service) => !accommodation.includes(service.Id)).map(serviceName),
-    fetched: report.fetched,
-    hos_events: report.events.length,
-    events_by_type: report.events_by_type,
-    schema_errors: report.schema_errors,
-    failures: report.failures,
-    resync_events: report.resync_events,
-    unmapped: report.unmapped,
-    dispositions: report.dispositions,
-    situations: report.situations,
-    arrivals: report.arrivals,
-  };
-
-  const arrivals = report.arrivals.stays;
-  const count = (predicate: (stay: (typeof arrivals)[number]) => boolean) => arrivals.filter(predicate).length;
-  console.log(`Mews ${platform} — ${summary.enterprise.name ?? enterprise.id} (${enterprise.timezone})`);
-  console.log(`Fetched ${report.fetched.reservations} reservations, ${report.fetched.resources} resources, ${report.fetched.resource_blocks} resource blocks.`);
-  console.log(`Accommodation services: ${summary.accommodation_services.join(", ")}`);
-  console.log(`HOS facts: ${report.events.length}, schema errors: ${report.schema_errors.length}, failures: ${report.failures.length}, facts on a second pass: ${report.resync_events}`);
-  for (const [type, total] of Object.entries(report.events_by_type).sort()) console.log(`  ${type.padEnd(28)} ${total}`);
-  console.log("Not mapped:");
-  for (const { event, reason, count: total } of report.unmapped) console.log(`  ${String(total).padStart(5)}  ${event}: ${reason}`);
-  console.log(`Dispositions: ${JSON.stringify(report.dispositions)}; situations: ${JSON.stringify(report.situations)}`);
-  console.log(
-    `Arrivals on ${report.arrivals.business_date}: ${arrivals.length} — ready ${count((stay) => stay.readiness === "ready")}, not ready ${count((stay) => stay.readiness === "not_ready")}, unknown ${count((stay) => stay.readiness === "unknown")}, blocked by maintenance ${count((stay) => Boolean(stay.maintenance))}, at risk ${count((stay) => stay.situation === "at_risk")}`,
-  );
-  if (args.out) {
-    await writeFile(args.out, `${JSON.stringify(args.events ? { ...summary, events: report.events } : summary, null, 2)}\n`);
-    console.log(`Report written to ${args.out}.`);
-  }
-  if (report.schema_errors.length || report.failures.length || report.resync_events) process.exitCode = 1;
+  const accommodationNames = accommodation.map((id) => {
+    const service = services.find((candidate) => candidate.Id === id);
+    return service ? serviceName(service) : id;
+  });
+  await writeLiveReport(report, {
+    heading: `Mews ${platform} — ${configuration.Enterprise.Name ?? enterprise.id} (${enterprise.timezone})`,
+    notes: [`Accommodation services: ${accommodationNames.join(", ")}`],
+    context: {
+      platform,
+      fetched_at: fetchedAt,
+      window: colliding,
+      enterprise: { name: configuration.Enterprise.Name ?? null, timezone: enterprise.timezone },
+      accommodation_services: accommodationNames,
+      other_bookable_services: bookable.filter((service) => !accommodation.includes(service.Id)).map(serviceName),
+    },
+    out: args.out,
+    events: args.events,
+  });
 }
 
-main().catch((error: unknown) => {
-  // fetch reports network failures, such as a refused proxy tunnel, in its cause.
-  const cause = error instanceof Error && error.cause instanceof Error ? ` (${error.cause.message})` : "";
-  console.error(error instanceof Error ? `${error.message}${cause}` : error);
-  process.exit(1);
-});
+runLiveCheck(main);

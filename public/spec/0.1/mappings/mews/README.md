@@ -92,7 +92,7 @@ The run does what an integration does before its first webhook. Every fetched en
 - how many facts a second pass over the same data publishes: none, if the adapter is idempotent;
 - today's arrivals as the arrival-readiness projection sees them: readiness, maintenance windows and situations.
 
-The report keeps HOS ids, counts and room names. It never keeps Mews payloads or customer data. Nightly bookable services are taken as accommodation; `MEWS_SERVICE_IDS` overrides them. The logic is `lib/hos/mappings/mews-sync.ts`, tested offline in `tests/unit/mews-sync.test.ts`.
+The report keeps HOS ids, counts and room names. It never keeps Mews payloads or customer data. Nightly bookable services are taken as accommodation; `MEWS_SERVICE_IDS` overrides them. The logic is `lib/hos/mappings/mews-sync.ts`, on top of `lib/hos/mappings/sync.ts`, which the [Apaleo live check](../apaleo/README.md#live-check) shares. It is tested offline in `tests/unit/mews-sync.test.ts`.
 
 The check has not run yet: the environment this mapping was built in could not reach `api.mews-demo.com`.
 

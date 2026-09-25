@@ -1,12 +1,12 @@
 # Apaleo API → HOS Events 0.1 — experimental mapping
 
-Status: **experimental and unofficial**. HOS AI is not affiliated with Apaleo, and Apaleo has not reviewed or endorsed this mapping. Every payload is synthetic. The adapter has not yet run against a live Apaleo account.
+Status: **experimental and unofficial**. HOS AI is not affiliated with Apaleo, and Apaleo has not reviewed or endorsed this mapping. Every payload is synthetic. The adapter has not yet run against a live Apaleo account; the [live check](#live-check) is ready for it.
 
 The mapping covers the facts the arrival-readiness scenario needs from a PMS: reservations, stays, unit assignment, check-in and check-out, and unit status. It is written from these sources:
 
 | Source                                                                                                               | By Apaleo | What it covers                                                                                                                                                                                                                         |
 | :------------------------------------------------------------------------------------------------------------------- | :-------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [`@apaleo/n8n-nodes-apaleo-official`](https://www.npmjs.com/package/@apaleo/n8n-nodes-apaleo-official) 1.0.37        | Yes       | The webhook events an integration can subscribe to, such as `reservation/unit-assigned`, `reservation/checked-in` and `unit/changed`.                                                                                                  |
+| [`@apaleo/n8n-nodes-apaleo-official`](https://www.npmjs.com/package/@apaleo/n8n-nodes-apaleo-official) 1.0.37        | Yes       | The webhook events an integration can subscribe to, such as `reservation/unit-assigned`, `reservation/checked-in` and `unit/changed`. The v1 paths and the token request the live check uses.                                          |
 | [`@apaleo/angular-api-proxy-booking`](https://www.npmjs.com/package/@apaleo/angular-api-proxy-booking) 19.0.29       | Yes       | `ReservationModel`. The typings are generated from the evolving Booking API; the fields used here are those of v1.                                                                                                                     |
 | [`@apaleo/angular-api-proxy-inventory`](https://www.npmjs.com/package/@apaleo/angular-api-proxy-inventory) 19.0.29   | Yes       | `UnitModel`: occupancy, condition and maintenance.                                                                                                                                                                                     |
 | [`@apaleo/angular-api-proxy-operations`](https://www.npmjs.com/package/@apaleo/angular-api-proxy-operations) 19.0.29 | Yes       | `MaintenanceModel`: unit, `from`, `to` and type. The typings are generated from the evolving Operations API; the adapter fetches `GET /operations/v1/maintenances/{id}`.                                                               |
@@ -77,8 +77,28 @@ The dispositions, readiness and situations are the same as in the scenario's `ex
 5. **Undo needed events of its own.** HOS 0.1 now has `stay.unit_unassigned` and `stay.check_in_reverted`.
 6. **Tasks are out of reach.** This integration publishes no housekeeping tasks.
 
+## Live check
+
+`npm run apaleo:live` runs the adapter against a live Apaleo account. Anyone can open a free developer account, and it can come with sample hotels. The check is read-only: it lists properties, unit groups, units, maintenances and reservations with GET operations, and nothing else. It authenticates as a simple client (custom app) registered under Apps, Connected apps, with the client credentials grant. `APALEO_CLIENT_ID` and `APALEO_CLIENT_SECRET` come from the environment and are never printed or stored. The app needs read scopes only; a 403 names the operation whose scope is missing.
+
+```sh
+APALEO_CLIENT_ID=… APALEO_CLIENT_SECRET=… npm run apaleo:live -- --property MUC --days 1 --out apaleo-live.json
+```
+
+The run does what an integration does before its first webhook. Every fetched unit, maintenance and reservation goes through the adapter as a `changed` event. The check reports what the [Mews live check](../mews/README.md#live-check) reports: facts by type and why the rest were not mapped, schema errors, facts a second pass publishes, and today's arrivals as the arrival-readiness projection sees them.
+
+- `--property`, or `APALEO_PROPERTY_ID`, picks the property when the account has several. Without it, the check lists them.
+- Reservations are those of bedroom unit groups that overlap the window, from yesterday to the end of `--days`.
+- A list shows a state, not when it changed. Unit statuses are dated by the fetch, and assignments by the reservation's `modified`, with `hostimebasis` `modified`.
+- The API does not say whether the property inspects rooms. `--inspections` says it does, so that `Clean` means `inspected`.
+- A sample hotel may have no arrivals today. To see readiness, create a few reservations arriving today, assign their rooms, and set one room dirty and another under maintenance.
+
+The report keeps HOS ids, counts and room names. It never keeps Apaleo payloads or guest data. The logic is `lib/hos/mappings/apaleo-sync.ts`, tested offline in `tests/unit/apaleo-sync.test.ts`.
+
+The check has not run yet: the environment this mapping was built in could not reach Apaleo.
+
 ## Not covered yet
 
 - Multi-unit bookings, blocks and groups.
-- Access tokens, rate limits and webhook subscription management in a live integration.
+- Token renewal, rate limits and webhook subscription management in a live integration.
 - Persistence of the crosswalk and of the adapter's published state.
