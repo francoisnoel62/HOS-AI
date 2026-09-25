@@ -1,6 +1,6 @@
 # Mews Connector API → HOS Events 0.1 — experimental mapping
 
-Status: **experimental and unofficial**. It is written from Mews's public Connector API documentation ([MewsSystems/gitbook-connector-api](https://github.com/MewsSystems/gitbook-connector-api), revision `e8732c7`). HOS AI is not affiliated with Mews, and Mews has not reviewed or endorsed this mapping. Every payload is synthetic. The adapter has not yet run against a live Mews environment.
+Status: **experimental and unofficial**. It is written from Mews's public Connector API documentation ([MewsSystems/gitbook-connector-api](https://github.com/MewsSystems/gitbook-connector-api), revision `e8732c7`). HOS AI is not affiliated with Mews, and Mews has not reviewed or endorsed this mapping. Every payload is synthetic. The adapter has not yet run against a live Mews environment; the [live check](#live-check) is ready for it.
 
 The mapping covers the facts the arrival-readiness scenario needs from a PMS: reservations, stays, unit assignment, check-in and check-out, and room states. It reads three documented Mews surfaces:
 
@@ -77,8 +77,27 @@ The dispositions, readiness and situations are the same as in the scenario's `ex
 6. **Provenance stops at the PMS.** Mews does not say who changed a room state, why, or what caused it. The manifest's authority rule is what keeps a mirrored status from overriding the housekeeping system.
 7. **Tasks are out of reach.** This integration publishes no housekeeping tasks.
 
+## Live check
+
+`npm run mews:live` runs the adapter against a live Mews Connector API environment, such as the public demo environment Mews documents under Getting started, Environments. It is read-only: it calls `configuration/get` and the `getAll` operations for services, reservations, resources and resource blocks, and nothing else. The tokens come from `MEWS_CLIENT_TOKEN` and `MEWS_ACCESS_TOKEN` and are never printed or stored.
+
+```sh
+MEWS_CLIENT_TOKEN=… MEWS_ACCESS_TOKEN=… npm run mews:live -- --days 1 --out mews-live.json
+```
+
+The run does what an integration does before its first webhook. Every fetched entity goes through the adapter, and the check reports:
+
+- how many HOS facts each type produced, and why the rest were not mapped;
+- every fact that fails the HOS 0.1 schemas;
+- how many facts a second pass over the same data publishes: none, if the adapter is idempotent;
+- today's arrivals as the arrival-readiness projection sees them: readiness, maintenance windows and situations.
+
+The report keeps HOS ids, counts and room names. It never keeps Mews payloads or customer data. Nightly bookable services are taken as accommodation; `MEWS_SERVICE_IDS` overrides them. The logic is `lib/hos/mappings/mews-sync.ts`, tested offline in `tests/unit/mews-sync.test.ts`.
+
+The check has not run yet: the environment this mapping was built in could not reach `api.mews-demo.com`.
+
 ## Not covered yet
 
 - Occupancy from Get resources' occupancy state.
-- Pagination, rate limits and token handling in a live integration.
+- Rate limits and webhook subscriptions in a live integration.
 - Persistence of the crosswalk and of the adapter's published state.

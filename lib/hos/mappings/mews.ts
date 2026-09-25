@@ -282,7 +282,10 @@ export function createMewsAdapter(config: MewsAdapterConfig) {
 
       const unitId = resolve("unit", mews.Id);
       const statuses = { ...known?.statuses };
-      const [dimension, value] = resourceStatuses[mews.State];
+      // Live data can carry a state documented after this mapping.
+      const mapped = resourceStatuses[mews.State];
+      if (!mapped) return skip(`Resource state ${mews.State} has no HOS counterpart in this mapping.`);
+      const [dimension, value] = mapped;
       const changes: Array<[UnitStatusDimension, string]> = [];
       // Leaving OutOfService or OutOfOrder is the only way Mews says a unit is operational again.
       if (dimension === "housekeeping" && statuses.maintenance === "out_of_service") changes.push(["maintenance", "operational"]);

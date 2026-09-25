@@ -6,8 +6,7 @@ import { createMewsAdapter, type MewsAdapterConfig, type MewsReservation, type M
 import { loadRecording } from "@/lib/hos/mappings/replay";
 import { replayArrivalReadiness } from "@/lib/hos/projection";
 import type { HosFact } from "@/lib/hos/types";
-
-import { errors, validateEvent } from "./hos-schemas";
+import { errors, validateEvent } from "@/lib/hos/validation";
 
 const { scenario, manifests } = loadArrivalScenario();
 const recording: MappingRecording = loadRecording("mews");

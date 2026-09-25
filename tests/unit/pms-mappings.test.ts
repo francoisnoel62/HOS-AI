@@ -5,8 +5,7 @@ import type { RecordedCall } from "@/lib/hos/mappings/common";
 import { buildArrivalStream, type PmsMapping, pmsMappings } from "@/lib/hos/mappings/replay";
 import { replayArrivalReadiness } from "@/lib/hos/projection";
 import type { HosFact } from "@/lib/hos/types";
-
-import { errors, validateEvent } from "./hos-schemas";
+import { errors, validateEvent } from "@/lib/hos/validation";
 
 // The payload shapes each recording must respect, taken from the sources it names: required properties for Mews and
 // Apaleo, and for Cloudbeds, whose SDK marks every property optional, the documented properties the adapter reads.

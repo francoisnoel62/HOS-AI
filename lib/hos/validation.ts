@@ -4,7 +4,8 @@ import path from "node:path";
 import Ajv2020, { type ValidateFunction } from "ajv/dist/2020";
 import addFormats from "ajv-formats";
 
-// Validators for the published HOS 0.1 JSON Schemas, loaded together because they reference each other by $id.
+// Validators for the published HOS 0.1 JSON Schemas, loaded together because they reference each other by $id. Server-side
+// only: the tests and the live PMS checks read the schemas from public/.
 
 export const readJson = (file: string) => JSON.parse(readFileSync(path.join(process.cwd(), "public", file), "utf8"));
 

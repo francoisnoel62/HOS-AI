@@ -59,6 +59,8 @@ The website replays this scenario at `/demo` with a small, non-normative referen
 - rules for when `stay.expected` is due and for producers without a guest identity;
 - scheduled maintenance windows, which all three PMSs have: a ninth Core entity and the `unit.maintenance_scheduled` and `unit.maintenance_cancelled` events.
 
+`npm run mews:live` runs the Mews mapping, read-only, against a live Mews environment such as Mews's public demo, and reports whether real data maps to valid HOS events. It has not run yet; see the [Mews notes](public/spec/0.1/mappings/mews/README.md#live-check).
+
 A validator CLI, SDKs, a production event processor and live PMS connectors are future work.
 
 ## Project status
