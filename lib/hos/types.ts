@@ -110,6 +110,8 @@ export type ConflictRef = FactRef & { dimension: UnitStatusDimension };
 export type EventRef = { source: string; id: string };
 export type MaintenanceRef = { maintenance_id: string; starts_at: string; ends_at: string; statuses: MaintenanceWindowStatuses; source: string; event_id: string; time: string };
 export type TaskRef = { task_id: string; task_type: TaskType; status: "open" | "completed"; source: string; event_id: string; time: string };
+// The in-house stay that still holds a unit: its latest planned check-out, when known, and its check-in fact.
+export type OccupantRef = { stay_id: string; planned_departure_at: string | null; source: string; event_id: string; time: string };
 
 type SituationEnvelope<TType extends string, TData> = Omit<Envelope<TType, TData>, "data"> & { data: TData };
 
@@ -125,6 +127,7 @@ export type RoomReadinessAtRisk = SituationEnvelope<
     conflicts: ConflictRef[];
     latest_task: TaskRef | null;
     maintenance?: MaintenanceRef;
+    occupied_by?: OccupantRef;
     evidence: EventRef[];
   }
 >;
@@ -135,7 +138,7 @@ export type RoomReadinessResolved = SituationEnvelope<
     stay_id: string;
     reservation_id: string;
     unit_id: string | null;
-    reason: "unit_ready" | "unit_available" | "arrival_not_early" | "reservation_inactive" | "stay_started";
+    reason: "unit_ready" | "unit_available" | "unit_reassigned" | "unit_vacated" | "departure_before_arrival" | "arrival_not_early" | "reservation_inactive" | "stay_started";
     planned_arrival_at: string;
     expected_arrival_at: string | null;
     housekeeping: FactRef | null;

@@ -1,6 +1,6 @@
 # HOS 0.1 — draft
 
-Machine-readable artefacts of the HOS 0.1 drafts. The readable specifications are published at `/docs/core` (HOS Core 0.1) and `/docs/events` (HOS Events 0.1) on the HOS AI website, and the conformance scenario can be replayed at `/demo`.
+Machine-readable artefacts of the HOS 0.1 drafts. The readable specifications are published at `/docs/core` (HOS Core 0.1) and `/docs/events` (HOS Events 0.1) on the HOS AI website, and the conformance scenarios can be replayed at `/demo`, `/demo/room-out-of-order` and `/demo/late-checkout`.
 
 Status: draft for review. Names and fields may change before 0.1 is final. The specification is intended for publication under CC BY 4.0; schemas are Apache-2.0. Every example is synthetic.
 
@@ -12,16 +12,22 @@ Status: draft for review. Names and fields may change before 0.1 is final. The s
 - `schemas/producer-manifest.schema.json` — Event Producer manifests. Signing is still in progress.
 - `schemas/reference/arrival-readiness.schema.json` — non-normative reference situations produced by the arrival-readiness projection.
 - `examples/` — one valid event per type, plus Core entity examples in `examples/entities/`.
-- `conformance/arrival-readiness/` — the early-arrival, unit-not-ready conformance scenario:
+- `conformance/` — three conformance scenarios, each replayed through the arrival-readiness reference projection:
+  - `arrival-readiness/` — an early arrival to a unit not yet released: thirteen deliveries from a PMS, a housekeeping system and a guest messaging platform;
+  - `room-out-of-order/` — an assigned unit goes out of order on the arrival day: fourteen deliveries from a PMS, a housekeeping system and a maintenance system;
+  - `late-checkout/` — a late check-out in a unit assigned to a same-day arrival: fifteen deliveries from a PMS and a housekeeping system.
+
+  Each scenario holds the same files:
   - `scenario.json` — tenant and property profile, readiness rule, the cases covered and what each delivery checks;
-  - `producers/*.json` — manifests of the three synthetic producers;
-  - `events.jsonl` — thirteen deliveries, in delivery order, one CloudEvent per line;
+  - `producers/*.json` — manifests of its synthetic producers;
+  - `events.jsonl` — the deliveries, in delivery order, one CloudEvent per line;
   - `expected.json` — the dispositions, readiness and situations an implementation must reproduce.
+
 - `mappings/` — experimental, unofficial PMS mappings for Mews, Apaleo and Cloudbeds. For each PMS, the arrival scenario's PMS deliveries are recorded in that PMS's format: webhooks and the entities an integration fetches for them. Mapping notes sit alongside. Replayed through each reference adapter, the deliveries reach `expected.json`.
 
 The schemas reference each other by `$id` (`urn:hos:schema:0.1:*`); load all of them into your validator.
 
-## Running the conformance scenario
+## Running a conformance scenario
 
 1. Load the producer manifests.
 2. Replay `events.jsonl` in file order, applying the HOS Events 0.1 rules: deduplicate on source + id, order by occurrence time, process only declared capabilities, and let only the declared authority change a value.

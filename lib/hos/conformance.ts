@@ -4,11 +4,16 @@ import path from "node:path";
 import type { Situation, HosFact, ProducerManifest, ProjectionConfig } from "@/lib/hos/types";
 import type { Disposition, Readiness, ReplayStep, SituationStatus } from "@/lib/hos/projection";
 
-// Server-side loaders for the published HOS 0.1 artefacts: the arrival-readiness conformance scenario and the examples.
+// Server-side loaders for the published HOS 0.1 artefacts: the conformance scenarios and the examples.
 
 export const specVersionPath = "/spec/0.1";
-export const scenarioPath = `${specVersionPath}/conformance/arrival-readiness`;
 export const examplesPath = `${specVersionPath}/examples`;
+
+// Every scenario replays through the arrival-readiness reference projection. The first, the early arrival, is the one the
+// PMS mappings reproduce.
+export const conformanceScenarios = ["arrival-readiness", "room-out-of-order", "late-checkout"] as const;
+export type ConformanceScenarioId = (typeof conformanceScenarios)[number];
+export const scenarioPath = (id: ConformanceScenarioId = "arrival-readiness") => `${specVersionPath}/conformance/${id}`;
 
 export type ArrivalScenario = {
   scenario: string;
@@ -40,8 +45,8 @@ export type ExpectedOutcome = {
 
 const publicDirectory = path.join(process.cwd(), "public");
 
-function readScenarioFile(file: string) {
-  return readFileSync(path.join(publicDirectory, scenarioPath, file), "utf8");
+function readScenarioFile(id: ConformanceScenarioId, file: string) {
+  return readFileSync(path.join(publicDirectory, scenarioPath(id), file), "utf8");
 }
 
 export function parseJsonLines(text: string): unknown[] {
@@ -52,12 +57,14 @@ export function parseJsonLines(text: string): unknown[] {
     .map((line) => JSON.parse(line));
 }
 
-export function loadArrivalScenario() {
-  const scenario = JSON.parse(readScenarioFile("scenario.json")) as ArrivalScenario;
-  const manifests = scenario.files.producers.map((file) => JSON.parse(readScenarioFile(file)) as ProducerManifest);
-  const events = parseJsonLines(readScenarioFile(scenario.files.events)) as HosFact[];
+export function loadScenario(id: ConformanceScenarioId) {
+  const scenario = JSON.parse(readScenarioFile(id, "scenario.json")) as ArrivalScenario;
+  const manifests = scenario.files.producers.map((file) => JSON.parse(readScenarioFile(id, file)) as ProducerManifest);
+  const events = parseJsonLines(readScenarioFile(id, scenario.files.events)) as HosFact[];
   return { scenario, manifests, events };
 }
+
+export const loadArrivalScenario = () => loadScenario("arrival-readiness");
 
 export function listExamples() {
   return readdirSync(path.join(publicDirectory, examplesPath))
@@ -65,8 +72,8 @@ export function listExamples() {
     .sort();
 }
 
-export function loadExpectedOutcome() {
-  return JSON.parse(readScenarioFile("expected.json")) as ExpectedOutcome;
+export function loadExpectedOutcome(id: ConformanceScenarioId = "arrival-readiness") {
+  return JSON.parse(readScenarioFile(id, "expected.json")) as ExpectedOutcome;
 }
 
 // The comparable part of a replay: what expected.json pins down.

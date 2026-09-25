@@ -113,8 +113,8 @@ export const documentationItems: Array<{
     href: "/docs/events#producers",
   },
   {
-    title: "Arrival conformance scenario",
-    description: "Thirteen synthetic deliveries covering the nominal case, a duplicate, an out-of-order event, conflicting facts, snapshot recovery and a missing capability.",
+    title: "Arrival conformance scenarios",
+    description: "Three synthetic scenarios, 42 deliveries: an early arrival to a room not yet released, an assigned room out of order, and a late check-out on a same-day turnover. They cover duplicates, out-of-order and late deliveries, conflicting and mirrored facts, snapshot recovery and a missing capability.",
     status: "Draft",
     href: "/demo",
   },

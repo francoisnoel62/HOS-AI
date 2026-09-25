@@ -1,0 +1,51 @@
+{
+  "hosmanifestversion": "0.1",
+  "producer": "urn:hos:housekeeping:demo",
+  "name": "Synthetic housekeeping system",
+  "organization": {
+    "name": "HOS AI synthetic corpus"
+  },
+  "system_role": "housekeeping",
+  "property_ids": ["prop_toronto"],
+  "entities": ["Unit", "Task"],
+  "events": [
+    {
+      "type": "unit.status_changed",
+      "dimensions": ["housekeeping"],
+      "authoritative": true,
+      "snapshot": true
+    },
+    {
+      "type": "unit.status_changed",
+      "dimensions": ["occupancy"],
+      "authoritative": false,
+      "snapshot": true,
+      "note": "Room attendants report what they see; the PMS is the occupancy authority."
+    },
+    {
+      "type": "housekeeping.task.created",
+      "authoritative": true
+    },
+    {
+      "type": "housekeeping.task.completed",
+      "authoritative": true
+    }
+  ],
+  "delivery": {
+    "mechanisms": ["webhook"],
+    "guarantee": "at-least-once",
+    "ordering": "none"
+  },
+  "replay": {
+    "supported": true,
+    "window_days": 30,
+    "format": "jsonl"
+  },
+  "retention": {
+    "event_days": 30
+  },
+  "limitations": [
+    "Units are released on inspection.",
+    "Occupancy comes from room attendants' visual checks."
+  ]
+}

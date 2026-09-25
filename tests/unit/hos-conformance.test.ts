@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { examplesPath, listExamples, loadArrivalScenario, loadExpectedOutcome, toExpectedOutcome } from "@/lib/hos/conformance";
+import { conformanceScenarios, examplesPath, listExamples, loadArrivalScenario, loadExpectedOutcome, loadScenario, toExpectedOutcome } from "@/lib/hos/conformance";
 import { replayArrivalReadiness } from "@/lib/hos/projection";
 import type { HosFact } from "@/lib/hos/types";
 import { errors, readJson, validateEvent, validateMaintenanceWindow, validateManifest, validateProperty, validateSituation, validateUnit } from "@/lib/hos/validation";
@@ -212,5 +212,112 @@ describe("maintenance windows in the reference projection", () => {
     expect(steps.at(-1)!.stays.stay_1042).toMatchObject({ maintenance: null, situation: "resolved" });
     const elsewhere = { ...blocking, id: "pms-m7", data: { ...blocking.data, maintenance_id: "mnt_8", unit_id: "unit_207" } } as HosFact;
     expect(situations([created, expected, assigned, elsewhere])).toEqual([]);
+  });
+});
+
+describe.each(conformanceScenarios)("conformance scenario %s", (id) => {
+  const corpus = loadScenario(id);
+  const steps = replayArrivalReadiness(corpus.events, corpus.manifests, corpus.scenario.projection);
+  const expectedOutcome = loadExpectedOutcome(id);
+
+  it("publishes only valid events and manifests", () => {
+    for (const event of corpus.events) expect(validateEvent(event), `${event.id}: ${errors(validateEvent)}`).toBe(true);
+    for (const manifest of corpus.manifests) expect(validateManifest(manifest), `${manifest.producer}: ${errors(validateManifest)}`).toBe(true);
+    expect(corpus.events.every((event) => event.hosproperty === corpus.scenario.property.id && event.hospropertytimezone === corpus.scenario.property.timezone)).toBe(true);
+  });
+
+  it("declares at most one authoritative producer per property, event type and dimension", () => {
+    const claims = corpus.manifests.flatMap((manifest) =>
+      manifest.events
+        .filter((declaration) => declaration.authoritative)
+        .flatMap((declaration) => manifest.property_ids.flatMap((property) => (declaration.dimensions ?? ["*"]).map((dimension) => `${property}|${declaration.type}|${dimension}`))),
+    );
+    expect(new Set(claims).size).toBe(claims.length);
+  });
+
+  it("matches the published expected outcome", () => {
+    expect(toExpectedOutcome(steps, corpus.scenario)).toEqual(expectedOutcome);
+  });
+
+  it("documents every delivery", () => {
+    expect(corpus.scenario.deliveries.map((item) => item.delivery)).toEqual(steps.map((step) => step.delivery));
+  });
+
+  it("raises a risk, then resolves it, with situations valid against the reference schema", () => {
+    expect(expectedOutcome.situations.map(({ event }) => event.type)).toEqual(["arrival.room_readiness_at_risk", "arrival.room_readiness_resolved"]);
+    for (const { delivery, event } of expectedOutcome.situations) {
+      expect(validateSituation({ ...event, id: `situation-${delivery}`, hosrecordedat: event.time }), errors(validateSituation)).toBe(true);
+    }
+  });
+});
+
+describe("maintenance and reassignment in the room-out-of-order scenario", () => {
+  const { scenario: outOfOrder, manifests: lisbon, events: stream } = loadScenario("room-out-of-order");
+  const replay = (facts: HosFact[]) => replayArrivalReadiness(facts, lisbon, outOfOrder.projection);
+  const byId = (id: string) => stream.find((event) => event.id === id)!;
+
+  it("names the reassignment, even when the new unit is already ready", () => {
+    const ready = { ...byId("hk-005502"), id: "hk-x1", time: "2026-08-14T10:00:00Z" } as HosFact;
+    const situations = replay([...stream.slice(0, 5), ready, byId("pms-020340")]).flatMap((step) => step.emitted);
+    expect(situations.map((situation) => situation.type)).toEqual(["arrival.room_readiness_at_risk", "arrival.room_readiness_resolved"]);
+    expect(situations[1].data).toMatchObject({ reason: "unit_reassigned", unit_id: "unit_318" });
+  });
+
+  it("lets only the declared authority plan maintenance", () => {
+    const mirrored = replay([...stream.slice(0, 4), byId("pms-020322")]);
+    expect(mirrored.at(-1)).toMatchObject({ disposition: "non_authoritative", emitted: [] });
+    expect(mirrored.at(-1)!.stays.stay_2051).toMatchObject({ readiness: "ready", maintenance: null });
+  });
+});
+
+describe("guests still in house in the late-checkout scenario", () => {
+  const { scenario: turnover, manifests: toronto, events: stream } = loadScenario("late-checkout");
+  const replay = (facts: HosFact[]) => replayArrivalReadiness(facts, toronto, turnover.projection);
+  const byId = (id: string) => stream.find((event) => event.id === id)!;
+  const lateCheckout = byId("pms-031418");
+  const plan = (id: string, time: string, departure: string) => ({ ...lateCheckout, id, time, data: { ...lateCheckout.data, planned_departure_at: departure } }) as HosFact;
+  const atRisk = stream.slice(0, 7);
+
+  it("keeps a unit held by another guest not ready, without a situation while that guest leaves first", () => {
+    const steps = replay(stream.slice(0, 6));
+    expect(steps.at(-1)!.stays.stay_3140).toMatchObject({ readiness: "not_ready", situation: "none", occupied_by: { stay_id: "stay_3088", planned_departure_at: "2026-08-21T15:00:00Z" } });
+    expect(steps.flatMap((step) => step.emitted)).toEqual([]);
+  });
+
+  it("resolves the risk as departure_before_arrival when the departure moves back before the arrival", () => {
+    const earlier = plan("pms-x1", "2026-08-21T14:00:00Z", "2026-08-21T18:00:00Z");
+    const resolved = replay([...atRisk, earlier]).at(-1)!;
+    expect(resolved.emitted).toMatchObject([{ type: "arrival.room_readiness_resolved", data: { reason: "departure_before_arrival" } }]);
+    expect(resolved.stays.stay_3140).toMatchObject({ readiness: "not_ready", occupied_by: { stay_id: "stay_3088" } });
+  });
+
+  it("raises the risk when the arriving guest is expected before the departure, even without a late check-out", () => {
+    const message = {
+      ...lateCheckout,
+      id: "msg-x1",
+      source: "urn:hos:messaging:demo",
+      type: "guest.message.received",
+      time: "2026-08-21T12:00:00Z",
+      hossubjects: "message:msg_x1 stay:stay_3140",
+      data: { message_id: "msg_x1", channel: "email", stay_id: "stay_3140", sensitivity: "confidential", signals: [{ kind: "early_arrival", expected_arrival_at: "2026-08-21T14:30:00Z" }] },
+    } as unknown as HosFact;
+    const messaging = { ...toronto[0], producer: "urn:hos:messaging:demo", system_role: "messaging" as const, events: [{ type: "guest.message.received" as const, authoritative: true }] };
+    const steps = replayArrivalReadiness([...stream.slice(0, 6), message], [...toronto, messaging], turnover.projection);
+    expect(steps.at(-1)!.emitted).toMatchObject([{ type: "arrival.room_readiness_at_risk", data: { expected_arrival_at: "2026-08-21T14:30:00Z", occupied_by: { stay_id: "stay_3088" } } }]);
+  });
+
+  it("frees the unit when the guest in house moves to another unit", () => {
+    const moved = { ...byId("pms-031204"), id: "pms-x2", time: "2026-08-21T14:00:00Z", data: { stay_id: "stay_3088", unit_id: "unit_1302", previous_unit_id: "unit_1207", reason: "room_move" } } as HosFact;
+    const resolved = replay([...atRisk, moved]).at(-1)!;
+    expect(resolved.emitted).toMatchObject([{ type: "arrival.room_readiness_resolved", data: { reason: "unit_vacated", evidence: expect.arrayContaining([{ source: "urn:hos:pms:demo", id: "pms-x2" }]) } }]);
+    expect(resolved.stays.stay_3140.occupied_by).toBeNull();
+  });
+
+  it("reaches the same final state whatever the delivery order", () => {
+    const summarise = (steps: ReturnType<typeof replay>) => {
+      const { readiness, unit_id, stay_status, occupied_by, housekeeping } = steps.at(-1)!.stays.stay_3140;
+      return { readiness, unit_id, stay_status, occupied_by, housekeeping };
+    };
+    expect(summarise(replay([...stream].reverse()))).toEqual(summarise(replay(stream)));
   });
 });

@@ -74,6 +74,50 @@ test("live demo raises, then resolves, the arrival-readiness risk", async ({ pag
   await expect(next).toBeDisabled();
 });
 
+test("room-out-of-order demo resolves the risk when the guest is moved", async ({ page }) => {
+  await page.goto("/demo");
+  await page.getByRole("navigation", { name: "Conformance scenarios" }).getByRole("link", { name: /Room out of order/ }).click();
+  await expect(page).toHaveURL(/\/demo\/room-out-of-order$/);
+  const next = page.getByRole("button", { name: "Deliver next event" });
+  const projection = page.getByRole("region", { name: "Arrival-readiness projection" });
+  for (let delivery = 1; delivery <= 5; delivery += 1) await next.click();
+  await expect(projection).toContainText("Readiness at risk");
+  await expect(projection).toContainText("Maintenance window");
+  await next.click();
+  await next.click();
+  await expect(page.getByText("Not authoritative", { exact: true })).toBeVisible();
+  for (let delivery = 8; delivery <= 10; delivery += 1) await next.click();
+  await expect(page.getByText("Older · not applied")).toBeVisible();
+  await next.click();
+  await expect(projection).toContainText("Resolved");
+  await expect(projection).toContainText("stay_2051 · unit_318");
+  for (let delivery = 12; delivery <= 14; delivery += 1) await next.click();
+  await expect(page.getByText("14 / 14")).toBeVisible();
+  await expect(projection).toContainText("Stay in house");
+});
+
+test("late-checkout demo holds the unit until the departing guest checks out", async ({ page }) => {
+  await page.goto("/demo/late-checkout");
+  await expect(page.getByRole("navigation", { name: "Conformance scenarios" }).getByRole("link", { name: /Late check-out/ })).toHaveAttribute("aria-current", "page");
+  const next = page.getByRole("button", { name: "Deliver next event" });
+  const projection = page.getByRole("region", { name: "Arrival-readiness projection" });
+  for (let delivery = 1; delivery <= 6; delivery += 1) await next.click();
+  await expect(projection).toContainText("Unit still held by");
+  await expect(projection).toContainText("stay_3088");
+  await expect(projection).toContainText("No situation");
+  await next.click();
+  await expect(projection).toContainText("Readiness at risk");
+  await expect(projection).toContainText("due to leave 17:00");
+  for (let delivery = 8; delivery <= 10; delivery += 1) await next.click();
+  await expect(projection).toContainText("Readiness at risk");
+  await next.click();
+  await expect(projection).toContainText("Resolved");
+  await expect(projection).not.toContainText("Unit still held by");
+  for (let delivery = 12; delivery <= 15; delivery += 1) await next.click();
+  await expect(page.getByText("15 / 15")).toBeVisible();
+  await expect(projection).toContainText("Stay in house");
+});
+
 for (const [pms, name, facts] of [
   ["mews", "Mews", 12],
   ["apaleo", "Apaleo", 13],

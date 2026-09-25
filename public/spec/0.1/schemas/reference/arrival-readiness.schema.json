@@ -152,6 +152,39 @@
       },
       "additionalProperties": false
     },
+    "occupantRef": {
+      "type": "object",
+      "description": "Another stay still in house in the assigned unit: checked in, not checked out. planned_departure_at is its latest planned check-out, when known; source, event_id and time identify its check-in.",
+      "required": ["stay_id", "planned_departure_at", "source", "event_id", "time"],
+      "properties": {
+        "stay_id": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/hosId"
+        },
+        "planned_departure_at": {
+          "oneOf": [
+            {
+              "type": "string",
+              "format": "date-time"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "source": {
+          "type": "string",
+          "format": "uri"
+        },
+        "event_id": {
+          "type": "string"
+        },
+        "time": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "additionalProperties": false
+    },
     "taskRef": {
       "type": "object",
       "required": ["task_id", "task_type", "status", "source", "event_id", "time"],
@@ -181,7 +214,7 @@
     },
     "arrival.room_readiness_at_risk": {
       "title": "arrival.room_readiness_at_risk",
-      "description": "A guest is expected before the planned check-in time and the assigned unit is not ready according to its authoritative housekeeping status, or a maintenance window blocks the assigned unit when the guest is expected. expected_arrival_at is the latest arrival signal, or the planned check-in without one. Observation only.",
+      "description": "The assigned unit may not be ready when the guest comes: the guest is expected before the planned check-in time and the unit is not ready, a maintenance window blocks the unit when the guest is expected, or another guest in house in the unit is not due to leave before then. A unit is not ready when its authoritative housekeeping status is not ready or unknown, a window blocks it, or another guest still holds it. expected_arrival_at is the latest arrival signal, or the planned check-in without one. Observation only.",
       "type": "object",
       "required": [
         "stay_id",
@@ -248,6 +281,9 @@
         "maintenance": {
           "$ref": "#/$defs/maintenanceRef"
         },
+        "occupied_by": {
+          "$ref": "#/$defs/occupantRef"
+        },
         "evidence": {
           "type": "array",
           "description": "Facts the situation is derived from, sorted by occurrence time, then source, then id.",
@@ -293,10 +329,14 @@
           "enum": [
             "unit_ready",
             "unit_available",
+            "unit_reassigned",
+            "unit_vacated",
+            "departure_before_arrival",
             "arrival_not_early",
             "reservation_inactive",
             "stay_started"
-          ]
+          ],
+          "description": "What stopped the risk: the stay was given another unit, the unit became ready, its maintenance window went, the guest in house left or is now due to leave first, the arrival is no longer early, the reservation became inactive, or the stay started."
         },
         "planned_arrival_at": {
           "type": "string",

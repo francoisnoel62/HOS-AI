@@ -1,0 +1,103 @@
+{
+  "scenario": "room-out-of-order",
+  "hosschemaversion": "0.1",
+  "status": "draft",
+  "title": "Assigned unit out of order",
+  "summary": "Synthetic facts from a PMS, a housekeeping system and a maintenance system for one property. On the arrival day, a leak takes the guest's assigned unit out of order. Replay events.jsonl in file order through an implementation and compare its dispositions, readiness and situations with expected.json. The situations are non-normative; the dispositions follow the HOS Events 0.1 processing rules.",
+  "covers": [
+    "Maintenance window blocking an assigned arrival",
+    "A plan is not a state: the window and the maintenance status travel separately",
+    "Mirrored maintenance plan from a non-authoritative producer",
+    "Latest plan wins: an older revision delivered late is superseded",
+    "Reassignment resolves the risk",
+    "Causation across producers"
+  ],
+  "tenant": {
+    "id": "tenant_demo"
+  },
+  "property": {
+    "id": "prop_lisbon",
+    "timezone": "Europe/Lisbon",
+    "country": "PT"
+  },
+  "projection": {
+    "ready_housekeeping_statuses": ["clean", "inspected"]
+  },
+  "files": {
+    "events": "events.jsonl",
+    "expected": "expected.json",
+    "producers": ["producers/pms.json", "producers/housekeeping.json", "producers/maintenance.json"]
+  },
+  "deliveries": [
+    {
+      "delivery": 1,
+      "checks": "Reservation context",
+      "note": "The PMS created reservation res_2051 on 2 July for an arrival on 14 August."
+    },
+    {
+      "delivery": 2,
+      "checks": "Stay context",
+      "note": "The PMS published the stay with the reservation, as HOS Events requires once a stay is committed: stay_2051 is expected at the standard 15:00 check-in."
+    },
+    {
+      "delivery": 3,
+      "checks": "Unit assignment",
+      "note": "On the arrival morning the PMS assigns unit 312."
+    },
+    {
+      "delivery": 4,
+      "checks": "Ready unit",
+      "note": "The housekeeping system, the authority for housekeeping status, reports unit 312 inspected. The stay is ready, with no situation."
+    },
+    {
+      "delivery": 5,
+      "checks": "Window blocks an arrival",
+      "note": "At 09:40 a leak is reported under the bathroom sink. The maintenance system, the declared authority for maintenance windows, plans a repair from 09:45 to 16:00. The window covers the 15:00 check-in, so the reference projection raises arrival.room_readiness_at_risk, citing the window. No arrival signal is needed."
+    },
+    {
+      "delivery": 6,
+      "checks": "A plan is not a state",
+      "note": "The work starts and the maintenance system reports unit 312 out of service. The window planned the work; this status says what the unit is now. Only the maintenance dimension changes."
+    },
+    {
+      "delivery": 7,
+      "checks": "Mirrored plan",
+      "note": "A front-desk agent copies the repair into a PMS out-of-order block, planned in days. The PMS manifest declares it a mirror, not the authority for maintenance windows: HOS records it as not authoritative and does not count the work twice."
+    },
+    {
+      "delivery": 8,
+      "checks": "Another unit",
+      "note": "Unit 318 is reported dirty after its guest left. It concerns no expected stay yet."
+    },
+    {
+      "delivery": 9,
+      "checks": "Plan revised",
+      "note": "At 11:30 the plumber needs a part: the maintenance system moves the end of the window to 19:00. The latest plan for mnt_77 applies, and the risk remains."
+    },
+    {
+      "delivery": 10,
+      "checks": "Older plan, delivered late",
+      "note": "A revision entered offline at 10:20 syncs after the 11:30 one. It ends the window at 14:30, before check-in: applied, it would make the risk seem resolved. It is older than the current plan, so it is superseded."
+    },
+    {
+      "delivery": 11,
+      "checks": "Reassignment resolves",
+      "note": "The front desk moves the stay to unit 318. The window no longer concerns the stay: the risk is resolved as unit_reassigned. Unit 318 is dirty, but check-in is at 15:00 and nothing says the guest comes early."
+    },
+    {
+      "delivery": 12,
+      "checks": "Causation across producers",
+      "note": "The housekeeping system opens a high-priority cleaning task for unit 318, due at check-in. Its causal link points to the PMS reassignment."
+    },
+    {
+      "delivery": 13,
+      "checks": "Unit released",
+      "note": "Unit 318 is inspected at 13:40. The stay is ready."
+    },
+    {
+      "delivery": 14,
+      "checks": "Stay started",
+      "note": "The guest checks in at 15:10 into unit 318."
+    }
+  ]
+}

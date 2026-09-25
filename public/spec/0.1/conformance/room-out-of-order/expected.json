@@ -1,0 +1,289 @@
+{
+  "scenario": "room-out-of-order",
+  "hosschemaversion": "0.1",
+  "compare": "Replay events.jsonl in file order. For every delivery compare the disposition and, for every known stay, its readiness and situation. For situations compare every attribute except id and hosrecordedat, which are implementation-defined.",
+  "deliveries": [
+    {
+      "delivery": 1,
+      "source": "urn:hos:pms:demo",
+      "id": "pms-020114",
+      "disposition": "applied",
+      "stays": {}
+    },
+    {
+      "delivery": 2,
+      "source": "urn:hos:pms:demo",
+      "id": "pms-020115",
+      "disposition": "applied",
+      "stays": {
+        "stay_2051": {
+          "readiness": "unknown",
+          "situation": "none"
+        }
+      }
+    },
+    {
+      "delivery": 3,
+      "source": "urn:hos:pms:demo",
+      "id": "pms-020301",
+      "disposition": "applied",
+      "stays": {
+        "stay_2051": {
+          "readiness": "unknown",
+          "situation": "none"
+        }
+      }
+    },
+    {
+      "delivery": 4,
+      "source": "urn:hos:housekeeping:demo",
+      "id": "hk-005410",
+      "disposition": "applied",
+      "stays": {
+        "stay_2051": {
+          "readiness": "ready",
+          "situation": "none"
+        }
+      }
+    },
+    {
+      "delivery": 5,
+      "source": "urn:hos:maintenance:demo",
+      "id": "mnt-000731",
+      "disposition": "applied",
+      "stays": {
+        "stay_2051": {
+          "readiness": "not_ready",
+          "situation": "at_risk"
+        }
+      }
+    },
+    {
+      "delivery": 6,
+      "source": "urn:hos:maintenance:demo",
+      "id": "mnt-000732",
+      "disposition": "applied",
+      "stays": {
+        "stay_2051": {
+          "readiness": "not_ready",
+          "situation": "at_risk"
+        }
+      }
+    },
+    {
+      "delivery": 7,
+      "source": "urn:hos:pms:demo",
+      "id": "pms-020322",
+      "disposition": "non_authoritative",
+      "stays": {
+        "stay_2051": {
+          "readiness": "not_ready",
+          "situation": "at_risk"
+        }
+      }
+    },
+    {
+      "delivery": 8,
+      "source": "urn:hos:housekeeping:demo",
+      "id": "hk-005433",
+      "disposition": "applied",
+      "stays": {
+        "stay_2051": {
+          "readiness": "not_ready",
+          "situation": "at_risk"
+        }
+      }
+    },
+    {
+      "delivery": 9,
+      "source": "urn:hos:maintenance:demo",
+      "id": "mnt-000745",
+      "disposition": "applied",
+      "stays": {
+        "stay_2051": {
+          "readiness": "not_ready",
+          "situation": "at_risk"
+        }
+      }
+    },
+    {
+      "delivery": 10,
+      "source": "urn:hos:maintenance:demo",
+      "id": "mnt-000738",
+      "disposition": "superseded",
+      "stays": {
+        "stay_2051": {
+          "readiness": "not_ready",
+          "situation": "at_risk"
+        }
+      }
+    },
+    {
+      "delivery": 11,
+      "source": "urn:hos:pms:demo",
+      "id": "pms-020340",
+      "disposition": "applied",
+      "stays": {
+        "stay_2051": {
+          "readiness": "not_ready",
+          "situation": "resolved"
+        }
+      }
+    },
+    {
+      "delivery": 12,
+      "source": "urn:hos:housekeeping:demo",
+      "id": "hk-005470",
+      "disposition": "applied",
+      "stays": {
+        "stay_2051": {
+          "readiness": "not_ready",
+          "situation": "resolved"
+        }
+      }
+    },
+    {
+      "delivery": 13,
+      "source": "urn:hos:housekeeping:demo",
+      "id": "hk-005502",
+      "disposition": "applied",
+      "stays": {
+        "stay_2051": {
+          "readiness": "ready",
+          "situation": "resolved"
+        }
+      }
+    },
+    {
+      "delivery": 14,
+      "source": "urn:hos:pms:demo",
+      "id": "pms-020377",
+      "disposition": "applied",
+      "stays": {
+        "stay_2051": {
+          "readiness": "ready",
+          "situation": "resolved"
+        }
+      }
+    }
+  ],
+  "situations": [
+    {
+      "delivery": 5,
+      "event": {
+        "specversion": "1.0",
+        "source": "urn:hos:projection:arrival-readiness",
+        "type": "arrival.room_readiness_at_risk",
+        "time": "2026-08-14T08:40:00Z",
+        "datacontenttype": "application/json",
+        "hosschemaversion": "0.1",
+        "hostenant": "tenant_demo",
+        "hosproperty": "prop_lisbon",
+        "hospropertytimezone": "Europe/Lisbon",
+        "hosbusinessdate": "2026-08-14",
+        "hossubjects": "stay:stay_2051 reservation:res_2051 unit:unit_312",
+        "hoscausationsource": "urn:hos:maintenance:demo",
+        "hoscausationid": "mnt-000731",
+        "data": {
+          "stay_id": "stay_2051",
+          "reservation_id": "res_2051",
+          "unit_id": "unit_312",
+          "planned_arrival_at": "2026-08-14T14:00:00Z",
+          "expected_arrival_at": "2026-08-14T14:00:00Z",
+          "housekeeping": {
+            "value": "inspected",
+            "source": "urn:hos:housekeeping:demo",
+            "event_id": "hk-005410",
+            "time": "2026-08-14T07:05:00Z"
+          },
+          "conflicts": [],
+          "latest_task": null,
+          "maintenance": {
+            "maintenance_id": "mnt_77",
+            "starts_at": "2026-08-14T08:45:00Z",
+            "ends_at": "2026-08-14T15:00:00Z",
+            "statuses": {
+              "maintenance": "out_of_service",
+              "commercial": "not_sellable"
+            },
+            "source": "urn:hos:maintenance:demo",
+            "event_id": "mnt-000731",
+            "time": "2026-08-14T08:40:00Z"
+          },
+          "evidence": [
+            {
+              "source": "urn:hos:pms:demo",
+              "id": "pms-020114"
+            },
+            {
+              "source": "urn:hos:pms:demo",
+              "id": "pms-020115"
+            },
+            {
+              "source": "urn:hos:pms:demo",
+              "id": "pms-020301"
+            },
+            {
+              "source": "urn:hos:housekeeping:demo",
+              "id": "hk-005410"
+            },
+            {
+              "source": "urn:hos:maintenance:demo",
+              "id": "mnt-000731"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "delivery": 11,
+      "event": {
+        "specversion": "1.0",
+        "source": "urn:hos:projection:arrival-readiness",
+        "type": "arrival.room_readiness_resolved",
+        "time": "2026-08-14T11:05:00Z",
+        "datacontenttype": "application/json",
+        "hosschemaversion": "0.1",
+        "hostenant": "tenant_demo",
+        "hosproperty": "prop_lisbon",
+        "hospropertytimezone": "Europe/Lisbon",
+        "hosbusinessdate": "2026-08-14",
+        "hossubjects": "stay:stay_2051 reservation:res_2051 unit:unit_318",
+        "hoscausationsource": "urn:hos:pms:demo",
+        "hoscausationid": "pms-020340",
+        "data": {
+          "stay_id": "stay_2051",
+          "reservation_id": "res_2051",
+          "unit_id": "unit_318",
+          "reason": "unit_reassigned",
+          "planned_arrival_at": "2026-08-14T14:00:00Z",
+          "expected_arrival_at": null,
+          "housekeeping": {
+            "value": "dirty",
+            "source": "urn:hos:housekeeping:demo",
+            "event_id": "hk-005433",
+            "time": "2026-08-14T09:10:00Z"
+          },
+          "evidence": [
+            {
+              "source": "urn:hos:pms:demo",
+              "id": "pms-020114"
+            },
+            {
+              "source": "urn:hos:pms:demo",
+              "id": "pms-020115"
+            },
+            {
+              "source": "urn:hos:housekeeping:demo",
+              "id": "hk-005433"
+            },
+            {
+              "source": "urn:hos:pms:demo",
+              "id": "pms-020340"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

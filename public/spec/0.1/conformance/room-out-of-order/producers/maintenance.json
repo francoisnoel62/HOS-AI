@@ -1,0 +1,43 @@
+{
+  "hosmanifestversion": "0.1",
+  "producer": "urn:hos:maintenance:demo",
+  "name": "Synthetic maintenance system",
+  "organization": {
+    "name": "HOS AI synthetic corpus"
+  },
+  "system_role": "maintenance",
+  "property_ids": ["prop_lisbon"],
+  "entities": ["Unit", "MaintenanceWindow"],
+  "events": [
+    {
+      "type": "unit.maintenance_scheduled",
+      "authoritative": true
+    },
+    {
+      "type": "unit.maintenance_cancelled",
+      "authoritative": true
+    },
+    {
+      "type": "unit.status_changed",
+      "dimensions": ["maintenance"],
+      "authoritative": true
+    }
+  ],
+  "delivery": {
+    "mechanisms": ["webhook"],
+    "guarantee": "at-least-once",
+    "ordering": "none"
+  },
+  "replay": {
+    "supported": true,
+    "window_days": 30,
+    "format": "jsonl"
+  },
+  "retention": {
+    "event_days": 365
+  },
+  "limitations": [
+    "Technicians can update a window offline; the update is recorded and delivered when their device syncs.",
+    "The maintenance system does not know reservations or stays."
+  ]
+}

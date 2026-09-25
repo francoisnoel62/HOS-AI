@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import { ArrivalReplay } from "@/components/demo/arrival-replay";
-import { loadArrivalScenario } from "@/lib/hos/conformance";
+import { loadArrivalScenario, loadScenario } from "@/lib/hos/conformance";
 import { replayArrivalReadiness } from "@/lib/hos/projection";
 import type { HosFact } from "@/lib/hos/types";
 
@@ -26,6 +26,19 @@ describe("arrival replay", () => {
     expect(projection).toHaveTextContent("Maintenance window");
     expect(projection).toHaveTextContent("30 Jul, 08:00 – 30 Jul, 18:00");
     expect(projection).toHaveTextContent("out_of_service · not_sellable · PMS");
+    expect(projection).toHaveTextContent("Readiness at risk");
+  });
+
+  it("names the guest who still holds the unit, and when they are due to leave", () => {
+    const { scenario, manifests, events } = loadScenario("late-checkout");
+    const steps = replayArrivalReadiness(events.slice(0, 7), manifests, scenario.projection);
+    render(<ArrivalReplay notes={scenario.deliveries} producerLabels={{ "urn:hos:pms:demo": "PMS" }} stayId="stay_3140" steps={steps} timezone={scenario.property.timezone} />);
+
+    for (let delivery = 0; delivery < steps.length; delivery += 1) fireEvent.click(screen.getByRole("button", { name: /Deliver next event/ }));
+    const projection = screen.getByRole("region", { name: "Arrival-readiness projection" });
+    expect(projection).toHaveTextContent("Unit still held by");
+    expect(projection).toHaveTextContent("stay_3088");
+    expect(projection).toHaveTextContent("due to leave 17:00 · checked in 18 Aug, 17:10 · PMS");
     expect(projection).toHaveTextContent("Readiness at risk");
   });
 });

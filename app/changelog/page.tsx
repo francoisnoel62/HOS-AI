@@ -10,6 +10,19 @@ export const metadata: Metadata = { title: "Changelog", description: "Published 
 const entries = [
   {
     date: "25 September 2026",
+    title: "Two more arrival scenarios: a room out of order and a late check-out.",
+    items: [
+      "Room out of order: a leak takes the assigned room out of order on the arrival morning. A maintenance system plans the repair, the PMS copies it without being the authority, an older revision syncs late, and the front desk moves the guest. Fourteen deliveries at a property in Lisbon.",
+      "Late check-out: a late check-out is granted in a room already assigned to a same-day arrival. A room attendant's glance is not a check-out, a stale plan is replayed, and the check-out reaches HOS after the dirty status. Fifteen deliveries at a property in Toronto.",
+      "The reference projection now treats a unit another guest still holds as not ready, and raises the risk when that guest is not due to leave before the arrival. A resolved risk says why: unit_reassigned, unit_vacated and departure_before_arrival join the reasons. The early-arrival scenario and its expected outcome are unchanged.",
+    ],
+    links: [
+      ["/demo/room-out-of-order", "Replay the room out of order"],
+      ["/demo/late-checkout", "Replay the late check-out"],
+    ],
+  },
+  {
+    date: "25 September 2026",
     title: "HOS 0.1 draft: scheduled maintenance windows.",
     items: [
       "Core gains a ninth entity, the maintenance window: a planned period when a unit is out of service or cannot be sold, the statuses it imposes, and an optional reason.",
