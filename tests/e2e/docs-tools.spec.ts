@@ -9,7 +9,7 @@ test("the tools documentation reads in order, from the overview to Get help", as
     await expect(page).toHaveURL(new RegExp(`${item.href}$`));
     await expect(page.getByRole("heading", { level: 1, name: item.title })).toBeVisible();
     await expect(
-      page.getByRole("navigation", { name: "Tools documentation" }).getByRole("link", { name: item.navTitle, exact: true }),
+      page.getByRole("navigation", { name: "Tools documentation" }).getByRole("link", { name: new RegExp(`^${item.navTitle}( ?, being written)?$`) }),
     ).toHaveAttribute("aria-current", "page");
     const next = toolsPages[index + 1];
     if (!next) {
@@ -41,11 +41,17 @@ test("every link of the tools documentation leads somewhere, and every section l
   }
 });
 
-test("a page that is not written yet stays out of search engines and the sitemap", async ({ page, request }) => {
-  await page.goto("/docs/tools/quickstart");
+test("a page that is not written yet stays out of search engines and the sitemap; a written one enters both", async ({ page, request }) => {
+  const sitemap = await (await request.get("/sitemap.xml")).text();
+  await page.goto("/docs/tools/guides/validate");
   await expect(page.getByText("This page is being written.")).toBeVisible();
   await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
-  expect(await (await request.get("/sitemap.xml")).text()).not.toContain("/docs/tools");
+  expect(sitemap).not.toContain("/docs/tools/guides/validate<");
+
+  await page.goto("/docs/tools/quickstart");
+  await expect(page.getByText("This page is being written.")).toHaveCount(0);
+  await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", "index, follow");
+  expect(sitemap).toContain("/docs/tools/quickstart<");
   expect((await request.get("/docs/tools/not-a-page")).status()).toBe(404);
 });
 

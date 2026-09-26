@@ -14,6 +14,10 @@ for (const path of [
   "/docs/core",
   "/docs/events",
   "/docs/tools",
+  "/docs/tools/concepts",
+  "/docs/tools/install",
+  "/docs/tools/quickstart",
+  "/docs/tools/read-a-report",
   // Every component of the tools documentation, on one page.
   "/docs/tools/authoring",
   "/docs/tools/glossary",

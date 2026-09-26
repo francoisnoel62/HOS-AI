@@ -1,13 +1,59 @@
-<PageInProgress>
+<InShort>
 
-This overview will explain what each tool is for, help you choose between them, and say plainly what they do not do.
+HOS gives hotel systems one way to say what happened, and rules that every system applies the same way. Two free tools check that a system follows them: the hos command, which needs no code, and the SDK, for developers who build in TypeScript or JavaScript. Both are alphas, like the HOS 0.1 draft they check.
 
-- **The hos command** (`@hos-ai/cli`) checks HOS files, replays event streams, tests a system in any language against the conformance scenarios, checks what a producer publishes, and signs producer manifests. It needs no code.
-- **The SDK** (`@hos-ai/sdk`) does the same checks from TypeScript or JavaScript, in Node or in a browser, and helps build an adapter that publishes HOS facts.
-- Neither certifies anything: passing the scenarios is a self-check, and no HOS certification exists yet. They are not a production processor or a live connector either.
-
-Meanwhile, the [npm page of the hos command](https://www.npmjs.com/package/@hos-ai/cli) has a five-minute start.
-
-</PageInProgress>
+</InShort>
 
 <IWantTo />
+
+## Two tools
+
+|              | The hos command, `@hos-ai/cli`                                                   | The SDK, `@hos-ai/sdk`                                               |
+| :----------- | :------------------------------------------------------------------------------- | :------------------------------------------------------------------- |
+| For          | anyone who can open a terminal                                                   | developers who write TypeScript or JavaScript                        |
+| What it does | checks files, tests a system in any language, checks a producer, signs manifests | the same checks inside your code, and helps build facts and adapters |
+| Runs         | in a terminal, on Windows, macOS and Linux                                       | in Node.js, and in a browser through a bundler                       |
+| Needs        | Node.js 22 or later                                                              | Node.js 22 or later                                                  |
+
+What the hos command does:
+
+- `hos validate` checks HOS files and streams against the schemas and rules of HOS 0.1.
+- `hos replay` plays a stream back and shows what a consumer does with each fact.
+- `hos conformance run` tests a system that receives HOS facts against the conformance scenarios, whatever language it is written in.
+- `hos conformance producer` checks what a system publishes against its manifest.
+- `hos manifest` creates keys, signs a producer's manifest and verifies it.
+
+Both carry the HOS schemas and the conformance scenarios, so they work offline.
+
+## Which one do I need?
+
+- You want to **check files**, **test a system** written in any language, or **sign a manifest**: the hos command. Start with the [Quickstart](/docs/tools/quickstart).
+- You write **TypeScript or JavaScript**, and want the checks inside your code or your tests, or you build a producer: the SDK. [Install it](/docs/tools/install#install-the-sdk).
+- You **received a report** and want to understand it: [Read a HOS report](/docs/tools/read-a-report).
+- You are **new to HOS**: [Concepts](/docs/tools/concepts) explains the ideas in plain language.
+
+## Where they fit
+
+Systems that **publish** HOS facts, the <Term id="producer">producers</Term>, such as a PMS or a housekeeping app, send them to systems that **receive** them, the <Term id="consumer">consumers</Term>, such as an operations dashboard. The tools check both sides:
+
+- a producer: its <Term id="manifest">manifest</Term>, the facts it publishes, and what it publishes again when it restarts;
+- a consumer: the <Term id="disposition">dispositions</Term> it gives each fact of the conformance scenarios, and optionally how it reads arrivals.
+
+## What they do not do
+
+- **They do not certify.** Passing the scenarios or the producer checks is a self-check. No HOS certification exists yet. See [what a report proves](/docs/tools/read-a-report#what-a-report-proves).
+- **They do not connect hotel systems.** Nothing here receives, stores or forwards live facts between systems, and the packages contain no connector to a real PMS. The Mews, Apaleo and Cloudbeds mappings on this site are unofficial adapters, shown in the [demos](/demo).
+- **They check a draft.** HOS 0.1 is a draft: names and fields may still change, and the tools with it.
+- **Their arrival reading is an example.** The readiness and situations they compute come from a reference projection that is not normative.
+
+## Versions
+
+<Versions />
+
+The command and the SDK are released together, with the same number, `0.1.0-alpha.N` until HOS 0.1 is final. Each package's changelog lists the changes: [the command](https://github.com/francoisnoel62/HOS-AI/blob/master/packages/cli/CHANGELOG.md), [the SDK](https://github.com/francoisnoel62/HOS-AI/blob/master/packages/sdk/CHANGELOG.md).
+
+## Next steps
+
+1. [Install the tools](/docs/tools/install), or check that Node.js 22 is there.
+2. Follow the [Quickstart](/docs/tools/quickstart): ten minutes, no code.
+3. Then the guide for your role, from the list above.

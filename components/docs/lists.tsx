@@ -2,6 +2,7 @@ import { ArrowRight } from "lucide-react";
 import Link from "next/link";
 
 import { glossary } from "@/lib/docs/glossary";
+import { findToolsPage } from "@/lib/docs/tools";
 
 // Where each reader starts, by what they want to do (docs/plans/PLAN-SDK-DOC.md, §1).
 const goals = [
@@ -27,7 +28,12 @@ export function IWantTo() {
               className="group flex min-h-14 items-center justify-between gap-3 rounded-md border border-[var(--border)] bg-[var(--card)] px-4 py-3 text-sm font-medium transition-colors hover:border-[var(--accent)]"
               href={href}
             >
-              {goal.charAt(0).toUpperCase() + goal.slice(1)}
+              <span>
+                {goal.charAt(0).toUpperCase() + goal.slice(1)}
+                {findToolsPage(href)?.written ? null : (
+                  <span className="mt-0.5 block text-xs font-normal text-[var(--muted-foreground)]">Being written</span>
+                )}
+              </span>
               <ArrowRight aria-hidden="true" className="shrink-0 text-[var(--muted-foreground)] group-hover:text-[var(--accent)]" size={16} />
             </Link>
           </li>

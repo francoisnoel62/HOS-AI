@@ -1,12 +1,128 @@
-<PageInProgress>
+<InShort>
 
-This page is for hotel managers, product managers and anyone who receives a report from the tools without writing code. It will explain:
+A report from the HOS tools says whether a system gave the answers HOS expects, on made-up test data. The vendor runs it on its own system, and anyone can run it again: the tools are free and the test data is public. It is a self-check, not a certification.
 
-- how to read each kind of report, line by line;
-- what `normative 13/13 · reference 13/13 · situations 2/2` means;
-- what "passes the producer checks" means, and what it does not;
-- the questions to ask a vendor who shows you a report.
+</InShort>
 
-A report is a self-check, not a certification: no HOS certification exists yet.
+<FactSheet
+  audience="Hotel managers, product managers, buyers, and anyone who receives a report"
+  time="10 minutes"
+  needs={["Nothing: no code, no install"]}
+/>
 
-</PageInProgress>
+## Where a report comes from
+
+A vendor who says its system "works with HOS" can show it with one of two reports:
+
+- a **conformance report**, for a system that **receives** HOS facts, a <Term id="consumer">consumer</Term>: the vendor replays the HOS <Term id="conformance-scenario">conformance scenarios</Term> through its system;
+- a **producer report**, for a system that **publishes** HOS facts, a <Term id="producer">producer</Term>: the vendor records what its system publishes and checks it against its <Term id="manifest">manifest</Term>.
+
+Both are plain text, often pasted in an email or shown as a screenshot. Each line starts with ✓, passed, or ✗, failed.
+
+## A conformance report
+
+```output id="conformance-pass"
+✓ arrival-readiness: normative 13/13 · reference 13/13 · situations 2/2
+✓ late-checkout: normative 15/15 · reference 15/15 · situations 2/2
+✓ room-out-of-order: normative 14/14 · reference 14/14 · situations 2/2
+
+3 scenarios: 3 passed, 0 failed · level reference · protocol hos-conformance/1
+```
+
+One line per scenario, each a made-up day in a hotel: an early arrival to a room not ready, a late check-out on a room needed the same day, a room out of order. Then three scores:
+
+- **normative 13/13**: the scenario delivered 13 facts, and for all 13 the system decided what to do exactly as HOS requires: use the fact; ignore it, because it is a repeat, out of date, or not declared by its sender; or only note it, because its sender is not in charge of that information. This is the part every HOS system must get right.
+- **reference 13/13**: after each of the 13 facts, the system's view of each guest's arrival, whether the room is ready and whether the arrival is at risk, matched the way HOS reads arrivals in its example.
+- **situations 2/2**: the system raised the same 2 alerts as the example, "arrival at risk" and then "risk resolved", with the same detail.
+
+The last line counts the scenarios that passed, and names the level and the version of the protocol used.
+
+<Callout type="why">
+
+The reference level compares the system with one example of how to read arrivals. A system may read arrivals its own way, for good reasons, and still follow HOS: a difference there is a question to ask, not a failure of the standard. The normative level is not negotiable.
+
+</Callout>
+
+A system that only implements the rules, and not the arrival example, runs at the normative level. Its report shows the normative score alone:
+
+```output id="conformance-normative"
+✓ arrival-readiness: normative 13/13
+✓ late-checkout: normative 15/15
+✓ room-out-of-order: normative 14/14
+
+3 scenarios: 3 passed, 0 failed · level normative · protocol hos-conformance/1
+```
+
+## When a scenario fails
+
+```output id="conformance-fail"
+✗ arrival-readiness: normative 12/13 · reference 13/13 · situations 2/2
+    delivery 5 (hk-002231 from urn:hos:housekeeping:demo)
+      disposition: expected "duplicate", got "applied"
+
+1 scenario: 0 passed, 1 failed · level reference · protocol hos-conformance/1
+```
+
+The report names each difference: the delivery, here the fifth fact of the day; what HOS expected; and what the system did. Delivery 5 is the same fact as delivery 4, sent a second time, as networks sometimes do. The system used it again instead of setting it aside.
+
+Here, the room's status did not change, so the view of the arrival stayed right: reference 13/13. But a system that counts a repeated fact twice can, another day, count a cleaning task twice or a guest message twice. A failure at the normative level is always worth fixing.
+
+## A producer report
+
+```output id="producer-pass"
+Producer urn:hos:pms:demo
+✓ manifest.json: valid manifest, with its limitations
+✓ recording.jsonl: 5 facts, valid and declared
+✓ redelivery.jsonl: 5 facts, each already in the recording with the same id and content
+
+✓ urn:hos:pms:demo passes the producer checks.
+```
+
+The first line names the system checked. Then one line per file:
+
+- **manifest.json**: the system's declaration of what it publishes. It is valid, and it states its limitations, what the system does not do or does not know.
+- **recording.jsonl**: facts the system published during a test. Each is valid, sent under the name the manifest declares, and declared for the hotel it concerns.
+- **redelivery.jsonl**: what the system published when it was restarted on the same data. The same facts came back with the same ids and content, so receiving systems recognise them as repeats instead of counting them twice.
+
+And a report that fails:
+
+```output id="producer-fail"
+Producer urn:hos:pms:demo
+✗ manifest.json: manifest that fails the checks (1 error)
+  error   limitations is empty. A producer states its known gaps, unsupported states and access constraints, which the Event Producer checks require.
+          rule events/producers · at /limitations
+✓ recording.jsonl: 5 facts, valid and declared
+✗ redelivery.jsonl: 1 fact, 0 already in the recording unchanged (1 error)
+  error   line 1: pms-new from urn:hos:pms:demo is not in the recording. Publishing the same data again, a producer publishes the same facts with the same ids, so consumers discard them as duplicates.
+          rule events/at-least-once-delivery · at /id
+
+✗ urn:hos:pms:demo fails the producer checks.
+```
+
+Two problems: the manifest states no limitations, and after a restart the system published a fact under a new id, which receiving systems would take for a new fact.
+
+## What a report proves
+
+A passing report shows that, on the day it ran and with the version tested, the system gave the answers HOS expects on made-up data.
+
+It does **not** show:
+
+- a **certification**: no HOS certification exists yet;
+- how the system behaves with your hotel's real data, volumes or connections;
+- its security, availability or privacy practices;
+- that a later version behaves the same.
+
+## Questions to ask a vendor
+
+- Which version of the hos command and which HOS draft did you use? The command `hos --version` prints both.
+- Did every scenario pass at the **normative** level? If a reference score is below the total, how does your system read arrivals, and why?
+- For a producer report: does the recording come from the system you will connect to our hotel, or from a test setup?
+- What are the limitations in your manifest?
+- Is your manifest signed and published, and can we check it with `hos manifest verify`?
+- Can we run the scenarios again together? The tools and the test data are public.
+
+## Next steps
+
+- [Quickstart](/docs/tools/quickstart): produce a first report yourself, in ten minutes.
+- [Concepts](/docs/tools/concepts): the ideas behind each line.
+- [Get help](/docs/tools/help): a report you cannot read, or a line this page does not explain.

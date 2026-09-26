@@ -26,7 +26,7 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
     description: item.description,
     alternates: { canonical: item.href },
     // Until it is written, a page only announces its content: search engines leave it out.
-    robots: item.written ? undefined : { index: false, follow: true },
+    ...(item.written ? {} : { robots: { index: false, follow: true } }),
   };
 }
 

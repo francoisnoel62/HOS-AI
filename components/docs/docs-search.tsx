@@ -61,13 +61,13 @@ export function DocsSearch({ onNavigate }: { onNavigate?: () => void }) {
       <div className="relative">
         <Search
           aria-hidden="true"
-          className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted-foreground)]"
+          className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--muted-foreground)]"
           size={15}
         />
         <input
           aria-controls={resultsId}
           autoComplete="off"
-          className="h-10 w-full rounded-md border border-[var(--border-strong)] bg-[var(--card)] pl-9 pr-3 text-sm placeholder:text-[var(--muted-foreground)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+          className="h-10 w-full rounded-md border border-[var(--border-strong)] bg-[var(--card)] pl-8 pr-2 text-sm placeholder:text-[var(--muted-foreground)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
           data-docs-search
           id={inputId}
           onChange={(event) => update(event.target.value)}
@@ -75,7 +75,7 @@ export function DocsSearch({ onNavigate }: { onNavigate?: () => void }) {
           onKeyDown={(event) => {
             if (event.key === "Escape") void update("");
           }}
-          placeholder="Search, or paste an error"
+          placeholder="Search or paste an error"
           type="search"
           value={query}
         />

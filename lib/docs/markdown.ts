@@ -53,6 +53,7 @@ export function readMdx(source: string): SourceSection[] {
   };
 
   let inFence = false;
+  let inTag = false;
   for (const line of source.split(/\r?\n/)) {
     if (fence.test(line)) {
       inFence = !inFence;
@@ -63,6 +64,17 @@ export function readMdx(source: string): SourceSection[] {
       continue;
     }
     if (/^(import|export)\s/.test(line)) continue;
+    // A component written over several lines, such as <Command powershell={`…`} … />: keep the values of its
+    // attributes, which are commands a reader may search for, without their names and quotes.
+    if (!inTag && /^\s*<[A-Z]\w*\s*$/.test(line)) {
+      inTag = true;
+      continue;
+    }
+    if (inTag) {
+      if (/^\s*\/?>\s*$/.test(line)) inTag = false;
+      else push(line.replace(/^\s*[A-Za-z]+=\{?[`"]?/, "").replace(/[`"]?\}?\s*$/, ""));
+      continue;
+    }
     const heading = line.match(/^(#{2,3})\s+(.+?)\s*#*\s*$/);
     if (heading) {
       open(heading[1].length as 2 | 3, heading[2]);
@@ -92,3 +104,27 @@ export function readMdx(source: string): SourceSection[] {
 }
 
 export const headingsOf = (source: string) => readMdx(source).flatMap((section) => (section.heading ? [section.heading] : []));
+
+export type CodeBlock = { language: string; meta: Record<string, string>; text: string };
+
+// The fenced blocks of an MDX source, with the attributes written after the language, as in ```output id="validate-ok".
+// The id lets a test compare a documented output with what hos prints.
+export function codeBlocks(source: string): CodeBlock[] {
+  const blocks: CodeBlock[] = [];
+  let open: CodeBlock | undefined;
+  for (const line of source.split(/\r?\n/)) {
+    const fenceLine = line.match(/^\s*(?:```|~~~)(\S*)\s*(.*)$/);
+    if (fenceLine && !open) {
+      const meta = Object.fromEntries([...fenceLine[2].matchAll(/(\w+)="([^"]*)"/g)].map(([, key, value]) => [key, value]));
+      open = { language: fenceLine[1] || "text", meta, text: "" };
+      continue;
+    }
+    if (fenceLine && open) {
+      blocks.push({ ...open, text: open.text.replace(/\n$/, "") });
+      open = undefined;
+      continue;
+    }
+    if (open) open.text += `${line}\n`;
+  }
+  return blocks;
+}

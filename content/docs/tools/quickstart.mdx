@@ -1,13 +1,243 @@
-<PageInProgress>
+<InShort>
 
-This page will get you to a first result in about ten minutes, without writing code:
+In about ten minutes, without writing any code, you check a real HOS event, break it on purpose to read an error, then replay a hotel's morning and watch an early arrival become at risk, then safe.
 
-1. download an example event and validate it;
-2. break one of its fields on purpose, and read the error together: the path, the value and the rule;
-3. list the conformance scenarios, and replay the early-arrival scenario to watch an arrival become at risk, then resolved.
+</InShort>
 
-It ends with the next step for your role: testing a system that receives HOS facts, or checking one that publishes them.
+<FactSheet
+  audience="Everyone: developers, product managers, curious hoteliers"
+  time="10 minutes"
+  needs={["Node.js 22 or later, see Install", "A terminal"]}
+/>
 
-Meanwhile, the [five-minute start](https://www.npmjs.com/package/@hos-ai/cli) on npm follows the same path.
+## Why this matters
 
-</PageInProgress>
+It is 11:40 in a hotel in Paris. A guest writes that they will arrive around 12:30, long before the 15:00 check-in. Their room, 204, is still dirty from the previous guest. The property management system (PMS) shows it clean, because a cleaning task was closed; but here, only the supervisor's inspection releases a room, and it has not happened yet.
+
+Which system is right? HOS answers with <Term id="fact">facts</Term>, each published by the system that knows, and with rules that every system applies the same way. The tools check that systems publish and read those facts correctly. This Quickstart replays that morning.
+
+## Before you start
+
+Make a folder for the files of this Quickstart, and go into it:
+
+<Command
+  powershell={`mkdir hos-quickstart
+cd hos-quickstart`}
+  cmd={`mkdir hos-quickstart
+cd hos-quickstart`}
+  bash={`mkdir hos-quickstart
+cd hos-quickstart`}
+/>
+
+The commands below use `npx @hos-ai/cli`, which needs no install. If you installed hos, you can type `hos` instead. If PowerShell says running scripts is disabled, type `npx.cmd` instead of `npx` (see [Install](/docs/tools/install#running-scripts-is-disabled)).
+
+<Steps>
+<Step title="Validate an example event">
+
+Download an example that HOS publishes, a fact from a PMS:
+
+<Command
+  powershell="curl.exe -O https://hos-ai.vercel.app/spec/0.1/examples/stay.expected.json"
+  cmd="curl -O https://hos-ai.vercel.app/spec/0.1/examples/stay.expected.json"
+  bash="curl -O https://hos-ai.vercel.app/spec/0.1/examples/stay.expected.json"
+/>
+
+Validate it:
+
+```sh
+npx @hos-ai/cli validate stay.expected.json
+```
+
+The first time, npx asks to download the package: press Enter. Then:
+
+```output id="validate-ok"
+✓ stay.expected.json: valid event stay.expected
+```
+
+**What just happened.** hos read the file, recognised an event of type `stay.expected`, and checked it against the HOS 0.1 schemas and rules. The ✓ says it is valid: any HOS system can read it. This fact says that the PMS expects the stay `stay_1042` today.
+
+<TechnicalDetail title="What is in the file">
+
+A HOS event is a JSON object in the CloudEvents format. The envelope says who published it, when, about which property and what happened; `data` holds the detail. Open `stay.expected.json` in any text editor to read it. [Concepts](/docs/tools/concepts#a-fact) explains each field.
+
+</TechnicalDetail>
+
+</Step>
+<Step title="Break it on purpose">
+
+Download another example, in which the housekeeping system reports that unit 204 is dirty:
+
+<Command
+  powershell="curl.exe -O https://hos-ai.vercel.app/spec/0.1/examples/unit.status_changed.json"
+  cmd="curl -O https://hos-ai.vercel.app/spec/0.1/examples/unit.status_changed.json"
+  bash="curl -O https://hos-ai.vercel.app/spec/0.1/examples/unit.status_changed.json"
+/>
+
+Open it, find the line `"current": "dirty"`, and replace the word `dirty` with `cleaning`. Keep the quotes around it, and save.
+
+<OsTabs>
+<Os name="powershell">
+
+```powershell
+notepad unit.status_changed.json
+```
+
+Notepad opens the file. Make the change, save with Ctrl+S, and close Notepad.
+
+</Os>
+<Os name="cmd">
+
+```cmd
+notepad unit.status_changed.json
+```
+
+Notepad opens the file. Make the change, save with Ctrl+S, and close Notepad.
+
+</Os>
+<Os name="bash">
+
+On macOS, `open -e unit.status_changed.json` opens the file in TextEdit; save with Cmd+S. On Linux, `nano unit.status_changed.json` opens it in the terminal; save with Ctrl+O then Enter, and leave with Ctrl+X.
+
+</Os>
+</OsTabs>
+
+Validate it again:
+
+```sh
+npx @hos-ai/cli validate unit.status_changed.json
+```
+
+```output id="validate-error"
+✗ unit.status_changed.json: invalid event unit.status_changed (1 error)
+  error   data.current is "cleaning", not one of: dirty, clean, inspected, unknown. Readiness as reported by the housekeeping authority.
+          rule core/unit-status-model · at /data/current
+```
+
+**Read the error.** Every error of hos has the same parts:
+
+- `✗`, the file, and what it is: an invalid event of type `unit.status_changed`, with one error.
+- `error`: the level. An error makes the file invalid. A `warning` or a `note` does not.
+- The message: the field, `data.current`; the value found, `"cleaning"`; what HOS allows, `dirty`, `clean`, `inspected` or `unknown`; and what the field means.
+- `rule core/unit-status-model`: the rule of the specification the file breaks, here the unit status model of HOS Core.
+- `at /data/current`: where the field is in the file, as a path from the top of the JSON.
+
+**Why it is an error.** HOS gives the housekeeping status of a room four values, so every system reads a room the same way. A status of one vendor, such as "cleaning", does not travel as a HOS status: another system would not know whether the room can be sold.
+
+<Checkpoint>
+
+hos also says it with its <Term id="exit-code">exit code</Term>, which scripts and CI read. Right after the command, print it:
+
+<Command powershell="$LASTEXITCODE" cmd="echo %ERRORLEVEL%" bash="echo $?" />
+
+It prints `1`: a file is invalid. After the first step, it was `0`. Change `cleaning` back to `dirty`, and the file is valid again.
+
+</Checkpoint>
+
+</Step>
+<Step title="Replay a hotel's morning">
+
+hos carries the HOS <Term id="conformance-scenario">conformance scenarios</Term>: made-up days in a hotel, each a series of facts from several systems, with the outcome HOS expects. List them:
+
+```sh
+npx @hos-ai/cli conformance list
+```
+
+```output id="conformance-list"
+arrival-readiness  Early arrival, unit not ready · 13 deliveries, 3 producers
+late-checkout      Late check-out on a same-day turnover · 15 deliveries, 2 producers
+room-out-of-order  Assigned unit out of order · 14 deliveries, 3 producers
+```
+
+The first one is the morning above. Download its 13 facts, in the order they were delivered, and the <Term id="manifest">manifests</Term> of its three <Term id="producer">producers</Term>: the PMS, the housekeeping system and the guest messaging platform.
+
+<Command
+  powershell={`curl.exe -O https://hos-ai.vercel.app/spec/0.1/conformance/arrival-readiness/events.jsonl
+curl.exe -O https://hos-ai.vercel.app/spec/0.1/conformance/arrival-readiness/producers/pms.json
+curl.exe -O https://hos-ai.vercel.app/spec/0.1/conformance/arrival-readiness/producers/housekeeping.json
+curl.exe -O https://hos-ai.vercel.app/spec/0.1/conformance/arrival-readiness/producers/messaging.json`}
+  cmd={`curl -O https://hos-ai.vercel.app/spec/0.1/conformance/arrival-readiness/events.jsonl
+curl -O https://hos-ai.vercel.app/spec/0.1/conformance/arrival-readiness/producers/pms.json
+curl -O https://hos-ai.vercel.app/spec/0.1/conformance/arrival-readiness/producers/housekeeping.json
+curl -O https://hos-ai.vercel.app/spec/0.1/conformance/arrival-readiness/producers/messaging.json`}
+  bash={`curl -O https://hos-ai.vercel.app/spec/0.1/conformance/arrival-readiness/events.jsonl
+curl -O https://hos-ai.vercel.app/spec/0.1/conformance/arrival-readiness/producers/pms.json
+curl -O https://hos-ai.vercel.app/spec/0.1/conformance/arrival-readiness/producers/housekeeping.json
+curl -O https://hos-ai.vercel.app/spec/0.1/conformance/arrival-readiness/producers/messaging.json`}
+/>
+
+Replay the facts, with the three manifests, each after `-m`:
+
+```sh
+npx @hos-ai/cli replay events.jsonl -m pms.json -m housekeeping.json -m messaging.json
+```
+
+```output id="replay"
+ 1  applied                reservation.created · pms-000312 · urn:hos:pms:demo
+ 2  applied                stay.expected · pms-000421 · urn:hos:pms:demo
+    stay_1042: expected, unit none, readiness unknown, situation none
+ 3  applied                stay.unit_assigned · pms-000422 · urn:hos:pms:demo
+    stay_1042: expected, unit unit_204, readiness unknown, situation none
+ 4  applied                unit.status_changed · hk-002231 · urn:hos:housekeeping:demo
+    stay_1042: expected, unit unit_204, readiness not_ready, situation none
+ 5  duplicate              unit.status_changed · hk-002231 · urn:hos:housekeeping:demo
+ 6  applied                housekeeping.task.created · hk-002232 · urn:hos:housekeeping:demo
+ 7  undeclared_capability  housekeeping.task.created · pms-000430 · urn:hos:pms:demo
+ 8  applied                housekeeping.task.completed · hk-002260 · urn:hos:housekeeping:demo
+ 9  non_authoritative      unit.status_changed · pms-000455 · urn:hos:pms:demo
+10  applied                guest.message.received · msg-000977 · urn:hos:messaging:demo
+    stay_1042: expected, unit unit_204, readiness not_ready, situation at risk
+    ▲ at risk: stay_1042 in unit unit_204, expected 2026-07-30T10:30:00Z, planned 2026-07-30T13:00:00Z
+11  superseded             guest.message.received · msg-000971 · urn:hos:messaging:demo
+12  applied                unit.status_changed · hk-002301 · urn:hos:housekeeping:demo
+    stay_1042: expected, unit unit_204, readiness ready, situation resolved
+    ▼ resolved: stay_1042, unit_ready
+13  applied                stay.checked_in · pms-000470 · urn:hos:pms:demo
+    stay_1042: in_house, unit unit_204, readiness ready, situation resolved
+
+13 deliveries: 9 applied, 1 duplicate, 1 undeclared_capability, 1 non_authoritative, 1 superseded · 2 situations
+```
+
+**Read the timeline.** Each numbered line is one delivered fact: its number, what a consumer does with it, its type, its id and the system that published it. The indented lines show the stay after the fact: its state, its unit, whether the unit is ready, and whether the arrival is at risk.
+
+What a consumer does with a fact is its <Term id="disposition">disposition</Term>. This morning has all five:
+
+- **4, applied**: the housekeeping system, the authority on cleaning, reports unit 204 dirty. The room is not ready.
+- **5, duplicate**: the same fact arrives a second time, as deliveries may repeat. It is ignored.
+- **7, undeclared_capability**: the PMS sends a housekeeping task, which its manifest does not declare. Undeclared means ignored.
+- **9, non_authoritative**: the PMS says the room is clean, because the task was closed. It is not the authority on cleaning: the disagreement is recorded, and the room stays not ready.
+- **10**: the guest announces an arrival at 10:30 UTC, 12:30 in Paris, before the planned 13:00 UTC, 15:00 in Paris. The room is not ready: ▲ the arrival is at risk.
+- **11, superseded**: an older message from the guest arrives late. It does not replace the newer one.
+- **12**: the housekeeping system reports the room inspected. ▼ The risk is resolved, before the guest arrives.
+
+<Callout type="why">
+
+The dispositions follow the rules of HOS Events 0.1: every consumer must reach the same ones. Readiness and situations come from the reference projection, one way of reading arrivals that HOS gives as an example: a system may read arrivals differently and still follow HOS.
+
+</Callout>
+
+</Step>
+</Steps>
+
+## Check it worked
+
+You have seen the three results the tools give:
+
+- a ✓, and exit code 0: valid;
+- a ✗ with the field, the value, the rule and the path, and exit code 1: invalid;
+- a timeline in which the arrival becomes at risk at delivery 10 (▲), then resolved at delivery 12 (▼).
+
+<IfItFails>
+
+- PowerShell asks for a `Uri`: press Ctrl+C and type [`curl.exe`](/docs/tools/install#curl-is-another-command), not `curl`.
+- `cannot read ... ENOENT: no such file or directory`, with exit code 2: the file is not in the folder you are in. Check that the download worked, and that you are in `hos-quickstart`.
+- Every line of the replay is `undeclared_capability`, after the message `no --manifest given`: add the three manifests, each after `-m`.
+- `Not JSON: Unexpected token`: the file was saved in another encoding, such as UTF-16, or with a byte order mark. Download it again, or save it as UTF-8 in your editor.
+
+</IfItFails>
+
+## Next steps
+
+- Your system **receives** HOS facts: [test it against the scenarios](/docs/tools/guides/test-a-consumer), in any language. The [Python example](https://github.com/francoisnoel62/HOS-AI/tree/master/examples/python-dispositions) passes the normative level in about 130 lines, with the standard library only.
+- Your system **publishes** HOS facts: [check what it publishes](/docs/tools/guides/check-a-producer), then [sign and publish your manifest](/docs/tools/guides/sign-and-publish).
+- You want to understand the ideas first: [Concepts](/docs/tools/concepts).
+- Someone sent you a report: [Read a HOS report](/docs/tools/read-a-report).
