@@ -10,6 +10,16 @@ export const metadata: Metadata = { title: "Changelog", description: "Published 
 const entries = [
   {
     date: "26 September 2026",
+    title: "The hos command and the SDK are on npm.",
+    items: [
+      "@hos-ai/cli 0.1.0-alpha.1 gives the hos command. It validates HOS files, replays recorded event streams, runs the three conformance scenarios through an implementation in any language, checks what a producer publishes against its manifest, and signs and verifies manifests. It carries the schemas and the scenarios, so it works offline.",
+      "@hos-ai/sdk 0.1.0-alpha.1 offers the same in TypeScript, in Node or in a browser: types generated from the schemas, validation, the HOS Events processing rules, facts with stable ids, and signed manifests.",
+      "Both are alphas, as HOS 0.1 is a draft, and they are published from GitHub Actions with provenance. Passing the conformance scenarios is a self-check, not a certification.",
+    ],
+    links: [["/docs#tools", "Tools"]],
+  },
+  {
+    date: "26 September 2026",
     title: "Producers sign their manifests.",
     items: [
       "HOS Events 0.1 now specifies how a producer signs its manifest: a detached JWS on the manifest's canonical form (RFC 8785), with Ed25519 or ES256, the key's id, when it was signed and when it expires. It is published beside the manifest at /.well-known/hos/manifest.jws, with the producer's public keys at /.well-known/hos/jwks.json.",

@@ -79,7 +79,7 @@ The runs changed the integrations. Mews assigns dorm stays to beds, so beds are 
 
 Each live check also records what the adapter publishes, with its manifest, and runs the producer check on it: the manifest states its limitations, every fact is valid and declared, and a restarted adapter publishes the same facts with the same ids. On 26 September 2026 it passed on both Mews demo enterprises, 3,232 facts, and on the five Apaleo sample hotels, 769 facts.
 
-Two packages carry these checks outside the website. [`@hos-ai/cli`](packages/cli/README.md), the `hos` command, validates HOS files, replays event streams, runs the conformance scenarios through an implementation in any language, checks a producer and signs manifests. [`@hos-ai/sdk`](packages/sdk/README.md) does the same in TypeScript. Both are alphas, not yet published on npm. A production event processor and live PMS connectors are future work.
+Two packages carry these checks outside the website. [`@hos-ai/cli`](packages/cli/README.md), the `hos` command, validates HOS files, replays event streams, runs the conformance scenarios through an implementation in any language, checks a producer and signs manifests. [`@hos-ai/sdk`](packages/sdk/README.md) does the same in TypeScript. Both are alphas, published on npm. A production event processor and live PMS connectors are future work.
 
 ## Project status
 
@@ -257,7 +257,7 @@ The website also provides four participation paths: **founding member**, **pilot
 
 ## Operations and release readiness
 
-Local procedures cover [submission review](docs/operations/submission-review.md), [delivery failures](docs/operations/delivery-failure.md), [privacy rights requests](docs/operations/rights-request.md), [abuse incidents](docs/operations/abuse-incident.md), [security issues](docs/operations/security-issue.md) and [content releases](docs/operations/content-release.md).
+Local procedures cover [submission review](docs/operations/submission-review.md), [delivery failures](docs/operations/delivery-failure.md), [privacy rights requests](docs/operations/rights-request.md), [abuse incidents](docs/operations/abuse-incident.md), [security issues](docs/operations/security-issue.md) [content releases](docs/operations/content-release.md) and [package releases](docs/operations/package-release.md).
 
 The current scope excludes accounts, payments, scheduling, a CMS, comments, newsletters, live PMS integrations and an active Data Cooperative. The local outbox is a development substitute for transactional email. Analytics currently emit only local browser events.
 

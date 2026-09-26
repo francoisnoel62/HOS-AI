@@ -1,0 +1,43 @@
+name: Verify release
+
+# Runs a published version of @hos-ai/cli as a new user would, on clean Linux and Windows machines: npx fetches it from
+# npm, then it runs the Python example through the arrival-readiness scenario and validates a published example.
+# Run it by hand once a release is public.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: The version to verify, such as 0.1.0-alpha.1
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: npx on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Run the published CLI in an empty directory
+        shell: bash
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          mkdir try && cd try
+          curl -fsSO "https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/${GITHUB_SHA}/examples/python-dispositions/impl.py"
+          curl -fsSO https://hos-ai.vercel.app/spec/0.1/examples/stay.expected.json
+          npx --yes "@hos-ai/cli@${VERSION}" --version
+          npx --yes "@hos-ai/cli@${VERSION}" conformance run arrival-readiness --level normative --impl "python impl.py"
+          npx --yes "@hos-ai/cli@${VERSION}" validate stay.expected.json

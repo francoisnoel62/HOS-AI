@@ -227,3 +227,14 @@ test("documentation links to the published HOS Core and HOS Events drafts and th
   ];
   for (const file of files) expect((await request.get(`/spec/0.1/${file}`)).ok(), file).toBe(true);
 });
+
+test("the tools section leads to both packages and to the conformance protocol", async ({ page, request }) => {
+  await page.goto("/docs");
+  await page.getByRole("link", { name: "The hos command and the SDK", exact: true }).click();
+  await expect(page).toHaveURL(/\/docs#tools$/);
+  await expect(page.getByRole("heading", { level: 2, name: "Check your work from the command line." })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Five-minute start" })).toHaveAttribute("href", "https://www.npmjs.com/package/@hos-ai/cli");
+  await expect(page.getByRole("link", { name: "Examples" })).toHaveAttribute("href", "https://www.npmjs.com/package/@hos-ai/sdk");
+  await expect(page.getByRole("link", { name: "conformance protocol" })).toHaveAttribute("href", "/spec/0.1/conformance/PROTOCOL.md");
+  expect((await request.get("/spec/0.1/conformance/PROTOCOL.md")).ok()).toBe(true);
+});

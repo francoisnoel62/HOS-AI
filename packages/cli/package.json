@@ -1,7 +1,6 @@
 {
   "name": "@hos-ai/cli",
-  "version": "0.1.0-alpha.0",
-  "private": true,
+  "version": "0.1.0-alpha.1",
   "description": "The hos command: validate HOS 0.1 files, replay event streams, run the conformance scenarios and sign producer manifests.",
   "license": "Apache-2.0",
   "keywords": [
@@ -41,7 +40,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@hos-ai/sdk": "0.1.0-alpha.0"
+    "@hos-ai/sdk": "0.1.0-alpha.1"
   },
   "devDependencies": {
     "@types/node": "^22.10.7",

@@ -1,7 +1,6 @@
 {
   "name": "@hos-ai/sdk",
-  "version": "0.1.0-alpha.0",
-  "private": true,
+  "version": "0.1.0-alpha.1",
   "description": "Types, validation and processing rules for HOS Core 0.1 and HOS Events 0.1, with signed producer manifests.",
   "license": "Apache-2.0",
   "keywords": [
