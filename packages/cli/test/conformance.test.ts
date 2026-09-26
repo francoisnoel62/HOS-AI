@@ -46,6 +46,12 @@ describe("hos conformance", () => {
     expect(normative).toMatchObject({ code: 0, stdout: expect.stringContaining("✓ arrival-readiness: normative 13/13\n") });
   }, 60_000);
 
+  it("reads an implementation's answers whatever their line endings", async () => {
+    const { code, stdout } = await hos(["conformance", "run", "arrival-readiness", "--impl", fake("crlf")]);
+    expect(code).toBe(0);
+    expect(stdout).toContain("✓ arrival-readiness: normative 13/13 · reference 13/13 · situations 2/2\n");
+  }, 30_000);
+
   it("names the delivery, the path, the expected value and the one received", async () => {
     const { code, stdout } = await hos(["conformance", "run", "arrival-readiness", "--impl", fake("no-dedup")]);
     expect(code).toBe(1);

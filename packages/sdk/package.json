@@ -31,6 +31,7 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
+    "prepack": "npm run build",
     "generate": "node scripts/generate.ts",
     "signing-vectors": "node scripts/signing-vectors.ts",
     "test": "vitest run",
