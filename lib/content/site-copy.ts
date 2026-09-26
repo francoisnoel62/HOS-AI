@@ -9,71 +9,71 @@ export type Audience = {
 export const audiences: Audience[] = [
   {
     id: "operator",
-    label: "Operator",
-    friction: "A guest arrival decision is split across systems that disagree about the same unit.",
-    value: "Retain operational control while making readiness decisions from traceable facts.",
-    example: "See a room-readiness risk before an early arrival becomes an escalation.",
+    label: "Hotel or group",
+    friction: "Knowing whether a guest can check in means checking several screens that do not agree.",
+    value: "Your team sees one picture of each arrival and knows which system to trust. You can change a tool without rebuilding everything around it.",
+    example: "Know at 9:00 that the room for an early arrival will not be ready, not when the guest is at the desk.",
   },
   {
     id: "pms",
-    label: "PMS",
-    friction: "Every new integration repeats the same data-contract negotiation.",
-    value: "Offer predictable mappings in a qualified, transparent operational ecosystem.",
-    example: "Declare the reservation and stay events your product can authoritatively produce.",
+    label: "PMS vendor",
+    friction: "Every new partner integration means negotiating the same data again, field by field.",
+    value: "Describe your data once, in an open format, and let hotel software partners connect more predictably.",
+    example: "Publish which booking and stay updates your PMS provides, and which ones it is the official source for.",
   },
   {
     id: "software-vendor",
     label: "Software vendor",
-    friction: "Useful operational logic is reimplemented for every source system.",
-    value: "Build reusable hospitality logic and agent capabilities on a stable contract.",
-    example: "Consume a declared unit-status event without inventing a private adapter contract.",
+    friction: "The same logic has to be rebuilt for every PMS you connect to.",
+    value: "Build your features once on a stable, open standard and reuse them wherever it is supported.",
+    example: "A housekeeping app reads room status the same way, whichever PMS the hotel runs, once that PMS is mapped to HOS.",
   },
   {
     id: "integrator",
     label: "Integrator",
-    friction: "Mappings are expensive one-off projects with little replayable proof.",
-    value: "Industrialise mappings, replay tests and conformance evidence.",
-    example: "Deliver a JSON Lines replay that makes a mapping reviewable and repeatable.",
+    friction: "Each integration is a one-off project that is hard to test again later.",
+    value: "Reuse mappings and prove they work with shared test cases.",
+    example: "Hand your client a test they can replay to check the integration still does what it should.",
   },
   {
     id: "developer",
     label: "Developer",
-    friction: "Schemas, source authority and permissions are rarely discoverable together.",
-    value: "Work from versioned schemas, signed capability declarations and synthetic tests.",
-    example: "Inspect the events a system exposes before you write an integration.",
+    friction: "Data formats, sources and permissions are rarely documented in one place.",
+    value: "Open data formats, systems that state what they provide, and ready-made test data.",
+    example: "See exactly what a system sends before you write a line of integration code.",
   },
   {
     id: "patron",
     label: "Patron",
-    friction: "The industry lacks neutral common infrastructure for the next operating model.",
-    value: "Support a shared foundation without special rights over the standard or member data.",
-    example: "Fund the commons while governance stays organisation-based and transparent.",
+    friction: "Hospitality has no neutral, shared infrastructure for what comes next.",
+    value: "Fund common ground for the whole industry, with no special say over the standard or anyone's data.",
+    example: "Support the shared work while its governance works toward one organisation, one vote.",
   },
 ];
 
 export const participationPaths = [
   {
+    slug: "pilot",
+    title: "Pilot partner",
+    eyebrow: "Test it on real arrivals",
+    description:
+      "Bring a hotel or a platform, authorised access to its systems, and the people who can tell whether HOS gets arrivals right.",
+    cta: "Run a pilot",
+  },
+  {
     slug: "founding-member",
     title: "Founding member",
     eyebrow: "Shape the common work",
     description:
-      "Commit business and technical expertise, plus transparent financial support within future published bands.",
+      "Bring business and technical expertise, and financial support at levels that will be published openly.",
     cta: "Become a founding member",
-  },
-  {
-    slug: "pilot",
-    title: "Pilot partner",
-    eyebrow: "Prove a real scenario",
-    description:
-      "Bring operational terrain, authorised access and the people able to validate the arrival-readiness mapping.",
-    cta: "Run a pilot",
   },
   {
     slug: "technical-contributor",
     title: "Technical contributor",
     eyebrow: "Build in public",
     description:
-      "Improve the Core, schemas, mappings, SDKs, tests or documentation through the open work.",
+      "Help build the standard in the open: data formats, PMS mappings, tests or documentation.",
     cta: "Contribute technically",
   },
   {
@@ -81,7 +81,7 @@ export const participationPaths = [
     title: "Financial patron",
     eyebrow: "Support the commons",
     description:
-      "Fund the shared work without gaining special voting, data or certification privileges.",
+      "Fund the shared work. Patrons get no special vote, data access or certification advantage.",
     cta: "Become a financial patron",
   },
 ] as const;

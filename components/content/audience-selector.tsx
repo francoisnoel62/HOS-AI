@@ -64,15 +64,15 @@ export function AudienceSelector() {
       </div>
       <Card className="mt-4 grid gap-6 p-5 sm:grid-cols-3">
         <div>
-          <p className="eyebrow">Current friction</p>
+          <p className="eyebrow">Today</p>
           <p className="mt-2 text-sm leading-6 text-[var(--muted-foreground)]">{selected.friction}</p>
         </div>
         <div>
-          <p className="eyebrow">What HOS changes</p>
+          <p className="eyebrow">With HOS</p>
           <p className="mt-2 text-sm leading-6 text-[var(--muted-foreground)]">{selected.value}</p>
         </div>
         <div aria-labelledby={`audience-${selected.id}`} id={regionId} role="tabpanel">
-          <p className="eyebrow">Concrete example</p>
+          <p className="eyebrow">For example</p>
           <p className="mt-2 text-sm leading-6 text-[var(--muted-foreground)]">{selected.example}</p>
         </div>
       </Card>
