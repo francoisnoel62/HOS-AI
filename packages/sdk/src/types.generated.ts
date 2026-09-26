@@ -502,7 +502,7 @@ export type HosFact =
   | HousekeepingTaskCompleted
   | GuestMessageReceived;
 
-/** Draft. A producer's versioned statement of exactly what it produces and authoritatively controls: events, dimensions, authority, snapshot support, delivery, replay, retention and known limitations. Public systems publish it at /.well-known/hos/manifest.json; private systems may use a configured authenticated URL. At most one producer may be authoritative for a given event type and dimension at a property. Signing (JWS with a published key, expiry and rotation) is still in progress; the signature member is reserved. */
+/** Draft. A producer's versioned statement of exactly what it produces and authoritatively controls: events, dimensions, authority, snapshot support, delivery, replay, retention and known limitations. Public systems publish it at /.well-known/hos/manifest.json; private systems may use a configured authenticated URL. At most one producer may be authoritative for a given event type and dimension at a property. The manifest carries no signature: its producer signs it with a detached JWS, published beside it at /.well-known/hos/manifest.jws, and publishes its keys at /.well-known/hos/jwks.json. */
 export type ProducerManifest = {
   hosmanifestversion: "0.1";
   /** Must equal the source attribute of every event the producer emits. */
@@ -545,6 +545,4 @@ export type ProducerManifest = {
   };
   /** Known gaps, unsupported states and access constraints, stated explicitly. Empty only when there are none. */
   limitations: string[];
-  /** Reserved. Manifest signing is in progress and not part of 0.1. */
-  signature?: Record<string, unknown>;
 };

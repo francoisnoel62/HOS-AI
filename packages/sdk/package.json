@@ -32,12 +32,14 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "generate": "node scripts/generate.ts",
+    "signing-vectors": "node scripts/signing-vectors.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "ajv": "^8.20.0",
-    "ajv-formats": "^3.0.1"
+    "ajv-formats": "^3.0.1",
+    "jose": "^6.2.12"
   },
   "devDependencies": {
     "@types/node": "^22.10.7",

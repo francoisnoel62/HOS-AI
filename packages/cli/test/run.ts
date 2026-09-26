@@ -6,11 +6,14 @@ import { fileURLToPath } from "node:url";
 import type { Io } from "../src/io.ts";
 import { main } from "../src/main.ts";
 
-// Runs hos in process, against the published corpus or files given in memory.
+// Runs hos in process, against the published corpus or files given in memory, and web documents given in memory.
 
 export const specDirectory = fileURLToPath(new URL("../../../public/spec/0.1/", import.meta.url));
 
-export async function hos(args: string[], { files = {}, stdin = "", cwd = specDirectory }: { files?: Record<string, string>; stdin?: string; cwd?: string } = {}) {
+export async function hos(
+  args: string[],
+  { files = {}, urls = {}, stdin = "", cwd = specDirectory }: { files?: Record<string, string>; urls?: Record<string, string>; stdin?: string; cwd?: string } = {},
+) {
   const written: Record<string, string> = {};
   let stdout = "";
   let stderr = "";
@@ -20,7 +23,15 @@ export async function hos(args: string[], { files = {}, stdin = "", cwd = specDi
     writeFile: async (file, text) => {
       written[file] = text;
     },
+    writeSecret: async (file, text) => {
+      if (Object.hasOwn(files, file) || Object.hasOwn(written, file)) throw Object.assign(new Error(`EEXIST: file already exists, open '${file}'`), { code: "EEXIST" });
+      written[file] = text;
+    },
     readStdin: async () => stdin,
+    fetchText: async (url) => {
+      if (!Object.hasOwn(urls, url)) throw new Error(`${url} answers 404 Not Found`);
+      return urls[url];
+    },
     stdout: (text) => (stdout += text),
     stderr: (text) => (stderr += text),
   };

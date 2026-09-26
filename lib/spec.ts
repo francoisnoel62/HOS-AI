@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import path from "node:path";
 
 import { loadExpectedOutcome as loadExpectedOutcomeFrom, loadScenario as loadScenarioFrom } from "@hos-ai/sdk/node";
@@ -18,3 +19,14 @@ const scenarioDirectory = (id: ConformanceScenarioId) => path.join(process.cwd()
 export const loadScenario = (id: ConformanceScenarioId) => loadScenarioFrom(scenarioDirectory(id));
 export const loadArrivalScenario = () => loadScenario("arrival-readiness");
 export const loadExpectedOutcome = (id: ConformanceScenarioId = "arrival-readiness") => loadExpectedOutcomeFrom(scenarioDirectory(id));
+
+// The signing test vectors, and what a fictional producer serves under /.well-known/hos/: its manifest, the manifest's
+// signature and its keys.
+export const signingPath = `${specVersionPath}/conformance/signing`;
+export const wellKnownExamplePath = `${signingPath}/well-known`;
+
+// The protected header of the example's signature, decoded.
+export function loadSigningExampleHeader() {
+  const jws = readFileSync(path.join(process.cwd(), "public", wellKnownExamplePath, "manifest.jws"), "utf8");
+  return JSON.parse(Buffer.from(jws.split(".")[0], "base64url").toString("utf8")) as Record<string, unknown>;
+}

@@ -1,0 +1,62 @@
+{
+  "hosmanifestversion": "0.1",
+  "producer": "https://housekeeping.example",
+  "name": "Example Housekeeping",
+  "organization": {
+    "name": "Example Housekeeping (fictional)",
+    "url": "https://housekeeping.example"
+  },
+  "system_role": "housekeeping",
+  "property_ids": [
+    "prop_demo"
+  ],
+  "entities": [
+    "Unit",
+    "Task"
+  ],
+  "events": [
+    {
+      "type": "unit.status_changed",
+      "dimensions": [
+        "housekeeping"
+      ],
+      "authoritative": true,
+      "snapshot": true
+    },
+    {
+      "type": "unit.status_changed",
+      "dimensions": [
+        "occupancy"
+      ],
+      "authoritative": false,
+      "snapshot": true,
+      "note": "Occupancy is reported for context; the PMS is the authority."
+    },
+    {
+      "type": "housekeeping.task.created",
+      "authoritative": true
+    },
+    {
+      "type": "housekeeping.task.completed",
+      "authoritative": true
+    }
+  ],
+  "delivery": {
+    "mechanisms": [
+      "webhook"
+    ],
+    "guarantee": "at-least-once",
+    "ordering": "none"
+  },
+  "replay": {
+    "supported": true,
+    "window_days": 30,
+    "format": "jsonl"
+  },
+  "retention": {
+    "event_days": 30
+  },
+  "limitations": [
+    "A fictional producer, published to show a signed manifest. It emits no events."
+  ]
+}

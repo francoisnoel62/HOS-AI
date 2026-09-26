@@ -5,6 +5,7 @@ import { HOS_SPEC_VERSION } from "@hos-ai/sdk";
 import { conformanceCommand } from "./conformance/command.ts";
 import { referenceImplCommand } from "./conformance/reference-impl.ts";
 import { exit, type Io } from "./io.ts";
+import { manifestCommand } from "./manifest.ts";
 import { replayCommand } from "./replay.ts";
 import { validateCommand } from "./validate.ts";
 
@@ -22,6 +23,9 @@ Commands:
   conformance run <...>     run the conformance scenarios through an implementation, in any language
   conformance producer      check a producer's recorded facts against its manifest
   replay <stream.jsonl>     replay a recorded stream through the reference projection, delivery by delivery
+  manifest keygen           create a key to sign manifests with, and add it to a key set
+  manifest sign <file>      sign a producer manifest
+  manifest verify <file>    verify a signed manifest, from files or from its URL
 
 Options:
   -h, --help                show this help
@@ -35,6 +39,7 @@ const commands: Record<string, (args: string[], io: Io) => Promise<number>> = {
   validate: validateCommand,
   conformance: conformanceCommand,
   replay: replayCommand,
+  manifest: manifestCommand,
   "reference-impl": referenceImplCommand,
 };
 

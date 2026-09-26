@@ -108,8 +108,8 @@ export const documentationItems: Array<{
   },
   {
     title: "Event Producer manifest",
-    description: "A declaration of events, authority, snapshots, delivery, replay, retention and limitations. Draft schema published; signing is still in progress.",
-    status: "In progress",
+    description: "A declaration of events, authority, snapshots, delivery, replay, retention and limitations, signed by its producer with a published key. Draft schema, signing rules and test vectors published.",
+    status: "Draft",
     href: "/docs/events#producers",
   },
   {

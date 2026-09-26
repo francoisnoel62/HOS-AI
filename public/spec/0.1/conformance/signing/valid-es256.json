@@ -1,0 +1,92 @@
+{
+  "description": "A manifest signed with ES256. The key set holds two keys; the kid picks the right one.",
+  "rule": "events/signed-manifests",
+  "at": "2026-11-01T00:00:00Z",
+  "manifest": {
+    "hosmanifestversion": "0.1",
+    "producer": "https://housekeeping.example",
+    "name": "Example Housekeeping",
+    "organization": {
+      "name": "Example Housekeeping (fictional)",
+      "url": "https://housekeeping.example"
+    },
+    "system_role": "housekeeping",
+    "property_ids": [
+      "prop_demo"
+    ],
+    "entities": [
+      "Unit",
+      "Task"
+    ],
+    "events": [
+      {
+        "type": "unit.status_changed",
+        "dimensions": [
+          "housekeeping"
+        ],
+        "authoritative": true,
+        "snapshot": true
+      },
+      {
+        "type": "unit.status_changed",
+        "dimensions": [
+          "occupancy"
+        ],
+        "authoritative": false,
+        "snapshot": true,
+        "note": "Occupancy is reported for context; the PMS is the authority."
+      },
+      {
+        "type": "housekeeping.task.created",
+        "authoritative": true
+      },
+      {
+        "type": "housekeeping.task.completed",
+        "authoritative": true
+      }
+    ],
+    "delivery": {
+      "mechanisms": [
+        "webhook"
+      ],
+      "guarantee": "at-least-once",
+      "ordering": "none"
+    },
+    "replay": {
+      "supported": true,
+      "window_days": 30,
+      "format": "jsonl"
+    },
+    "retention": {
+      "event_days": 30
+    },
+    "limitations": [
+      "A fictional producer, published to show a signed manifest. It emits no events."
+    ]
+  },
+  "jws": "eyJhbGciOiJFUzI1NiIsImtpZCI6ImRzVm1rbnNpXzRNNVFWR1d1VVBFYV9hZjgyX0VkSlhFT0NOMGhzZUFmVmciLCJpYXQiOjE3OTA4MTI4MDAsImV4cCI6MTc5ODU4ODgwMH0..4NfPCmU8O11yLesY2OGyLN8RPdwTYC305cnV2n1O-YPofjXXpcWYSHMdRXve56ywhIbmxUQWuspNluWG14cAMA",
+  "jwks": {
+    "keys": [
+      {
+        "kid": "j4rfTLqPvPkul2D5SmrJyve7h3GkZ5FBL0jqdsGapPs",
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "x": "bbDMo5MQdNU4v6fcwKfSM-kXcLZ1zPNVZg78lunw740",
+        "alg": "Ed25519",
+        "use": "sig"
+      },
+      {
+        "kid": "dsVmknsi_4M5QVGWuUPEa_af82_EdJXEOCN0hseAfVg",
+        "kty": "EC",
+        "crv": "P-256",
+        "x": "9Vd-blKzD4WiqIhIPKtHgwl6LXJJqrlMOkn27zwOY9k",
+        "y": "1TFRoLH83GWsH9d6nHN6or9JDQqSFbU3IZEWqnT9mKY",
+        "alg": "ES256",
+        "use": "sig"
+      }
+    ]
+  },
+  "expected": {
+    "valid": true
+  }
+}

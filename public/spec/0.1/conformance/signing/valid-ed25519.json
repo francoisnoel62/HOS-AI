@@ -1,0 +1,83 @@
+{
+  "description": "A manifest signed with Ed25519, verified while its signature is valid.",
+  "rule": "events/signed-manifests",
+  "at": "2026-11-01T00:00:00Z",
+  "manifest": {
+    "hosmanifestversion": "0.1",
+    "producer": "https://housekeeping.example",
+    "name": "Example Housekeeping",
+    "organization": {
+      "name": "Example Housekeeping (fictional)",
+      "url": "https://housekeeping.example"
+    },
+    "system_role": "housekeeping",
+    "property_ids": [
+      "prop_demo"
+    ],
+    "entities": [
+      "Unit",
+      "Task"
+    ],
+    "events": [
+      {
+        "type": "unit.status_changed",
+        "dimensions": [
+          "housekeeping"
+        ],
+        "authoritative": true,
+        "snapshot": true
+      },
+      {
+        "type": "unit.status_changed",
+        "dimensions": [
+          "occupancy"
+        ],
+        "authoritative": false,
+        "snapshot": true,
+        "note": "Occupancy is reported for context; the PMS is the authority."
+      },
+      {
+        "type": "housekeeping.task.created",
+        "authoritative": true
+      },
+      {
+        "type": "housekeeping.task.completed",
+        "authoritative": true
+      }
+    ],
+    "delivery": {
+      "mechanisms": [
+        "webhook"
+      ],
+      "guarantee": "at-least-once",
+      "ordering": "none"
+    },
+    "replay": {
+      "supported": true,
+      "window_days": 30,
+      "format": "jsonl"
+    },
+    "retention": {
+      "event_days": 30
+    },
+    "limitations": [
+      "A fictional producer, published to show a signed manifest. It emits no events."
+    ]
+  },
+  "jws": "eyJhbGciOiJFZDI1NTE5Iiwia2lkIjoiajRyZlRMcVB2UGt1bDJENVNtckp5dmU3aDNHa1o1RkJMMGpxZHNHYXBQcyIsImlhdCI6MTc5MDgxMjgwMCwiZXhwIjoxNzk4NTg4ODAwfQ..Ey5abrdOhBd9BhH8wlJcBab6QrKveT_cINjwiw2uGYpoNq2WUmcR764FYvsBFVy-lLsT-mQf39kqxvogCcHgDg",
+  "jwks": {
+    "keys": [
+      {
+        "kid": "j4rfTLqPvPkul2D5SmrJyve7h3GkZ5FBL0jqdsGapPs",
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "x": "bbDMo5MQdNU4v6fcwKfSM-kXcLZ1zPNVZg78lunw740",
+        "alg": "Ed25519",
+        "use": "sig"
+      }
+    ]
+  },
+  "expected": {
+    "valid": true
+  }
+}

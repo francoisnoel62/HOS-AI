@@ -9,7 +9,7 @@ Status: draft for review. Names and fields may change before 0.1 is final. The s
 - `schemas/core.schema.json` — HOS Core 0.1 definitions: identifiers, external references, extensions, sensitivity classes, the four-dimension Unit status model and the nine Core entities, maintenance windows included.
 - `schemas/event-envelope.schema.json` — HOS Events 0.1 envelope profile: CloudEvents 1.0 structured JSON with HOS extension attributes.
 - `schemas/events.schema.json` — HOS Events 0.1 catalogue: fifteen event types in five families, including snapshot mode for `unit.status_changed`.
-- `schemas/producer-manifest.schema.json` — Event Producer manifests. Signing is still in progress.
+- `schemas/producer-manifest.schema.json` — Event Producer manifests. A manifest carries no signature: its producer signs it with a detached JWS, as `/docs/events#signed-manifests` specifies.
 - `schemas/reference/arrival-readiness.schema.json` — non-normative reference situations produced by the arrival-readiness projection.
 - `examples/` — one valid event per type, plus Core entity examples in `examples/entities/`.
 - `conformance/` — three conformance scenarios, each replayed through the arrival-readiness reference projection:
@@ -30,6 +30,8 @@ Status: draft for review. Names and fields may change before 0.1 is final. The s
   - `rule` — the rule it breaks or illustrates. Rules are named after the sections and principles of `/docs/core` and `/docs/events`, such as `events/minimal-data`, until the specification numbers them;
   - `document` — an event, a reference situation or a producer manifest; or `stream` — the lines of a JSON Lines stream, an object written as JSON and a string as it is, with the producers' `manifests` when the case needs them.
 
+- `conformance/signing/` — test vectors for signed manifests, one per file. Each holds a `manifest`, its detached signature `jws` and the producer's key set `jwks`, the time `at` to verify at, and the `expected` verdict: `{ "valid": true }`, or `{ "valid": false, "error": ... }` with one of `malformed`, `unsupported_algorithm`, `unknown_key`, `unusable_key`, `bad_signature`, `expired` and `not_yet_valid`. The vectors cover both algorithms, an expired and a not-yet-valid signature, another key, a manifest changed after signing, an unknown `kid`, `alg: none` and a payload that is not detached. `conformance/signing/well-known/` holds what a fictional producer, `https://housekeeping.example`, serves under `/.well-known/hos/`: `manifest.json`, `manifest.jws` and `jwks.json`.
+
 - `mappings/` — experimental, unofficial PMS mappings for Mews, Apaleo and Cloudbeds. For each PMS, the arrival scenario's PMS deliveries are recorded in that PMS's format: webhooks and the entities an integration fetches for them. Mapping notes sit alongside. Replayed through each reference adapter, the deliveries reach `expected.json`.
 
 The schemas reference each other by `$id` (`urn:hos:schema:0.1:*`); load all of them into your validator.
@@ -48,3 +50,18 @@ npx @hos-ai/cli conformance run --all --impl "python3 impl.py"
 ```
 
 A producer is checked on what it publishes: `hos conformance producer --manifest manifest.json --stream recording.jsonl --redelivery redelivery.jsonl` checks that its manifest is valid and states its limitations, that each fact is valid, published under the manifest's producer and declared for its property, that no source and id name two facts, and that a redelivery of the same data brings back the same facts with the same ids.
+
+## Signing a manifest
+
+A producer creates a key, signs its manifest and publishes the three files under `/.well-known/hos/`. It signs again before the signature expires, after 90 days by default:
+
+```sh
+npx @hos-ai/cli manifest keygen --key private-key.json --jwks jwks.json
+npx @hos-ai/cli manifest sign manifest.json --key private-key.json
+```
+
+A consumer, or anyone, verifies a published manifest from its URL, with the keys its producer publishes on the same origin:
+
+```sh
+npx @hos-ai/cli manifest verify https://housekeeping.example/.well-known/hos/manifest.json
+```

@@ -10,6 +10,16 @@ export const metadata: Metadata = { title: "Changelog", description: "Published 
 const entries = [
   {
     date: "26 September 2026",
+    title: "Producers sign their manifests.",
+    items: [
+      "HOS Events 0.1 now specifies how a producer signs its manifest: a detached JWS on the manifest's canonical form (RFC 8785), with Ed25519 or ES256, the key's id, when it was signed and when it expires. It is published beside the manifest at /.well-known/hos/manifest.jws, with the producer's public keys at /.well-known/hos/jwks.json.",
+      "A consumer verifies a manifest it retrieves before trusting any declaration in it; a manifest that fails counts as no manifest. Keys rotate: an old key stays published until everything it signed has expired, and a compromised key is removed at once.",
+      "Nine test vectors give the verdict a verifier must reach, from a valid signature to alg none, and a fictional producer shows the three files it serves. The manifest schema drops its reserved signature member: the signature travels beside the manifest.",
+    ],
+    links: [["/docs/events#signed-manifests", "Signed manifests"]],
+  },
+  {
+    date: "26 September 2026",
     title: "The specification text is published under CC BY 4.0, and the legal pages are complete.",
     items: [
       "The HOS Core 0.1 and HOS Events 0.1 drafts can be reused and adapted under CC BY 4.0, with credit. Schemas, examples and conformance files stay under Apache-2.0.",

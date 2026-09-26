@@ -166,7 +166,7 @@ export default function StandardsComparisonPage() {
       <SectionFrame eyebrow="Where HOS is behind" title="Credit where it is due.">
         <Card className="grid gap-6 p-6 md:grid-cols-2">
           <p className="text-sm leading-6">
-            OpenTravel and HTNG have more than two decades of adoption, published releases and production integrations behind them. <strong>HOS 0.1 is a draft.</strong> Its scenarios are synthetic, its three PMS mappings are unofficial, no implementation is certified, and manifest signing is still being specified.
+            OpenTravel and HTNG have more than two decades of adoption, published releases and production integrations behind them. <strong>HOS 0.1 is a draft.</strong> Its scenarios are synthetic, its three PMS mappings are unofficial, no implementation is certified, and no producer publishes a signed manifest yet.
           </p>
           <p className="text-sm leading-6">
             HOS covers the operations around a stay: reservations, stays, rooms, housekeeping, maintenance and guest signals. It has no rates, availability, folio or payment messages, and none is planned. That is OpenTravel’s and HTNG’s ground, and they hold it well. <strong>HOS earns its place only if it makes their messages more useful.</strong>

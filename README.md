@@ -90,7 +90,7 @@ A validator CLI, SDKs, a production event processor and live PMS connectors are 
 | Website                                    | Deployed from `master`: standard overview, HOS, HTNG and OpenTravel, manifesto, governance, roadmap, documentation status, changelog, live demos and participation pages.                                          |
 | Participation forms                        | Local PostgreSQL persistence, encrypted payloads and filesystem notification records.                                                                                                                              |
 | HOS Core and event model                   | Draft JSON Schemas in [`public/spec/0.1`](public/spec/0.1), documented at `/docs/core` and `/docs/events`.                                                                                                         |
-| Producer manifests and arrival conformance | Draft manifest schema (signing in progress) and three synthetic arrival scenarios, checked by the unit tests.                                                                                                      |
+| Producer manifests and arrival conformance | Draft manifest schema and signing rules, with signing test vectors, and three synthetic arrival scenarios, checked by the unit tests.                                                                              |
 | Mappings and certification                 | Experimental, unofficial Mews, Apaleo and Cloudbeds mappings replay the arrival scenario; Mews and Apaleo have also run read-only against live demo data. No partner-backed or certified integrations are claimed. |
 | Independent stewardship                    | An objective. HOS AI is working toward an independent HOS Foundation; no established foundation is claimed.                                                                                                        |
 | Data Cooperative                           | A future, optional programme, separate from HOS Core. Not active.                                                                                                                                                  |
@@ -133,8 +133,8 @@ lib/analytics/       Allowlisted, payload-free browser event signals
 lib/legal.ts         Publisher, host, processor and retention facts behind the legal pages
 lib/hos/mappings/    Experimental PMS mappings and their recordings
 lib/spec.ts          Where the site publishes the spec, and loaders for its conformance scenarios
-packages/sdk/        @hos-ai/sdk: HOS types, validation, processing rules and the reference projection
-packages/cli/        @hos-ai/cli: the hos command: validate, conformance run and producer, replay
+packages/sdk/        @hos-ai/sdk: HOS types, validation, processing rules, manifest signing and the reference projection
+packages/cli/        @hos-ai/cli: the hos command: validate, conformance run and producer, replay, manifest
 examples/            Implementations outside TypeScript, such as the HOS dispositions in Python
 database/migrations/ PostgreSQL schema migrations
 scripts/             Migration and seed utilities, and the read-only PMS live checks

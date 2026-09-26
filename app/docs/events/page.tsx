@@ -11,13 +11,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { scenarioDemos } from "@/lib/content/scenarios";
-import { conformanceScenarios, examplesPath, loadArrivalScenario, loadScenario, scenarioPath, specVersionPath } from "@/lib/spec";
+import { conformanceScenarios, examplesPath, loadArrivalScenario, loadScenario, loadSigningExampleHeader, scenarioPath, signingPath, specVersionPath, wellKnownExamplePath } from "@/lib/spec";
 import envelopeSchema from "@/public/spec/0.1/schemas/event-envelope.schema.json";
 import eventsSchema from "@/public/spec/0.1/schemas/events.schema.json";
 
 export const metadata: Metadata = {
   title: "HOS Events 0.1 (draft)",
-  description: "Immutable, CloudEvents-compatible HOS events: the envelope profile, fifteen event types in five families, snapshots, delivery, deduplication, ordering and replay.",
+  description: "Immutable, CloudEvents-compatible HOS events: the envelope profile, fifteen event types in five families, snapshots, delivery, deduplication, ordering, replay and signed producer manifests.",
 };
 
 type SchemaNode = { title?: string; description?: string; required?: string[]; properties?: Record<string, SchemaNode>; "x-hos-family"?: string; "x-hos-authority"?: string };
@@ -43,12 +43,35 @@ const deliveryRules = [
   ["Minimal data", "Data objects are closed. People appear only as pseudonymous references, message content never enters HOS, and vendor detail lives in namespaced extensions."],
 ];
 
+const signingRules = [
+  [
+    "Signed by its producer",
+    "A producer signs its manifest, so a consumer can check who declared its capabilities and that nobody has changed them since. A consumer verifies a manifest it retrieves before trusting any declaration in it. A manifest that fails counts as no manifest: nothing is declared, so nothing is processed. A manifest an operator installs by hand, as the conformance scenarios do, is trusted as configured.",
+  ],
+  ["Three files", "A public producer serves, on one HTTPS origin, its manifest at /.well-known/hos/manifest.json, the signature at /.well-known/hos/manifest.jws and its public keys at /.well-known/hos/jwks.json. A private producer gives the three through configured, authenticated URLs."],
+  [
+    "Detached signature",
+    "manifest.jws is a JWS in compact serialization with a detached payload (RFC 7515, appendix F): the header and the signature, with nothing between the two dots. The payload is the manifest in its canonical form (RFC 8785), in UTF-8, so spacing and member order in manifest.json do not matter. The manifest itself carries no signature.",
+  ],
+  [
+    "Header",
+    "The protected header holds alg, Ed25519 (RFC 9864) or ES256; kid, the signing key's id in the producer's key set; iat, when the manifest was signed; and exp, when the signature expires, both in whole seconds since the epoch. Every other algorithm is refused, none and EdDSA included, and so are crit and b64.",
+  ],
+  ["Keys", "jwks.json is a JSON Web Key Set (RFC 7517) of public keys only: an OKP key on Ed25519 for Ed25519, an EC key on P-256 for ES256. Each kid is unique in the set. A key that states alg, use or key_ops states its algorithm, sig and verify."],
+  ["Verification", "A consumer canonicalizes the manifest it received, finds the key named by kid, checks that the key fits alg, and verifies the signature. It then checks that iat has come and exp has not, allowing at most 60 seconds of clock skew."],
+  [
+    "Rotation",
+    "A producer signs its manifest again before exp. To change keys, it adds the new key to its key set, signs with it, and keeps the old key until every manifest signed with the old key has expired. A compromised key is removed at once, and whatever it signed then fails verification.",
+  ],
+];
+
 const numberWords = ["no", "one", "two", "three", "four", "five", "six"];
 
 export default function EventsSpecificationPage() {
   const { events, scenario } = loadArrivalScenario();
   const corpora = conformanceScenarios.map((id) => ({ id, ...loadScenario(id) }));
   const deliveries = corpora.reduce((total, corpus) => total + corpus.events.length, 0);
+  const signingHeader = loadSigningExampleHeader();
 
   return (
     <>
@@ -153,7 +176,7 @@ export default function EventsSpecificationPage() {
           {[
             ["What it declares", "The events it emits for which properties, per dimension where relevant, whether it is the system of record for each, whether it may send snapshots, its delivery mechanisms and ordering, replay, retention and known limitations."],
             ["One authority", "At most one producer is authoritative for a given property, event type and dimension. A PMS can mirror housekeeping status without being its authority."],
-            ["Signing in progress", "Organisation identity, published keys, JWS signature, expiry and rotation are being specified. The signature member is reserved in the schema."],
+            ["Signed by its producer", "A signature beside the manifest shows who declared these capabilities and that nobody changed them. It expires, and the producer's keys rotate without breaking it."],
           ].map(([title, text]) => (
             <Card className="p-6" key={title}>
               <h3 className="font-semibold">{title}</h3>
@@ -166,6 +189,46 @@ export default function EventsSpecificationPage() {
             Example: the synthetic PMS manifest
           </a>
         </p>
+      </SectionFrame>
+
+      <SectionFrame
+        id="signed-manifests"
+        eyebrow="Signed manifests"
+        title="A consumer can check who declared the capabilities, and that nobody changed them."
+        description="The manifest stays readable JSON. Its producer signs it with a key it publishes, and the signature travels beside it."
+      >
+        <ol className="grid gap-3">
+          {signingRules.map(([title, text], index) => (
+            <li className="grid gap-2 border border-[var(--border)] bg-[var(--card)] p-5 sm:grid-cols-[13rem_1fr]" key={title}>
+              <p className="font-semibold">
+                <span className="mr-2 font-mono text-xs text-[var(--accent-strong)]">0{index + 1}</span>
+                {title}
+              </p>
+              <p className="text-sm leading-6 text-[var(--muted-foreground)]">{text}</p>
+            </li>
+          ))}
+        </ol>
+        <div className="mt-6 grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
+          <div className="min-w-0">
+            <CodePanel code={JSON.stringify(signingHeader, null, 2)} label="manifest.jws · protected header" />
+          </div>
+          <Card className="p-6">
+            <h3 className="font-semibold">A fictional producer, signed</h3>
+            <p className="mt-3 text-sm leading-6 text-[var(--muted-foreground)]">What https://housekeeping.example would serve under /.well-known/hos/. The domain is reserved for examples; the producer is not a real system.</p>
+            <ul className="mt-4 space-y-2 text-sm">
+              {["manifest.json", "manifest.jws", "jwks.json"].map((file) => (
+                <li key={file}>
+                  <a className="font-mono text-[var(--accent-strong)] underline" download href={`${wellKnownExamplePath}/${file}`}>
+                    {file}
+                  </a>
+                </li>
+              ))}
+            </ul>
+            <p className="mt-4 text-sm leading-6 text-[var(--muted-foreground)]">
+              Test vectors in <span className="font-mono text-xs">{signingPath}/</span> pair a manifest, its signature and a key set with the verdict a verifier must reach: valid, expired, not yet valid, signed with another key, changed after signing, unknown kid, alg none, or a payload that is not detached.
+            </p>
+          </Card>
+        </div>
       </SectionFrame>
 
       <SectionFrame id="reference" eyebrow="Reference situation · non-normative" title="What a consumer can derive: an arrival room-readiness risk." description="Situations are not part of the event catalogue. The reference projection emits them with the same envelope so they can be replayed and audited.">

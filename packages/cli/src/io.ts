@@ -8,7 +8,11 @@ export type Io = {
   // A file, relative to cwd.
   readFile(file: string): Promise<string>;
   writeFile(file: string, text: string): Promise<void>;
+  // A secret, such as a private key: a new file, which only its owner can read. It fails if the file exists.
+  writeSecret(file: string, text: string): Promise<void>;
   readStdin(): Promise<string>;
+  // A document on the web, which must answer 200.
+  fetchText(url: string): Promise<string>;
   stdout(text: string): void;
   stderr(text: string): void;
 };
@@ -19,10 +23,16 @@ export function nodeIo(): Io {
     cwd,
     readFile: (file) => readFile(path.resolve(cwd, file), "utf8"),
     writeFile: (file, text) => writeFile(path.resolve(cwd, file), text),
+    writeSecret: (file, text) => writeFile(path.resolve(cwd, file), text, { flag: "wx", mode: 0o600 }),
     async readStdin() {
       const chunks: Buffer[] = [];
       for await (const chunk of process.stdin) chunks.push(chunk as Buffer);
       return Buffer.concat(chunks).toString("utf8");
+    },
+    async fetchText(url) {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`${url} answers ${response.status}${response.statusText ? ` ${response.statusText}` : ""}`);
+      return response.text();
     },
     stdout: (text) => process.stdout.write(text),
     stderr: (text) => process.stderr.write(text),

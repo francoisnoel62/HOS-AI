@@ -1,0 +1,84 @@
+{
+  "description": "A compact JWS that carries the manifest as its payload. A manifest signature is detached: its middle part is empty.",
+  "rule": "events/signed-manifests",
+  "at": "2026-11-01T00:00:00Z",
+  "manifest": {
+    "hosmanifestversion": "0.1",
+    "producer": "https://housekeeping.example",
+    "name": "Example Housekeeping",
+    "organization": {
+      "name": "Example Housekeeping (fictional)",
+      "url": "https://housekeeping.example"
+    },
+    "system_role": "housekeeping",
+    "property_ids": [
+      "prop_demo"
+    ],
+    "entities": [
+      "Unit",
+      "Task"
+    ],
+    "events": [
+      {
+        "type": "unit.status_changed",
+        "dimensions": [
+          "housekeeping"
+        ],
+        "authoritative": true,
+        "snapshot": true
+      },
+      {
+        "type": "unit.status_changed",
+        "dimensions": [
+          "occupancy"
+        ],
+        "authoritative": false,
+        "snapshot": true,
+        "note": "Occupancy is reported for context; the PMS is the authority."
+      },
+      {
+        "type": "housekeeping.task.created",
+        "authoritative": true
+      },
+      {
+        "type": "housekeeping.task.completed",
+        "authoritative": true
+      }
+    ],
+    "delivery": {
+      "mechanisms": [
+        "webhook"
+      ],
+      "guarantee": "at-least-once",
+      "ordering": "none"
+    },
+    "replay": {
+      "supported": true,
+      "window_days": 30,
+      "format": "jsonl"
+    },
+    "retention": {
+      "event_days": 30
+    },
+    "limitations": [
+      "A fictional producer, published to show a signed manifest. It emits no events."
+    ]
+  },
+  "jws": "eyJhbGciOiJFZDI1NTE5Iiwia2lkIjoiajRyZlRMcVB2UGt1bDJENVNtckp5dmU3aDNHa1o1RkJMMGpxZHNHYXBQcyIsImlhdCI6MTc5MDgxMjgwMCwiZXhwIjoxNzk4NTg4ODAwfQ.eyJkZWxpdmVyeSI6eyJndWFyYW50ZWUiOiJhdC1sZWFzdC1vbmNlIiwibWVjaGFuaXNtcyI6WyJ3ZWJob29rIl0sIm9yZGVyaW5nIjoibm9uZSJ9LCJlbnRpdGllcyI6WyJVbml0IiwiVGFzayJdLCJldmVudHMiOlt7ImF1dGhvcml0YXRpdmUiOnRydWUsImRpbWVuc2lvbnMiOlsiaG91c2VrZWVwaW5nIl0sInNuYXBzaG90Ijp0cnVlLCJ0eXBlIjoidW5pdC5zdGF0dXNfY2hhbmdlZCJ9LHsiYXV0aG9yaXRhdGl2ZSI6ZmFsc2UsImRpbWVuc2lvbnMiOlsib2NjdXBhbmN5Il0sIm5vdGUiOiJPY2N1cGFuY3kgaXMgcmVwb3J0ZWQgZm9yIGNvbnRleHQ7IHRoZSBQTVMgaXMgdGhlIGF1dGhvcml0eS4iLCJzbmFwc2hvdCI6dHJ1ZSwidHlwZSI6InVuaXQuc3RhdHVzX2NoYW5nZWQifSx7ImF1dGhvcml0YXRpdmUiOnRydWUsInR5cGUiOiJob3VzZWtlZXBpbmcudGFzay5jcmVhdGVkIn0seyJhdXRob3JpdGF0aXZlIjp0cnVlLCJ0eXBlIjoiaG91c2VrZWVwaW5nLnRhc2suY29tcGxldGVkIn1dLCJob3NtYW5pZmVzdHZlcnNpb24iOiIwLjEiLCJsaW1pdGF0aW9ucyI6WyJBIGZpY3Rpb25hbCBwcm9kdWNlciwgcHVibGlzaGVkIHRvIHNob3cgYSBzaWduZWQgbWFuaWZlc3QuIEl0IGVtaXRzIG5vIGV2ZW50cy4iXSwibmFtZSI6IkV4YW1wbGUgSG91c2VrZWVwaW5nIiwib3JnYW5pemF0aW9uIjp7Im5hbWUiOiJFeGFtcGxlIEhvdXNla2VlcGluZyAoZmljdGlvbmFsKSIsInVybCI6Imh0dHBzOi8vaG91c2VrZWVwaW5nLmV4YW1wbGUifSwicHJvZHVjZXIiOiJodHRwczovL2hvdXNla2VlcGluZy5leGFtcGxlIiwicHJvcGVydHlfaWRzIjpbInByb3BfZGVtbyJdLCJyZXBsYXkiOnsiZm9ybWF0IjoianNvbmwiLCJzdXBwb3J0ZWQiOnRydWUsIndpbmRvd19kYXlzIjozMH0sInJldGVudGlvbiI6eyJldmVudF9kYXlzIjozMH0sInN5c3RlbV9yb2xlIjoiaG91c2VrZWVwaW5nIn0.Ey5abrdOhBd9BhH8wlJcBab6QrKveT_cINjwiw2uGYpoNq2WUmcR764FYvsBFVy-lLsT-mQf39kqxvogCcHgDg",
+  "jwks": {
+    "keys": [
+      {
+        "kid": "j4rfTLqPvPkul2D5SmrJyve7h3GkZ5FBL0jqdsGapPs",
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "x": "bbDMo5MQdNU4v6fcwKfSM-kXcLZ1zPNVZg78lunw740",
+        "alg": "Ed25519",
+        "use": "sig"
+      }
+    ]
+  },
+  "expected": {
+    "valid": false,
+    "error": "malformed"
+  }
+}
