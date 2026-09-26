@@ -1,6 +1,6 @@
 const config = {
   plugins: [],
-  printWidth: 100,
+  printWidth: 150,
   semi: true,
   singleQuote: false,
   trailingComma: "all",

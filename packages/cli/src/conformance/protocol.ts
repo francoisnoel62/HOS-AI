@@ -11,7 +11,15 @@ export type Scenario = { id: string; scenario: ConformanceScenario; manifests: P
 // One scenario line, one line per manifest, then one line per delivery.
 export function input({ scenario, manifests, events }: Scenario, level: Level) {
   const lines = [
-    { kind: "scenario", protocol, level, scenario: scenario.scenario, tenant: scenario.tenant, property: scenario.property, projection: scenario.projection },
+    {
+      kind: "scenario",
+      protocol,
+      level,
+      scenario: scenario.scenario,
+      tenant: scenario.tenant,
+      property: scenario.property,
+      projection: scenario.projection,
+    },
     ...manifests.map((manifest) => ({ kind: "manifest", manifest })),
     ...events.map((event, index) => ({ kind: "delivery", delivery: index + 1, event })),
   ];
@@ -40,8 +48,10 @@ export function readAnswers(text: string, deliveries: number) {
     }
     const delivery = isObject(answer) ? answer.delivery : undefined;
     if (typeof delivery !== "number") problems.push(`line ${line} of the output names no delivery: ${excerpt(raw.trim())}`);
-    else if (!Number.isInteger(delivery) || delivery < 1 || delivery > deliveries) problems.push(`line ${line} of the output answers delivery ${delivery}, which the scenario does not have`);
-    else if (answers.has(delivery)) problems.push(`delivery ${delivery} is answered twice, on lines ${lines.get(delivery)} and ${line} of the output`);
+    else if (!Number.isInteger(delivery) || delivery < 1 || delivery > deliveries)
+      problems.push(`line ${line} of the output answers delivery ${delivery}, which the scenario does not have`);
+    else if (answers.has(delivery))
+      problems.push(`delivery ${delivery} is answered twice, on lines ${lines.get(delivery)} and ${line} of the output`);
     else {
       answers.set(delivery, answer as Answer);
       lines.set(delivery, line);
@@ -71,7 +81,8 @@ function differences(expected: unknown, actual: unknown, path: string, found: Ar
   if (isObject(expected) && isObject(actual)) {
     for (const key of new Set([...Object.keys(expected), ...Object.keys(actual)])) differences(expected[key], actual[key], `${path}.${key}`, found);
   } else if (Array.isArray(expected) && Array.isArray(actual)) {
-    for (let index = 0; index < Math.max(expected.length, actual.length); index += 1) differences(expected[index], actual[index], `${path}[${index}]`, found);
+    for (let index = 0; index < Math.max(expected.length, actual.length); index += 1)
+      differences(expected[index], actual[index], `${path}[${index}]`, found);
   } else found.push({ path, expected, actual });
   return found;
 }
@@ -96,7 +107,9 @@ export function compare({ expected }: Scenario, answers: Map<number, Answer>, le
     if (!stayDifferences.length) reference.passed += 1;
 
     const raised = expected.situations.filter((situation) => situation.delivery === delivery).map((situation) => situation.event);
-    const received = Array.isArray(answer?.situations) ? answer.situations.map((situation) => (isObject(situation) ? { ...situation, id: undefined, hosrecordedat: undefined } : situation)) : answer?.situations;
+    const received = Array.isArray(answer?.situations)
+      ? answer.situations.map((situation) => (isObject(situation) ? { ...situation, id: undefined, hosrecordedat: undefined } : situation))
+      : answer?.situations;
     if (!Array.isArray(received)) {
       add(differences(raised, received, "situations", []));
       continue;

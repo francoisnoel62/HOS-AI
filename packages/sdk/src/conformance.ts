@@ -54,7 +54,9 @@ export function toExpectedOutcome(steps: ReplayStep[], scenario: ConformanceScen
       source: step.event.source,
       id: step.event.id,
       disposition: step.disposition,
-      stays: Object.fromEntries(Object.entries(step.stays).map(([stayId, view]) => [stayId, { readiness: view.readiness, situation: view.situation }])),
+      stays: Object.fromEntries(
+        Object.entries(step.stays).map(([stayId, view]) => [stayId, { readiness: view.readiness, situation: view.situation }]),
+      ),
     })),
     situations: steps.flatMap((step) =>
       step.emitted.map((situation) => {

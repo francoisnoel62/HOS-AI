@@ -18,5 +18,7 @@ const steps = replayArrivalReadiness(
 );
 for (const [index, step] of steps.entries()) {
   const stays = Object.fromEntries(Object.entries(step.stays).map(([id, view]) => [id, { readiness: view.readiness, situation: view.situation }]));
-  process.stdout.write(`${JSON.stringify({ delivery: deliveries[index].delivery, disposition: step.disposition, stays, situations: step.emitted })}\r\n`);
+  process.stdout.write(
+    `${JSON.stringify({ delivery: deliveries[index].delivery, disposition: step.disposition, stays, situations: step.emitted })}\r\n`,
+  );
 }

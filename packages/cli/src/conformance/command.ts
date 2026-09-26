@@ -98,7 +98,9 @@ export async function conformanceCommand(args: string[], io: Io): Promise<number
 
   let scenarios: Scenario[];
   try {
-    scenarios = values["scenario-dir"] ? localScenarios(path.resolve(io.cwd, values["scenario-dir"])) : Object.entries(embedded).map(([id, scenario]) => ({ id, ...scenario }));
+    scenarios = values["scenario-dir"]
+      ? localScenarios(path.resolve(io.cwd, values["scenario-dir"]))
+      : Object.entries(embedded).map(([id, scenario]) => ({ id, ...scenario }));
   } catch (error) {
     return usageError(`cannot read the scenarios in ${values["scenario-dir"]}: ${(error as Error).message}`);
   }
@@ -106,7 +108,9 @@ export async function conformanceCommand(args: string[], io: Io): Promise<number
 
   if (subcommand === "list") {
     const width = Math.max(...scenarios.map((item) => item.id.length));
-    io.stdout(`${scenarios.map((item) => `${item.id.padEnd(width)}  ${item.scenario.title} · ${plural(item.events.length, "delivery")}, ${plural(item.manifests.length, "producer")}`).join("\n")}\n`);
+    io.stdout(
+      `${scenarios.map((item) => `${item.id.padEnd(width)}  ${item.scenario.title} · ${plural(item.events.length, "delivery")}, ${plural(item.manifests.length, "producer")}`).join("\n")}\n`,
+    );
     return exit.ok;
   }
   if (subcommand !== "run") return usageError(`unknown subcommand ${subcommand}: use list, run or producer.`);
@@ -115,7 +119,7 @@ export async function conformanceCommand(args: string[], io: Io): Promise<number
   if (level !== "normative" && level !== "reference") return usageError(`--level is ${level}; use normative or reference.`);
   const timeout = Number(values.timeout);
   if (!(timeout > 0)) return usageError(`--timeout is ${values.timeout}; give a number of seconds.`);
-  if (!values.impl) return usageError("name the implementation to test with --impl, for example --impl \"python impl.py\".");
+  if (!values.impl) return usageError('name the implementation to test with --impl, for example --impl "python impl.py".');
   const known = new Map(scenarios.map((item) => [item.id, item]));
   const unknown = names.filter((name) => !known.has(name));
   if (unknown.length) return usageError(`no scenario ${unknown.join(", ")}. The scenarios are ${[...known.keys()].join(", ")}.`);

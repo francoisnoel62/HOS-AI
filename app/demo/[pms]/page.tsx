@@ -49,21 +49,37 @@ export default async function PmsMappingPage({ params }: Props) {
   const notes = stream.map((fact, index) => {
     const delivery = index + 1;
     if (!fact.recorded) return { ...scenario.deliveries.find((item) => item.delivery === fact.corpusDelivery)!, delivery };
-    return { delivery, checks: `From ${copy.name} delivery ${fact.recorded.delivery} · ${copy.eventLabel(fact.recorded.webhook as never)}`, note: fact.recorded.note };
+    return {
+      delivery,
+      checks: `From ${copy.name} delivery ${fact.recorded.delivery} · ${copy.eventLabel(fact.recorded.webhook as never)}`,
+      note: fact.recorded.note,
+    };
   });
   const origins = Object.fromEntries(
     stream.flatMap((fact, index) => {
       if (!fact.recorded) return [];
       const { webhook, webhook_verification, fetched } = fact.recorded;
-      const payload = { webhook, ...(webhook_verification ? { webhook_verification } : {}), fetched: fetched.map(({ operation, response }) => ({ operation, response })) };
+      const payload = {
+        webhook,
+        ...(webhook_verification ? { webhook_verification } : {}),
+        fetched: fetched.map(({ operation, response }) => ({ operation, response })),
+      };
       return [[index + 1, { label: `Received from ${copy.name} · delivery ${fact.recorded.delivery}`, code: JSON.stringify(payload, null, 2) }]];
     }),
   );
   const pmsFacts = stream.filter((fact) => fact.recorded).length;
   const reconstructed = recording.deliveries.filter((delivery) => delivery.webhook_verification).length;
   const downloads = [
-    { href: `${mappingPath(pms)}/arrival-readiness.json`, label: "arrival-readiness.json", text: `The ${recording.deliveries.length} ${copy.name} deliveries: webhooks, what the integration fetched for them, the adapter configuration and every documented difference.` },
-    { href: `${mappingPath(pms)}/README.md`, label: "README.md", text: "Field-by-field mapping, its sources and limits, and what it taught us about HOS 0.1." },
+    {
+      href: `${mappingPath(pms)}/arrival-readiness.json`,
+      label: "arrival-readiness.json",
+      text: `The ${recording.deliveries.length} ${copy.name} deliveries: webhooks, what the integration fetched for them, the adapter configuration and every documented difference.`,
+    },
+    {
+      href: `${mappingPath(pms)}/README.md`,
+      label: "README.md",
+      text: "Field-by-field mapping, its sources and limits, and what it taught us about HOS 0.1.",
+    },
   ];
 
   return (
@@ -78,27 +94,56 @@ export default async function PmsMappingPage({ params }: Props) {
         <div className="border-l-2 border-[var(--warning)] bg-[var(--warning-soft)] p-5 text-sm leading-7 text-[var(--muted-foreground)]">
           <p className="font-semibold text-[var(--foreground)]">Unofficial and experimental.</p>
           <p className="mt-1">
-            Written from {copy.name}&apos;s published documentation and packages, listed below. HOS AI is not affiliated with {copy.name}, and {copy.name} has not reviewed or endorsed this mapping. Every payload is synthetic{copy.liveCheck ? `. ${copy.liveCheck}` : `, and the adapter has not yet run against a live ${copy.name} environment.`}
+            Written from {copy.name}&apos;s published documentation and packages, listed below. HOS AI is not affiliated with {copy.name}, and{" "}
+            {copy.name} has not reviewed or endorsed this mapping. Every payload is synthetic
+            {copy.liveCheck ? `. ${copy.liveCheck}` : `, and the adapter has not yet run against a live ${copy.name} environment.`}
             {reconstructed ? ` ${reconstructed} webhook payloads are reconstructed, and each says so.` : null}
           </p>
         </div>
       </section>
       <section className="mx-auto max-w-6xl px-5 pb-16 lg:px-8">
-        <ArrivalReplay notes={notes} origins={origins} producerLabels={labels} stayId="stay_1042" steps={steps} timezone={scenario.property.timezone} />
+        <ArrivalReplay
+          notes={notes}
+          origins={origins}
+          producerLabels={labels}
+          stayId="stay_1042"
+          steps={steps}
+          timezone={scenario.property.timezone}
+        />
         <p className="mt-6 max-w-3xl text-sm leading-6 text-[var(--muted-foreground)]">
-          {steps.length} facts for the scenario&apos;s {scenario.deliveries.length}. {recording.not_reproduced.map((item) => `Delivery ${item.delivery} has no ${copy.name} counterpart.`).join(" ")}
-          {recording.additions.map((item) => ` ${copy.name} adds a fact the corpus does not have. ${item.reason}`).join("")} Housekeeping and messaging facts are unchanged. Times are shown in the property time zone ({scenario.property.timezone}).
+          {steps.length} facts for the scenario&apos;s {scenario.deliveries.length}.{" "}
+          {recording.not_reproduced.map((item) => `Delivery ${item.delivery} has no ${copy.name} counterpart.`).join(" ")}
+          {recording.additions.map((item) => ` ${copy.name} adds a fact the corpus does not have. ${item.reason}`).join("")} Housekeeping and
+          messaging facts are unchanged. Times are shown in the property time zone ({scenario.property.timezone}).
         </p>
       </section>
-      <SectionFrame eyebrow="Mapping" title={`From ${copy.name} payloads to HOS facts.`} description="The adapter never forwards a PMS payload. It compares each fetched entity with what it already published and emits only the facts that changed, with ids that stay the same when a webhook is delivered again.">
+      <SectionFrame
+        eyebrow="Mapping"
+        title={`From ${copy.name} payloads to HOS facts.`}
+        description="The adapter never forwards a PMS payload. It compares each fetched entity with what it already published and emits only the facts that changed, with ids that stay the same when a webhook is delivered again."
+      >
         <SpecTable
           columns={[`${copy.name} event`, "When", "HOS Events 0.1", "How"]}
           label={`${copy.name} to HOS Events 0.1 mapping`}
           minWidth="56rem"
-          rows={copy.mapping.map(([event, when, hos, how]) => ({ key: `${event} ${when}`, cells: [event, when, <span className="font-mono text-xs text-[var(--foreground)]" key="hos">{hos}</span>, how] }))}
+          rows={copy.mapping.map(([event, when, hos, how]) => ({
+            key: `${event} ${when}`,
+            cells: [
+              event,
+              when,
+              <span className="font-mono text-xs text-[var(--foreground)]" key="hos">
+                {hos}
+              </span>,
+              how,
+            ],
+          }))}
         />
       </SectionFrame>
-      <SectionFrame eyebrow="Findings" title={`What ${copy.name} taught us about HOS 0.1.`} description="Mapping a real PMS is the test the synthetic corpus could not provide. These are the gaps it exposed, in the source and in the specification.">
+      <SectionFrame
+        eyebrow="Findings"
+        title={`What ${copy.name} taught us about HOS 0.1.`}
+        description="Mapping a real PMS is the test the synthetic corpus could not provide. These are the gaps it exposed, in the source and in the specification."
+      >
         <div className="grid gap-3 md:grid-cols-2">
           {copy.findings.map(([title, text]) => (
             <Card className="p-5" key={title}>
@@ -108,7 +153,11 @@ export default async function PmsMappingPage({ params }: Props) {
           ))}
         </div>
       </SectionFrame>
-      <SectionFrame eyebrow="Mapping kit" title="Check the mapping yourself." description="The recording pins the PMS payloads, the adapter configuration and every difference from the synthetic corpus. The unit tests replay it and compare the outcome with the scenario's expected.json.">
+      <SectionFrame
+        eyebrow="Mapping kit"
+        title="Check the mapping yourself."
+        description="The recording pins the PMS payloads, the adapter configuration and every difference from the synthetic corpus. The unit tests replay it and compare the outcome with the scenario's expected.json."
+      >
         <div className="grid gap-3 md:grid-cols-2">
           {downloads.map((item) => (
             <a className="group" download href={item.href} key={item.href}>
@@ -127,7 +176,12 @@ export default async function PmsMappingPage({ params }: Props) {
           {recording.sources.map((source) => (
             <li className="grid gap-2 py-4 sm:grid-cols-[1fr_auto] sm:items-start" key={source.url}>
               <div>
-                <a className="text-sm font-medium underline decoration-[var(--border-strong)] underline-offset-4 hover:decoration-[var(--accent)]" href={source.url} rel="noreferrer" target="_blank">
+                <a
+                  className="text-sm font-medium underline decoration-[var(--border-strong)] underline-offset-4 hover:decoration-[var(--accent)]"
+                  href={source.url}
+                  rel="noreferrer"
+                  target="_blank"
+                >
                   {source.label}
                   {source.revision ? ` · ${source.revision.length > 12 ? source.revision.slice(0, 7) : source.revision}` : null}
                 </a>

@@ -54,7 +54,8 @@ const definitionName = (key: string) => (key.includes(".") ? `${pascal(key)}Data
 const doc = (description: string | undefined, indent: string) => (description ? `${indent}/** ${description.replaceAll("*/", "*\\/")} */\n` : "");
 const literal = (value: unknown) => JSON.stringify(value);
 const enumKey = (values: unknown[]) => literal([...values].sort());
-const carriesType = (schema: Schema) => ["$ref", "const", "enum", "type", "oneOf", "anyOf", "allOf", "properties", "items"].some((keyword) => keyword in schema);
+const carriesType = (schema: Schema) =>
+  ["$ref", "const", "enum", "type", "oneOf", "anyOf", "allOf", "properties", "items"].some((keyword) => keyword in schema);
 
 // The right-hand side of a type alias: on one line, or one member per line when long.
 function union(members: string[]) {
@@ -190,7 +191,8 @@ export function generate(): Record<string, string> {
     for (const [key, schema] of Object.entries(document.$defs!)) if (!data.has(key)) definition(definitionName(key), schema, document.$id!, output);
     for (const type of types) {
       const keys = dataKeys(document, type);
-      for (const key of keys) definition(definitionName(key), document.$defs![key], document.$id!, output, keys.length === 1 ? `The data of ${type}.` : undefined);
+      for (const key of keys)
+        definition(definitionName(key), document.$defs![key], document.$id!, output, keys.length === 1 ? `The data of ${type}.` : undefined);
       const description = (document.$defs![type] ?? document.$defs![keys[0]]).description;
       output.body += `\n${doc(description, "")}export type ${pascal(type)} = Envelope<${literal(type)}, ${keys.map(definitionName).join(" | ")}>;\n`;
     }

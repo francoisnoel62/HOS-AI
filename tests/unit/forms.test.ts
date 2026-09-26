@@ -48,8 +48,6 @@ describe("founding-member form boundary", () => {
 
 describe("retention boundary", () => {
   it("retains a submission for twelve months after the last exchange", () => {
-    expect(retentionDueAt(new Date("2026-07-30T10:00:00.000Z"))).toEqual(
-      new Date("2027-07-30T10:00:00.000Z"),
-    );
+    expect(retentionDueAt(new Date("2026-07-30T10:00:00.000Z"))).toEqual(new Date("2027-07-30T10:00:00.000Z"));
   });
 });

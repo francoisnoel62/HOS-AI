@@ -13,5 +13,10 @@ const toneByStatus: Record<DocumentStatus, "default" | "active" | "warning" | "s
 };
 
 export function StatusBadge({ status }: { status: DocumentStatus }) {
-  return <Badge variant={toneByStatus[status]}><CircleDot aria-hidden="true" size={11} />{status}</Badge>;
+  return (
+    <Badge variant={toneByStatus[status]}>
+      <CircleDot aria-hidden="true" size={11} />
+      {status}
+    </Badge>
+  );
 }

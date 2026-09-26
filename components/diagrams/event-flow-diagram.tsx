@@ -13,9 +13,12 @@ export function ReadinessRiskCard() {
           <Badge variant="warning">Alert</Badge>
           <h3 className="mt-3 text-lg font-semibold tracking-[-0.04em]">Room 204 may not be ready in time</h3>
           <p className="mt-2 text-sm leading-6 text-[var(--muted-foreground)]">
-            The guest has written that they will arrive early, and the room has been cleaned but not inspected. The front desk sees it now, with where each piece of information came from, not when the guest is at the desk.
+            The guest has written that they will arrive early, and the room has been cleaned but not inspected. The front desk sees it now, with where
+            each piece of information came from, not when the guest is at the desk.
           </p>
-          <div className="mt-4 flex items-center gap-2 font-mono text-xs"><Check aria-hidden="true" size={14} /> HOS alerts. Your team decides.</div>
+          <div className="mt-4 flex items-center gap-2 font-mono text-xs">
+            <Check aria-hidden="true" size={14} /> HOS alerts. Your team decides.
+          </div>
         </div>
       </div>
     </aside>

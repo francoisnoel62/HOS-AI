@@ -31,12 +31,18 @@ export function byOccurrence(a: Occurrence, b: Occurrence) {
 // A producer may only emit what its manifest declares for the property; anything undeclared is denied.
 export function findDeclaration(manifests: ProducerManifest[], event: HosFact, dimension?: UnitStatusDimension) {
   const manifest = manifests.find((candidate) => candidate.producer === event.source && candidate.property_ids.includes(event.hosproperty));
-  return manifest?.events.find((declared) => declared.type === event.type && (!dimension || !declared.dimensions || declared.dimensions.includes(dimension)));
+  return manifest?.events.find(
+    (declared) => declared.type === event.type && (!dimension || !declared.dimensions || declared.dimensions.includes(dimension)),
+  );
 }
 
 // A consumer applies a fact from the declared authority, keeps a fact from another declared producer as an observation,
 // and ignores an undeclared one. A snapshot is declared only when the manifest allows snapshots of that type.
-export function authority(manifests: ProducerManifest[], event: HosFact, dimension?: UnitStatusDimension): "authoritative" | "non_authoritative" | "undeclared_capability" {
+export function authority(
+  manifests: ProducerManifest[],
+  event: HosFact,
+  dimension?: UnitStatusDimension,
+): "authoritative" | "non_authoritative" | "undeclared_capability" {
   const declaration = findDeclaration(manifests, event, dimension);
   if (!declaration || (event.hosdatamode === "snapshot" && !declaration.snapshot)) return "undeclared_capability";
   return declaration.authoritative ? "authoritative" : "non_authoritative";

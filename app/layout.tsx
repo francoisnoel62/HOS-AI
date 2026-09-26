@@ -28,7 +28,9 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
     <html className={`${geistSans.variable} ${geistMono.variable}`} lang="en" suppressHydrationWarning>
       <body>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-          <a className="skip-link" href="#main-content">Skip to main content</a>
+          <a className="skip-link" href="#main-content">
+            Skip to main content
+          </a>
           <SiteHeader />
           <main id="main-content">{children}</main>
           <SiteFooter />

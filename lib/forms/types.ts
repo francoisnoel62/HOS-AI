@@ -1,10 +1,4 @@
-export const formRouteKinds = [
-  "founding-member",
-  "pilot",
-  "technical-contributor",
-  "financial-patron",
-  "contact",
-] as const;
+export const formRouteKinds = ["founding-member", "pilot", "technical-contributor", "financial-patron", "contact"] as const;
 
 export type FormRouteKind = (typeof formRouteKinds)[number];
 export type SubmissionKind = "founding_member" | "pilot" | "technical_contributor" | "financial_patron" | "general_inquiry";

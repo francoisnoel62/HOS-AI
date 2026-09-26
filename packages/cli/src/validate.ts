@@ -40,16 +40,23 @@ function nameOf(document: unknown) {
   return typeof type === "string" ? type : typeof producer === "string" ? producer : undefined;
 }
 
-
 function human(result: Result) {
   const mark = result.valid ? "✓" : "✗";
   const verdict = result.valid ? "valid" : "invalid";
   if (result.kind === "stream") {
     const count = (severity: StreamIssue["severity"]) => result.issues.filter((issue) => issue.severity === severity).length;
-    const summary = [plural(count("error"), "error"), plural(count("warning"), "warning"), plural(count("info"), "note")].filter((part) => !part.startsWith("0 ")).join(", ");
+    const summary = [plural(count("error"), "error"), plural(count("warning"), "warning"), plural(count("info"), "note")]
+      .filter((part) => !part.startsWith("0 "))
+      .join(", ");
     return [
       `${mark} ${result.file}: ${verdict} stream of ${plural(result.events, "event")}${summary ? ` (${summary})` : ""}`,
-      ...result.issues.flatMap((issue) => issueLines(issue.severity === "info" ? "note" : issue.severity, issue.line === null ? issue.message : `line ${issue.line}: ${issue.message}`, issue)),
+      ...result.issues.flatMap((issue) =>
+        issueLines(
+          issue.severity === "info" ? "note" : issue.severity,
+          issue.line === null ? issue.message : `line ${issue.line}: ${issue.message}`,
+          issue,
+        ),
+      ),
     ];
   }
   const what = result.kind ? `${result.kind}${result.name ? ` ${result.name}` : ""}` : "document";
@@ -119,13 +126,18 @@ export async function validateCommand(args: string[], io: Io): Promise<number> {
       results.push({ file: label, name: nameOf(parsed.value), ...validate(parsed.value) });
     }
   }
-  if (manifests.length && !results.some((result) => result.kind === "stream")) io.stderr("hos validate: --manifest applies to streams (.jsonl) only.\n");
+  if (manifests.length && !results.some((result) => result.kind === "stream"))
+    io.stderr("hos validate: --manifest applies to streams (.jsonl) only.\n");
 
   const valid = results.every((result) => result.valid);
   if (options.values.json) io.stdout(`${JSON.stringify({ valid, results }, null, 2)}\n`);
   else if (results.length) {
     const output = results.flatMap(human);
-    if (results.length > 1) output.push("", `${plural(results.length, "file")}: ${results.filter((result) => result.valid).length} valid, ${results.filter((result) => !result.valid).length} invalid`);
+    if (results.length > 1)
+      output.push(
+        "",
+        `${plural(results.length, "file")}: ${results.filter((result) => result.valid).length} valid, ${results.filter((result) => !result.valid).length} invalid`,
+      );
     io.stdout(`${output.join("\n")}\n`);
   }
   if (unreadable) return exit.usage;

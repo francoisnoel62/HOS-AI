@@ -6,7 +6,17 @@ import { retentionDueAt } from "@/lib/forms/schema";
 import type { SubmissionKind } from "@/lib/forms/types";
 import { privacyVersion } from "@/lib/legal";
 
-export async function createSubmission({ kind, payload, email, country }: { kind: SubmissionKind; payload: unknown; email: string; country?: string }) {
+export async function createSubmission({
+  kind,
+  payload,
+  email,
+  country,
+}: {
+  kind: SubmissionKind;
+  payload: unknown;
+  email: string;
+  country?: string;
+}) {
   const db = getDb();
   const id = randomUUID();
   const now = new Date();

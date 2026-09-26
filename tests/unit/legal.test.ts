@@ -47,6 +47,8 @@ describe("retention purge endpoint", () => {
   it("skips the purge when no database is configured", async () => {
     vi.stubEnv("CRON_SECRET", "cron-test-secret");
     vi.stubEnv("DATABASE_URL", "");
-    expect((await purgeRoute(new Request("http://localhost/api/cron/purge", { headers: { authorization: "Bearer cron-test-secret" } }))).status).toBe(503);
+    expect((await purgeRoute(new Request("http://localhost/api/cron/purge", { headers: { authorization: "Bearer cron-test-secret" } }))).status).toBe(
+      503,
+    );
   });
 });

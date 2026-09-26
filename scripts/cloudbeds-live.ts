@@ -61,12 +61,18 @@ async function get<T extends Envelope>(operation: string, query: Record<string, 
       body = JSON.parse(text) as T;
     } catch {}
     // Cloudbeds may answer 200 with success false.
-    if (!response.ok || !body || body.success === false) throw new Error(`${operation} answered ${response.status}: ${(body?.message ?? text).slice(0, 300)}`);
+    if (!response.ok || !body || body.success === false)
+      throw new Error(`${operation} answered ${response.status}: ${(body?.message ?? text).slice(0, 300)}`);
     return body;
   }
 }
 
-async function list<T>(operation: string, query: Record<string, string>, size: number, items: (body: Envelope) => T[] = (body) => (body.data as T[] | undefined) ?? []): Promise<T[]> {
+async function list<T>(
+  operation: string,
+  query: Record<string, string>,
+  size: number,
+  items: (body: Envelope) => T[] = (body) => (body.data as T[] | undefined) ?? [],
+): Promise<T[]> {
   const all: T[] = [];
   for (let page = 1; page <= maxPages; page++) {
     const body = await get(operation, { ...query, pageNumber: String(page), pageSize: String(size) });
@@ -108,7 +114,10 @@ async function main() {
   }
   const propertyID = String(hotel.propertyID);
   const timezone = hotel.propertyTimezone;
-  const details = await get<Envelope & { data: { propertyPolicy?: { propertyCheckInTime?: string; propertyCheckOutTime?: string } } }>("getHotelDetails", { propertyID });
+  const details = await get<Envelope & { data: { propertyPolicy?: { propertyCheckInTime?: string; propertyCheckOutTime?: string } } }>(
+    "getHotelDetails",
+    { propertyID },
+  );
   const policy = details.data.propertyPolicy;
   const checkInTime = clock(args["check-in"] ?? policy?.propertyCheckInTime, "check-in");
   const checkOutTime = clock(args["check-out"] ?? policy?.propertyCheckOutTime, "check-out");
@@ -121,20 +130,52 @@ async function main() {
   const ids = [...new Set(found.map((reservation) => String(reservation.reservationID)))];
   if (ids.length > 20) console.warn(`Fetching ${ids.length} reservations one by one…`);
   const reservations: CloudbedsReservation[] = [];
-  for (const reservationID of ids) reservations.push((await get<Envelope & { data: CloudbedsReservation }>("getReservation", { propertyID, reservationID })).data);
+  for (const reservationID of ids)
+    reservations.push((await get<Envelope & { data: CloudbedsReservation }>("getReservation", { propertyID, reservationID })).data);
   const rooms = await list<CloudbedsRoomStatus>("getHousekeepingStatus", { propertyID }, 5000);
-  const roomBlocks = await list<CloudbedsRoomBlock>("getRoomBlocks", { propertyID, startDate: start, endDate: end }, 100, (body) => (body.data as { roomBlocks?: CloudbedsRoomBlock[] } | undefined)?.roomBlocks ?? []);
+  const roomBlocks = await list<CloudbedsRoomBlock>(
+    "getRoomBlocks",
+    { propertyID, startDate: start, endDate: end },
+    100,
+    (body) => (body.data as { roomBlocks?: CloudbedsRoomBlock[] } | undefined)?.roomBlocks ?? [],
+  );
 
-  const snapshot: CloudbedsSnapshot = { fetchedAt, property: { id: propertyID, timezone, checkInTime, checkOutTime }, reservations, rooms, roomBlocks };
-  const report = syncCloudbeds(snapshot, { source: "urn:hos:pms:cloudbeds-live", tenant: "tenant_cloudbeds_live", propertyId: "prop_cloudbeds_live" });
+  const snapshot: CloudbedsSnapshot = {
+    fetchedAt,
+    property: { id: propertyID, timezone, checkInTime, checkOutTime },
+    reservations,
+    rooms,
+    roomBlocks,
+  };
+  const report = syncCloudbeds(snapshot, {
+    source: "urn:hos:pms:cloudbeds-live",
+    tenant: "tenant_cloudbeds_live",
+    propertyId: "prop_cloudbeds_live",
+  });
 
   // Each block's dates next to the window read from them, in property time, to confirm how endDate reads.
-  const local = new Intl.DateTimeFormat("en-CA", { timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+  const local = new Intl.DateTimeFormat("en-CA", {
+    timeZone: timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  });
   const at = (instant: string | null) => (instant ? local.format(new Date(instant)).replace(",", "") : "none");
-  const blocks = report.room_blocks.flatMap((block) => block.rooms.map((room) => `  ${block.type} ${block.start_date} to ${block.end_date}, room ${room.room ?? "?"}: window ${at(room.starts_at)} to ${at(room.ends_at)}`));
+  const blocks = report.room_blocks.flatMap((block) =>
+    block.rooms.map(
+      (room) =>
+        `  ${block.type} ${block.start_date} to ${block.end_date}, room ${room.room ?? "?"}: window ${at(room.starts_at)} to ${at(room.ends_at)}`,
+    ),
+  );
   await writeLiveReport(report, {
     heading: `Cloudbeds ${api} — ${hotel.propertyName} (${propertyID}, ${timezone})`,
-    notes: [`Check-in ${checkInTime}, check-out ${checkOutTime}. Room blocks from ${start} to ${end}, with the window read in property time:`, ...(blocks.length ? blocks : ["  none"])],
+    notes: [
+      `Check-in ${checkInTime}, check-out ${checkOutTime}. Room blocks from ${start} to ${end}, with the window read in property time:`,
+      ...(blocks.length ? blocks : ["  none"]),
+    ],
     context: {
       api,
       fetched_at: fetchedAt,

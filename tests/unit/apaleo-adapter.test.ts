@@ -2,7 +2,13 @@ import { createIdentityRegistry, type HosFact, validateEvent } from "@hos-ai/sdk
 import { replayArrivalReadiness } from "@hos-ai/sdk/reference";
 import { describe, expect, it } from "vitest";
 
-import { type ApaleoAdapterConfig, type ApaleoReservation, type ApaleoUnit, type ApaleoWebhook, createApaleoAdapter } from "@/lib/hos/mappings/apaleo";
+import {
+  type ApaleoAdapterConfig,
+  type ApaleoReservation,
+  type ApaleoUnit,
+  type ApaleoWebhook,
+  createApaleoAdapter,
+} from "@/lib/hos/mappings/apaleo";
 import { loadRecording } from "@/lib/hos/mappings/replay";
 import { loadArrivalScenario } from "@/lib/spec";
 
@@ -16,18 +22,33 @@ describe("Apaleo adapter", () => {
   const reservation = fetched<ApaleoReservation>(0);
   const assigned = fetched<ApaleoReservation>(1);
   const unit = fetched<ApaleoUnit>(2);
-  const adapter = (overrides: Partial<ApaleoAdapterConfig> = {}) => createApaleoAdapter({ ...config, identities: createIdentityRegistry(recording.adapter.crosswalk), ...overrides });
+  const adapter = (overrides: Partial<ApaleoAdapterConfig> = {}) =>
+    createApaleoAdapter({ ...config, identities: createIdentityRegistry(recording.adapter.crosswalk), ...overrides });
   const types = (events: HosFact[]) => events.map((event) => event.type);
   const status = (event: HosFact) => event.data as { dimension?: string; previous?: string; current?: string };
 
-  function send(target: ReturnType<typeof adapter>, type: string, change: Partial<ApaleoReservation>, at = "2026-07-20T09:00:00Z", base = reservation) {
-    const result = target.handle({ received_at: at, webhook: { ...webhook(0), type, timestamp: Date.parse(at) }, reservation: { ...base, ...change } });
+  function send(
+    target: ReturnType<typeof adapter>,
+    type: string,
+    change: Partial<ApaleoReservation>,
+    at = "2026-07-20T09:00:00Z",
+    base = reservation,
+  ) {
+    const result = target.handle({
+      received_at: at,
+      webhook: { ...webhook(0), type, timestamp: Date.parse(at) },
+      reservation: { ...base, ...change },
+    });
     for (const event of result.events) expect(validateEvent(event), JSON.stringify(validateEvent.errors)).toBe(true);
     return result;
   }
 
   function sense(target: ReturnType<typeof adapter>, status: Partial<ApaleoUnit["status"]>, at: string) {
-    const result = target.handle({ received_at: at, webhook: { ...webhook(2), timestamp: Date.parse(at) }, unit: { ...unit, status: { ...unit.status, ...status } } });
+    const result = target.handle({
+      received_at: at,
+      webhook: { ...webhook(2), timestamp: Date.parse(at) },
+      unit: { ...unit, status: { ...unit.status, ...status } },
+    });
     for (const event of result.events) expect(validateEvent(event), JSON.stringify(validateEvent.errors)).toBe(true);
     return result;
   }
@@ -44,46 +65,80 @@ describe("Apaleo adapter", () => {
     const first = send(adapter(), "created", {}, "2026-07-12T14:03:00Z").events;
     const again = send(adapter(), "created", {}, "2026-07-12T14:09:00Z").events;
     expect(again.map((event) => event.id)).toEqual(first.map((event) => event.id));
-    expect(replayArrivalReadiness([...first, ...again], manifests, scenario.projection).map((step) => step.disposition)).toEqual(["applied", "applied", "duplicate", "duplicate"]);
+    expect(replayArrivalReadiness([...first, ...again], manifests, scenario.projection).map((step) => step.disposition)).toEqual([
+      "applied",
+      "applied",
+      "duplicate",
+      "duplicate",
+    ]);
   });
 
   it("dates an assignment by its own event, and otherwise by the last modification", () => {
     const precise = adapter();
     send(precise, "created", {});
-    expect(send(precise, "unit-assigned", assigned, "2026-07-30T06:06:00Z").events).toMatchObject([{ type: "stay.unit_assigned", time: "2026-07-30T06:06:00Z" }]);
+    expect(send(precise, "unit-assigned", assigned, "2026-07-30T06:06:00Z").events).toMatchObject([
+      { type: "stay.unit_assigned", time: "2026-07-30T06:06:00Z" },
+    ]);
 
     const inferred = adapter();
     send(inferred, "created", {});
-    expect(send(inferred, "changed", { ...assigned, modified: "2026-07-30T08:30:00+02:00" }, "2026-07-30T07:00:00Z").events).toMatchObject([{ type: "stay.unit_assigned", time: "2026-07-30T06:30:00Z", hostimebasis: "modified" }]);
+    expect(send(inferred, "changed", { ...assigned, modified: "2026-07-30T08:30:00+02:00" }, "2026-07-30T07:00:00Z").events).toMatchObject([
+      { type: "stay.unit_assigned", time: "2026-07-30T06:30:00Z", hostimebasis: "modified" },
+    ]);
   });
 
   it("maps an unassignment and a reverted check-in to their own events, at the times Apaleo gives", () => {
     const target = adapter();
     send(target, "unit-assigned", assigned, "2026-07-30T06:06:00Z");
-    const unassigned = send(target, "unit-unassigned", { ...assigned, unit: undefined, modified: "2026-07-30T09:00:00+02:00" }, "2026-07-30T07:00:00Z").events;
-    expect(unassigned).toEqual([expect.objectContaining({ type: "stay.unit_unassigned", time: "2026-07-30T07:00:00Z", data: { stay_id: "stay_1042", unit_id: "unit_204" } })]);
+    const unassigned = send(
+      target,
+      "unit-unassigned",
+      { ...assigned, unit: undefined, modified: "2026-07-30T09:00:00+02:00" },
+      "2026-07-30T07:00:00Z",
+    ).events;
+    expect(unassigned).toEqual([
+      expect.objectContaining({ type: "stay.unit_unassigned", time: "2026-07-30T07:00:00Z", data: { stay_id: "stay_1042", unit_id: "unit_204" } }),
+    ]);
     expect(unassigned[0]).not.toHaveProperty("hostimebasis");
 
     send(target, "unit-assigned", { ...assigned, modified: "2026-07-30T09:30:00+02:00" }, "2026-07-30T07:30:00Z");
-    send(target, "checked-in", { ...assigned, status: "InHouse", checkInTime: "2026-07-30T12:35:00+02:00", modified: "2026-07-30T12:35:00+02:00" }, "2026-07-30T10:35:00Z");
-    const reverted = send(target, "check-in-reverted", { ...assigned, status: "Confirmed", modified: "2026-07-30T12:50:00+02:00" }, "2026-07-30T10:50:00Z").events;
-    expect(reverted).toEqual([expect.objectContaining({ type: "stay.check_in_reverted", time: "2026-07-30T10:50:00Z", data: { stay_id: "stay_1042", unit_id: "unit_204" } })]);
-    const again = send(target, "checked-in", { ...assigned, status: "InHouse", checkInTime: "2026-07-30T13:05:00+02:00", modified: "2026-07-30T13:05:00+02:00" }, "2026-07-30T11:05:00Z").events;
+    send(
+      target,
+      "checked-in",
+      { ...assigned, status: "InHouse", checkInTime: "2026-07-30T12:35:00+02:00", modified: "2026-07-30T12:35:00+02:00" },
+      "2026-07-30T10:35:00Z",
+    );
+    const reverted = send(
+      target,
+      "check-in-reverted",
+      { ...assigned, status: "Confirmed", modified: "2026-07-30T12:50:00+02:00" },
+      "2026-07-30T10:50:00Z",
+    ).events;
+    expect(reverted).toEqual([
+      expect.objectContaining({ type: "stay.check_in_reverted", time: "2026-07-30T10:50:00Z", data: { stay_id: "stay_1042", unit_id: "unit_204" } }),
+    ]);
+    const again = send(
+      target,
+      "checked-in",
+      { ...assigned, status: "InHouse", checkInTime: "2026-07-30T13:05:00+02:00", modified: "2026-07-30T13:05:00+02:00" },
+      "2026-07-30T11:05:00Z",
+    ).events;
     expect(again).toMatchObject([{ type: "stay.checked_in", time: "2026-07-30T11:05:00Z" }]);
   });
 
   it("maps cancellations and no-shows at the times Apaleo records", () => {
     const cancelled = adapter();
     send(cancelled, "created", {});
-    expect(send(cancelled, "canceled", { status: "Canceled", cancellationTime: "2026-07-20T11:00:00+02:00", modified: "2026-07-20T11:00:00+02:00" }).events).toEqual([
-      expect.objectContaining({ type: "reservation.cancelled", time: "2026-07-20T09:00:00Z", data: { reservation_id: "res_1042" } }),
-    ]);
+    expect(
+      send(cancelled, "canceled", { status: "Canceled", cancellationTime: "2026-07-20T11:00:00+02:00", modified: "2026-07-20T11:00:00+02:00" })
+        .events,
+    ).toEqual([expect.objectContaining({ type: "reservation.cancelled", time: "2026-07-20T09:00:00Z", data: { reservation_id: "res_1042" } })]);
 
     const noShow = adapter();
     send(noShow, "created", {});
-    expect(send(noShow, "set-to-no-show", { status: "NoShow", noShowTime: "2026-07-31T04:00:00+02:00", modified: "2026-07-31T04:00:00+02:00" }).events).toMatchObject([
-      { type: "reservation.updated", time: "2026-07-31T02:00:00Z", data: { changed_fields: ["status"], status: "no_show" } },
-    ]);
+    expect(
+      send(noShow, "set-to-no-show", { status: "NoShow", noShowTime: "2026-07-31T04:00:00+02:00", modified: "2026-07-31T04:00:00+02:00" }).events,
+    ).toMatchObject([{ type: "reservation.updated", time: "2026-07-31T02:00:00Z", data: { changed_fields: ["status"], status: "no_show" } }]);
   });
 
   it("reports an amended stay as reservation.updated and a new stay.expected", () => {
@@ -114,27 +169,60 @@ describe("Apaleo adapter", () => {
   });
 
   it("reads Clean as inspected only where the property inspects", () => {
-    const [inspecting] = sense(adapter(), { condition: "Clean" }, "2026-07-30T10:10:00Z").events.filter((event) => status(event).dimension === "housekeeping");
+    const [inspecting] = sense(adapter(), { condition: "Clean" }, "2026-07-30T10:10:00Z").events.filter(
+      (event) => status(event).dimension === "housekeeping",
+    );
     expect(inspecting.data).toMatchObject({ current: "inspected" });
     const properties = config.properties.map((property) => ({ ...property, inspections: false }));
-    const [cleaning] = sense(adapter({ properties }), { condition: "Clean" }, "2026-07-30T10:10:00Z").events.filter((event) => status(event).dimension === "housekeeping");
+    const [cleaning] = sense(adapter({ properties }), { condition: "Clean" }, "2026-07-30T10:10:00Z").events.filter(
+      (event) => status(event).dimension === "housekeeping",
+    );
     expect(cleaning.data).toMatchObject({ current: "clean" });
   });
 
   it("maps maintenances with the saleability their type implies, and their deletion", () => {
     const target = adapter();
-    const planned = { id: "HOSX-PAR-MNT-2", unit: { id: unit.id, name: "204" }, from: "2026-07-30T10:00:00+02:00", to: "2026-07-30T18:00:00+02:00", type: "OutOfOrder" as const, description: "Leaking shower" };
-    const handle = (type: string, at: string, maintenance?: typeof planned | Omit<typeof planned, "type"> & { type: "OutOfService" | "OutOfOrder" | "OutOfInventory" }) => {
-      const result = target.handle({ received_at: at, webhook: { ...webhook(0), topic: "Maintenance", type, timestamp: Date.parse(at), data: { entityId: planned.id } }, maintenance });
+    const planned = {
+      id: "HOSX-PAR-MNT-2",
+      unit: { id: unit.id, name: "204" },
+      from: "2026-07-30T10:00:00+02:00",
+      to: "2026-07-30T18:00:00+02:00",
+      type: "OutOfOrder" as const,
+      description: "Leaking shower",
+    };
+    const handle = (
+      type: string,
+      at: string,
+      maintenance?: typeof planned | (Omit<typeof planned, "type"> & { type: "OutOfService" | "OutOfOrder" | "OutOfInventory" }),
+    ) => {
+      const result = target.handle({
+        received_at: at,
+        webhook: { ...webhook(0), topic: "Maintenance", type, timestamp: Date.parse(at), data: { entityId: planned.id } },
+        maintenance,
+      });
       for (const event of result.events) expect(validateEvent(event), JSON.stringify(validateEvent.errors)).toBe(true);
       return result;
     };
     const [scheduled] = handle("created", "2026-07-28T09:00:00Z", planned).events;
-    expect(scheduled).toMatchObject({ type: "unit.maintenance_scheduled", time: "2026-07-28T09:00:00Z", data: { unit_id: "unit_204", starts_at: "2026-07-30T08:00:00Z", ends_at: "2026-07-30T16:00:00Z", statuses: { maintenance: "out_of_service", commercial: "not_sellable" }, reason: "repair" } });
+    expect(scheduled).toMatchObject({
+      type: "unit.maintenance_scheduled",
+      time: "2026-07-28T09:00:00Z",
+      data: {
+        unit_id: "unit_204",
+        starts_at: "2026-07-30T08:00:00Z",
+        ends_at: "2026-07-30T16:00:00Z",
+        statuses: { maintenance: "out_of_service", commercial: "not_sellable" },
+        reason: "repair",
+      },
+    });
     expect(JSON.stringify(scheduled)).not.toMatch(/Leaking/);
     expect(handle("changed", "2026-07-28T09:05:00Z", planned).unmapped[0].reason).toBe("No change since the last fetch.");
-    expect(handle("changed", "2026-07-28T10:00:00Z", { ...planned, type: "OutOfService" }).events).toMatchObject([{ data: { statuses: { maintenance: "out_of_service" }, reason: "repair" } }]);
-    expect(handle("changed", "2026-07-28T11:00:00Z", { ...planned, type: "OutOfInventory" }).events).toMatchObject([{ data: { statuses: { maintenance: "out_of_service", commercial: "not_sellable" }, reason: "renovation" } }]);
+    expect(handle("changed", "2026-07-28T10:00:00Z", { ...planned, type: "OutOfService" }).events).toMatchObject([
+      { data: { statuses: { maintenance: "out_of_service" }, reason: "repair" } },
+    ]);
+    expect(handle("changed", "2026-07-28T11:00:00Z", { ...planned, type: "OutOfInventory" }).events).toMatchObject([
+      { data: { statuses: { maintenance: "out_of_service", commercial: "not_sellable" }, reason: "renovation" } },
+    ]);
     expect(handle("deleted", "2026-07-29T08:00:00Z").events).toMatchObject([{ type: "unit.maintenance_cancelled", data: { unit_id: "unit_204" } }]);
     expect(handle("deleted", "2026-07-29T08:01:00Z").unmapped[0].reason).toBe("Already cancelled.");
   });
@@ -147,6 +235,8 @@ describe("Apaleo adapter", () => {
     expect(parking.unmapped[0].reason).toBe("Not a bedroom reservation.");
     const created = send(target, "created", {}).events;
     expect(JSON.stringify(created)).not.toMatch(/Synthetic|example\.com/);
-    expect(target.handle({ received_at: "2026-07-30T00:00:00Z", webhook: { ...webhook(0), topic: "system", type: "healthcheck" } }).unmapped[0].reason).toBe("Health check.");
+    expect(
+      target.handle({ received_at: "2026-07-30T00:00:00Z", webhook: { ...webhook(0), topic: "system", type: "healthcheck" } }).unmapped[0].reason,
+    ).toBe("Health check.");
   });
 });

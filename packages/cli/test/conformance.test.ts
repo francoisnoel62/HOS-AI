@@ -32,9 +32,22 @@ describe("hos conformance", () => {
 
   it("writes the protocol's input: the scenario, the manifests, then the deliveries", () => {
     const scenario = { id: "arrival-readiness", ...scenarios["arrival-readiness"] };
-    const lines = input(scenario, "normative").trimEnd().split("\n").map((line) => JSON.parse(line));
-    expect(lines[0]).toEqual({ kind: "scenario", protocol, level: "normative", scenario: "arrival-readiness", tenant: { id: "tenant_demo" }, property: scenario.scenario.property, projection: scenario.scenario.projection });
-    expect(lines.slice(1, 4).map((line) => [line.kind, line.manifest.producer])).toEqual(scenario.manifests.map((manifest) => ["manifest", manifest.producer]));
+    const lines = input(scenario, "normative")
+      .trimEnd()
+      .split("\n")
+      .map((line) => JSON.parse(line));
+    expect(lines[0]).toEqual({
+      kind: "scenario",
+      protocol,
+      level: "normative",
+      scenario: "arrival-readiness",
+      tenant: { id: "tenant_demo" },
+      property: scenario.scenario.property,
+      projection: scenario.scenario.projection,
+    });
+    expect(lines.slice(1, 4).map((line) => [line.kind, line.manifest.producer])).toEqual(
+      scenario.manifests.map((manifest) => ["manifest", manifest.producer]),
+    );
     expect(lines.slice(4)).toEqual(scenario.events.map((event, index) => ({ kind: "delivery", delivery: index + 1, event })));
   });
 
@@ -59,14 +72,22 @@ describe("hos conformance", () => {
   }, 30_000);
 
   it.each([
-    ["crashes, and shows its standard error", "crash", "✗ arrival-readiness: the implementation exited with code 3\n    standard error, last lines:\n      | reading the scenario\n"],
+    [
+      "crashes, and shows its standard error",
+      "crash",
+      "✗ arrival-readiness: the implementation exited with code 3\n    standard error, last lines:\n      | reading the scenario\n",
+    ],
     ["writes something other than JSON", "garbage", "✗ arrival-readiness: line 1 of the output is not JSON: hello world (and 1 more problem)\n"],
     ["answers nothing", "silent", "✗ arrival-readiness: the implementation answered no delivery\n"],
-  ])("fails an implementation that %s", async (_case, name, message) => {
-    const { code, stdout } = await hos(["conformance", "run", "arrival-readiness", "--impl", fake(name)]);
-    expect(code).toBe(1);
-    expect(stdout).toContain(message);
-  }, 30_000);
+  ])(
+    "fails an implementation that %s",
+    async (_case, name, message) => {
+      const { code, stdout } = await hos(["conformance", "run", "arrival-readiness", "--impl", fake(name)]);
+      expect(code).toBe(1);
+      expect(stdout).toContain(message);
+    },
+    30_000,
+  );
 
   it("stops an implementation that does not finish in time", async () => {
     const started = Date.now();
@@ -77,10 +98,24 @@ describe("hos conformance", () => {
   }, 30_000);
 
   it("writes JSON and a JUnit report for a CI", async () => {
-    const { code, stdout, written } = await hos(["conformance", "run", "arrival-readiness", "--json", "--junit", "report.xml", "--impl", fake("no-dedup")]);
+    const { code, stdout, written } = await hos([
+      "conformance",
+      "run",
+      "arrival-readiness",
+      "--json",
+      "--junit",
+      "report.xml",
+      "--impl",
+      fake("no-dedup"),
+    ]);
     expect(code).toBe(1);
     const report = JSON.parse(stdout);
-    expect(report).toMatchObject({ protocol, level: "reference", passed: false, scenarios: [{ scenario: "arrival-readiness", passed: false, scores: { normative: { passed: 12, total: 13 } } }] });
+    expect(report).toMatchObject({
+      protocol,
+      level: "reference",
+      passed: false,
+      scenarios: [{ scenario: "arrival-readiness", passed: false, scores: { normative: { passed: 12, total: 13 } } }],
+    });
     expect(report.scenarios[0].differences).toEqual([{ delivery: 5, path: "disposition", expected: "duplicate", actual: "applied" }]);
     expect(written["report.xml"]).toContain('<testsuite name="arrival-readiness" tests="13" failures="1" errors="0">');
     expect(written["report.xml"]).toContain('<failure message="disposition: expected &quot;duplicate&quot;, got &quot;applied&quot;">');
@@ -93,18 +128,26 @@ describe("hos conformance", () => {
     expect(stdout).toContain("✓ late-checkout: normative 15/15 · reference 15/15 · situations 2/2\n\n1 scenario: 1 passed");
   }, 30_000);
 
-  it.skipIf(!python)("gives the Python example of the normative level its verdict", async () => {
-    const impl = `${python} "${path("../../../examples/python-dispositions/impl.py")}"`;
-    const { code, stdout } = await hos(["conformance", "run", "--all", "--level", "normative", "--impl", impl]);
-    expect(stdout).toContain("3 scenarios: 3 passed, 0 failed · level normative");
-    expect(code).toBe(0);
-    const reference = await hos(["conformance", "run", "arrival-readiness", "--impl", impl]);
-    expect(reference.stdout).toContain("an implementation of the normative level runs with --level normative");
-  }, 60_000);
+  it.skipIf(!python)(
+    "gives the Python example of the normative level its verdict",
+    async () => {
+      const impl = `${python} "${path("../../../examples/python-dispositions/impl.py")}"`;
+      const { code, stdout } = await hos(["conformance", "run", "--all", "--level", "normative", "--impl", impl]);
+      expect(stdout).toContain("3 scenarios: 3 passed, 0 failed · level normative");
+      expect(code).toBe(0);
+      const reference = await hos(["conformance", "run", "arrival-readiness", "--impl", impl]);
+      expect(reference.stdout).toContain("an implementation of the normative level runs with --level normative");
+    },
+    60_000,
+  );
 
   it.each([
     ["no --impl", ["run", "arrival-readiness"], "name the implementation to test with --impl"],
-    ["an unknown scenario", ["run", "early-checkout", "--impl", "x"], "no scenario early-checkout. The scenarios are arrival-readiness, late-checkout, room-out-of-order."],
+    [
+      "an unknown scenario",
+      ["run", "early-checkout", "--impl", "x"],
+      "no scenario early-checkout. The scenarios are arrival-readiness, late-checkout, room-out-of-order.",
+    ],
     ["an unknown level", ["run", "--all", "--level", "strict", "--impl", "x"], "--level is strict; use normative or reference."],
     ["no scenario", ["run", "--impl", "x"], "name the scenarios to run, or use --all."],
     ["an unknown subcommand", ["check"], "unknown subcommand check: use list, run or producer."],
@@ -125,7 +168,10 @@ describe("hos reference-impl", () => {
 });
 
 describe("hos replay", () => {
-  const manifests = ["pms", "housekeeping", "messaging"].flatMap((producer) => ["--manifest", `conformance/arrival-readiness/producers/${producer}.json`]);
+  const manifests = ["pms", "housekeeping", "messaging"].flatMap((producer) => [
+    "--manifest",
+    `conformance/arrival-readiness/producers/${producer}.json`,
+  ]);
 
   it("shows the timeline of a recorded stream", async () => {
     const { code, stdout, stderr } = await hos(["replay", "conformance/arrival-readiness/events.jsonl", ...manifests]);
@@ -144,7 +190,9 @@ describe("hos replay", () => {
 
   it("skips a line that is not a valid event, and says why", async () => {
     const event = scenarios["arrival-readiness"].events[0];
-    const { code, stdout } = await hos(["replay", "stream.jsonl", ...manifests], { files: { "stream.jsonl": `${JSON.stringify(event)}\n{"specversion":"1.0"}\n` } });
+    const { code, stdout } = await hos(["replay", "stream.jsonl", ...manifests], {
+      files: { "stream.jsonl": `${JSON.stringify(event)}\n{"specversion":"1.0"}\n` },
+    });
     expect(code).toBe(1);
     expect(stdout).toContain("2  skipped                id is missing.");
     expect(stdout).toContain("1 delivery: 1 applied · 0 situations · 1 line skipped");
@@ -165,23 +213,39 @@ describe("hos conformance producer", () => {
   const files = { "manifest.json": JSON.stringify(pms), "recording.jsonl": lines(facts), "redelivery.jsonl": lines(facts) };
 
   it("passes a producer and its redelivery", async () => {
-    const { code, stdout } = await hos(["conformance", "producer", "--manifest", "manifest.json", "--stream", "recording.jsonl", "--redelivery", "redelivery.jsonl"], { files });
+    const { code, stdout } = await hos(
+      ["conformance", "producer", "--manifest", "manifest.json", "--stream", "recording.jsonl", "--redelivery", "redelivery.jsonl"],
+      { files },
+    );
     expect(code).toBe(0);
     expect(stdout).toMatchSnapshot();
   });
 
   it("names what fails, and prints JSON", async () => {
-    const failing = { ...files, "manifest.json": JSON.stringify({ ...pms, limitations: [] }), "redelivery.jsonl": lines([{ ...facts[0], id: "pms-new" }]) };
+    const failing = {
+      ...files,
+      "manifest.json": JSON.stringify({ ...pms, limitations: [] }),
+      "redelivery.jsonl": lines([{ ...facts[0], id: "pms-new" }]),
+    };
     const args = ["conformance", "producer", "--manifest", "manifest.json", "--stream", "recording.jsonl", "--redelivery", "redelivery.jsonl"];
     const { code, stdout } = await hos(args, { files: failing });
     expect(code).toBe(1);
     expect(stdout).toMatchSnapshot();
     const json = JSON.parse((await hos([...args, "--json"], { files: failing })).stdout);
-    expect(json).toMatchObject({ valid: false, producer: "urn:hos:pms:demo", manifest: { valid: false }, recording: { valid: true }, redelivery: { valid: false, repeated: 0 } });
+    expect(json).toMatchObject({
+      valid: false,
+      producer: "urn:hos:pms:demo",
+      manifest: { valid: false },
+      recording: { valid: true },
+      redelivery: { valid: false, repeated: 0 },
+    });
   });
 
   it("exits with 2 without its files", async () => {
-    expect(await hos(["conformance", "producer", "--manifest", "manifest.json"], { files })).toMatchObject({ code: 2, stderr: expect.stringContaining("producer needs --manifest and --stream") });
+    expect(await hos(["conformance", "producer", "--manifest", "manifest.json"], { files })).toMatchObject({
+      code: 2,
+      stderr: expect.stringContaining("producer needs --manifest and --stream"),
+    });
     expect(await hos(["conformance", "producer", "--manifest", "missing.json", "--stream", "recording.jsonl"], { files })).toMatchObject({ code: 2 });
   });
 });

@@ -74,7 +74,9 @@ describe("validateStream", () => {
   it.each(conformanceScenarios)("finds, with the manifests of %s, the deliveries a consumer ignores as undeclared", (id) => {
     const { manifests } = loadScenario(id);
     const text = readFileSync(path.join(specDirectory, "conformance", id, "events.jsonl"), "utf8");
-    const flagged = validateStream(text, { manifests }).issues.filter((issue) => issue.severity === "error").map((issue) => issue.line);
+    const flagged = validateStream(text, { manifests })
+      .issues.filter((issue) => issue.severity === "error")
+      .map((issue) => issue.line);
     const undeclared = loadExpectedOutcome(id)
       .deliveries.filter((delivery) => delivery.disposition === "undeclared_capability")
       .map((delivery) => delivery.delivery);

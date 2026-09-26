@@ -18,7 +18,9 @@ export function ScenarioNav({ current }: { current: ConformanceScenarioId }) {
                 aria-current={active ? "page" : undefined}
                 className={cn(
                   "inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]",
-                  active ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--foreground)]" : "border-[var(--border)] text-[var(--muted-foreground)] hover:border-[var(--border-strong)] hover:text-[var(--foreground)]",
+                  active
+                    ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--foreground)]"
+                    : "border-[var(--border)] text-[var(--muted-foreground)] hover:border-[var(--border-strong)] hover:text-[var(--foreground)]",
                 )}
                 href={demo.href}
               >

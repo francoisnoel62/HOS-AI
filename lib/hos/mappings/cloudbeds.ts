@@ -62,7 +62,14 @@ export type CloudbedsReservation = {
 export type CloudbedsRoomLine = { roomTypeID?: string; subReservationID?: string; startDate?: string; endDate?: string };
 
 // One room of getHousekeepingStatus.
-export type CloudbedsRoomStatus = { roomID?: string; roomName?: string; roomCondition?: string; roomOccupied?: boolean; roomBlocked?: boolean; date?: string };
+export type CloudbedsRoomStatus = {
+  roomID?: string;
+  roomName?: string;
+  roomCondition?: string;
+  roomOccupied?: boolean;
+  roomBlocked?: boolean;
+  date?: string;
+};
 
 export type CloudbedsPropertyConfig = {
   cloudbedsPropertyId: string;
@@ -92,13 +99,32 @@ export type CloudbedsRoomBlock = {
   rooms: Array<{ eventID: string; roomID: string; roomTypeID?: unknown; isSource?: boolean }>;
 };
 
-export type CloudbedsDelivery = { received_at: string; webhook: CloudbedsWebhook; reservation?: CloudbedsReservation; rooms?: CloudbedsRoomStatus[]; roomBlocks?: CloudbedsRoomBlock[] };
+export type CloudbedsDelivery = {
+  received_at: string;
+  webhook: CloudbedsWebhook;
+  reservation?: CloudbedsReservation;
+  rooms?: CloudbedsRoomStatus[];
+  roomBlocks?: CloudbedsRoomBlock[];
+};
 
 type PublishedStatus = "tentative" | "confirmed" | "cancelled" | "no_show";
 
 // What HOS has been told about a reservation and each of its stays, one per booked room.
-type PublishedReservation = { status: PublishedStatus; arrivalDate: string; departureDate: string; guestId?: string; stays: Map<string, PublishedStay> };
-type PublishedStay = { arrivalAt: string; departureAt: string; unitId: string | null; assignedBefore: boolean; checkedIn: boolean; checkedOut: boolean };
+type PublishedReservation = {
+  status: PublishedStatus;
+  arrivalDate: string;
+  departureDate: string;
+  guestId?: string;
+  stays: Map<string, PublishedStay>;
+};
+type PublishedStay = {
+  arrivalAt: string;
+  departureAt: string;
+  unitId: string | null;
+  assignedBefore: boolean;
+  checkedIn: boolean;
+  checkedOut: boolean;
+};
 
 type Statuses = Partial<Record<UnitStatusDimension, string>>;
 
@@ -134,13 +160,23 @@ export function createCloudbedsAdapter(config: CloudbedsAdapterConfig) {
       skip("The property is not configured as a HOS property.");
       return { events: [], unmapped };
     }
-    const { events, publish } = createFactWriter({ source: config.source, tenant: config.tenant, propertyId: property.propertyId, timezone: property.timezone, recordedAt: delivery.received_at, idPrefix: "cloudbeds" });
+    const { events, publish } = createFactWriter({
+      source: config.source,
+      tenant: config.tenant,
+      propertyId: property.propertyId,
+      timezone: property.timezone,
+      recordedAt: delivery.received_at,
+      idPrefix: "cloudbeds",
+    });
     // Cloudbeds stamps each event with the moment it happened.
     const occurred = utc(Math.round(webhook.timestamp * 1000));
     // A fact the event itself reports occurred at the event's time, and its actor made it. One only noticed while
     // handling another event did not, so its time is when the adapter learned it.
     const kind = webhook.actor?.type;
-    const actor = webhook.actor && (kind === "user" || kind === "guest" || kind === "system" || kind === "integration") ? `${kind}:${resolve("actor", webhook.actor.id)}` : undefined;
+    const actor =
+      webhook.actor && (kind === "user" || kind === "guest" || kind === "system" || kind === "integration")
+        ? `${kind}:${resolve("actor", webhook.actor.id)}`
+        : undefined;
     const timing = (reportedBy: boolean): FactOptions => (reportedBy ? (actor ? { actor } : {}) : { timeBasis: "recorded" });
 
     function reservation(cloudbeds: CloudbedsReservation) {
@@ -166,7 +202,9 @@ export function createCloudbedsAdapter(config: CloudbedsAdapterConfig) {
             planned_arrival_date: cloudbeds.startDate,
             planned_departure_date: cloudbeds.endDate,
             ...guest,
-            external_refs: [{ source_system: config.source, id_type: "reservation_id", source_id: cloudbeds.reservationID, verification: "verified" }],
+            external_refs: [
+              { source_system: config.source, id_type: "reservation_id", source_id: cloudbeds.reservationID, verification: "verified" },
+            ],
           },
           timing(event === "reservation/created"),
         );
@@ -176,22 +214,48 @@ export function createCloudbedsAdapter(config: CloudbedsAdapterConfig) {
         const closed = published.status === "cancelled" || published.status === "no_show";
         if (cloudbeds.status === "canceled") {
           // Cloudbeds reports no cancellation reason.
-          if (!closed) publish<ReservationCancelled>("reservation.cancelled", cloudbeds.reservationID, occurred, [`reservation:${reservationId}`], { reservation_id: reservationId }, timing(statusEvent("canceled")));
+          if (!closed)
+            publish<ReservationCancelled>(
+              "reservation.cancelled",
+              cloudbeds.reservationID,
+              occurred,
+              [`reservation:${reservationId}`],
+              { reservation_id: reservationId },
+              timing(statusEvent("canceled")),
+            );
           published.status = "cancelled";
           return;
         }
         if (cloudbeds.status === "no_show") {
-          if (!closed) publish<ReservationUpdated>("reservation.updated", cloudbeds.reservationID, occurred, [`reservation:${reservationId}`], { reservation_id: reservationId, changed_fields: ["status"], status: "no_show" }, timing(statusEvent("no_show")));
+          if (!closed)
+            publish<ReservationUpdated>(
+              "reservation.updated",
+              cloudbeds.reservationID,
+              occurred,
+              [`reservation:${reservationId}`],
+              { reservation_id: reservationId, changed_fields: ["status"], status: "no_show" },
+              timing(statusEvent("no_show")),
+            );
           published.status = "no_show";
           return;
         }
         const update: ReservationUpdated["data"] = { reservation_id: reservationId, changed_fields: [] };
         if (status && status !== published.status) Object.assign(update, { status }).changed_fields.push("status");
-        if (cloudbeds.startDate !== published.arrivalDate) Object.assign(update, { planned_arrival_date: cloudbeds.startDate }).changed_fields.push("planned_arrival_date");
-        if (cloudbeds.endDate !== published.departureDate) Object.assign(update, { planned_departure_date: cloudbeds.endDate }).changed_fields.push("planned_departure_date");
+        if (cloudbeds.startDate !== published.arrivalDate)
+          Object.assign(update, { planned_arrival_date: cloudbeds.startDate }).changed_fields.push("planned_arrival_date");
+        if (cloudbeds.endDate !== published.departureDate)
+          Object.assign(update, { planned_departure_date: cloudbeds.endDate }).changed_fields.push("planned_departure_date");
         if (guestId && guestId !== published.guestId) Object.assign(update, guest).changed_fields.push("guest_id");
         const reported = event === "reservation/dates_changed" || event === "reservation/status_changed";
-        if (update.changed_fields.length) publish<ReservationUpdated>("reservation.updated", cloudbeds.reservationID, occurred, [`reservation:${reservationId}`], update, timing(reported));
+        if (update.changed_fields.length)
+          publish<ReservationUpdated>(
+            "reservation.updated",
+            cloudbeds.reservationID,
+            occurred,
+            [`reservation:${reservationId}`],
+            update,
+            timing(reported),
+          );
         Object.assign(published, { arrivalDate: cloudbeds.startDate, departureDate: cloudbeds.endDate, guestId }, status ? { status } : {});
       }
 
@@ -240,16 +304,37 @@ export function createCloudbedsAdapter(config: CloudbedsAdapterConfig) {
           );
           Object.assign(stay, { unitId, assignedBefore: true });
         } else if (!unitId && stay.unitId) {
-          publish<StayUnitUnassigned>("stay.unit_unassigned", key, occurred, [`stay:${stayId}`, `unit:${stay.unitId}`], { stay_id: stayId, unit_id: stay.unitId }, accommodation);
+          publish<StayUnitUnassigned>(
+            "stay.unit_unassigned",
+            key,
+            occurred,
+            [`stay:${stayId}`, `unit:${stay.unitId}`],
+            { stay_id: stayId, unit_id: stay.unitId },
+            accommodation,
+          );
           stay.unitId = null;
         }
 
         if ((cloudbeds.status === "checked_in" || cloudbeds.status === "checked_out") && !stay.checkedIn && unitId) {
-          publish<StayCheckedIn>("stay.checked_in", key, occurred, [`stay:${stayId}`, `unit:${unitId}`], { stay_id: stayId, unit_id: unitId }, timing(statusEvent("checked_in")));
+          publish<StayCheckedIn>(
+            "stay.checked_in",
+            key,
+            occurred,
+            [`stay:${stayId}`, `unit:${unitId}`],
+            { stay_id: stayId, unit_id: unitId },
+            timing(statusEvent("checked_in")),
+          );
           stay.checkedIn = true;
         }
         if (cloudbeds.status === "checked_out" && stay.checkedIn && !stay.checkedOut && unitId) {
-          publish<StayCheckedOut>("stay.checked_out", key, occurred, [`stay:${stayId}`, `unit:${unitId}`], { stay_id: stayId, unit_id: unitId }, timing(statusEvent("checked_out")));
+          publish<StayCheckedOut>(
+            "stay.checked_out",
+            key,
+            occurred,
+            [`stay:${stayId}`, `unit:${unitId}`],
+            { stay_id: stayId, unit_id: unitId },
+            timing(statusEvent("checked_out")),
+          );
           stay.checkedOut = true;
         }
       }
@@ -278,7 +363,13 @@ export function createCloudbedsAdapter(config: CloudbedsAdapterConfig) {
           `${roomId}/${dimension}`,
           occurred,
           [`unit:${unitId}`],
-          { unit_id: unitId, dimension, ...(published[dimension] ? { previous: published[dimension] } : {}), current: next[dimension]!, authority_source: config.source },
+          {
+            unit_id: unitId,
+            dimension,
+            ...(published[dimension] ? { previous: published[dimension] } : {}),
+            current: next[dimension]!,
+            authority_source: config.source,
+          },
           timing(Boolean(reported[dimension])),
         );
       }
@@ -302,7 +393,10 @@ export function createCloudbedsAdapter(config: CloudbedsAdapterConfig) {
           starts_at: zonedTimeToUtc(cloudbeds!.startDate, property!.checkInTime, property!.timezone),
           ends_at: zonedTimeToUtc(nextDay(cloudbeds!.endDate), property!.checkOutTime, property!.timezone),
           // Cloudbeds's block reason is free text, which stays in Cloudbeds.
-          statuses: cloudbeds!.roomBlockType === "out_of_service" ? { maintenance: "out_of_service", commercial: "not_sellable" } : { commercial: "not_sellable" },
+          statuses:
+            cloudbeds!.roomBlockType === "out_of_service"
+              ? { maintenance: "out_of_service", commercial: "not_sellable" }
+              : { commercial: "not_sellable" },
         };
         const plan = JSON.stringify(window);
         if (published.get(eventID)?.plan === plan) continue;
@@ -312,7 +406,14 @@ export function createCloudbedsAdapter(config: CloudbedsAdapterConfig) {
       // Rooms no longer in the block, or the whole block when it is removed, are withdrawn.
       for (const [eventID, { unitId }] of [...published]) {
         if (current.some((room) => room.eventID === eventID)) continue;
-        publish<UnitMaintenanceCancelled>("unit.maintenance_cancelled", eventID, occurred, [`unit:${unitId}`], { maintenance_id: resolve("maintenance", eventID), unit_id: unitId }, timing(true));
+        publish<UnitMaintenanceCancelled>(
+          "unit.maintenance_cancelled",
+          eventID,
+          occurred,
+          [`unit:${unitId}`],
+          { maintenance_id: resolve("maintenance", eventID), unit_id: unitId },
+          timing(true),
+        );
         published.delete(eventID);
       }
       if (!events.length) skip("No change since the last fetch.");
@@ -328,7 +429,11 @@ export function createCloudbedsAdapter(config: CloudbedsAdapterConfig) {
       if (roomId && status) room(roomId, status);
       else skip("Room not returned by getHousekeepingStatus.");
     } else if (event.startsWith("roomblock/")) {
-      if (webhook.roomBlockID) roomBlock(webhook.roomBlockID, delivery.roomBlocks?.find((item) => item.roomBlockID === webhook.roomBlockID));
+      if (webhook.roomBlockID)
+        roomBlock(
+          webhook.roomBlockID,
+          delivery.roomBlocks?.find((item) => item.roomBlockID === webhook.roomBlockID),
+        );
       else skip("No room block id in the webhook.");
     } else if (event.startsWith("guest/")) {
       skip("Guest profiles are personal data; HOS carries only a pseudonymous guest_id.");
@@ -343,7 +448,10 @@ export function createCloudbedsAdapter(config: CloudbedsAdapterConfig) {
 
 // Replays a recording's Cloudbeds deliveries: each webhook with the reservation or housekeeping status fetched for it.
 export function cloudbedsRecordingAdapter({ adapter }: MappingRecording): RecordingAdapter {
-  const cloudbeds = createCloudbedsAdapter({ ...(adapter as unknown as Omit<CloudbedsAdapterConfig, "identities">), identities: createIdentityRegistry(adapter.crosswalk) });
+  const cloudbeds = createCloudbedsAdapter({
+    ...(adapter as unknown as Omit<CloudbedsAdapterConfig, "identities">),
+    identities: createIdentityRegistry(adapter.crosswalk),
+  });
   return (delivery) => {
     const fetched: Omit<CloudbedsDelivery, "received_at" | "webhook"> = {};
     for (const { operation, response } of delivery.fetched) {

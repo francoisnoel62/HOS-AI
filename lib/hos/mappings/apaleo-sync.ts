@@ -58,17 +58,38 @@ export function syncApaleo(snapshot: ApaleoSnapshot, options: SyncOptions): Apal
 
   // The unit group embedded in a unit or reservation may omit its type, and the adapter only keeps bedrooms.
   const types = new Map(snapshot.unitGroups.map((group) => [group.id, group.type]));
-  const typed = <T extends { unitGroup?: { id: string; type?: string } }>(item: T): T => (item.unitGroup && !item.unitGroup.type ? { ...item, unitGroup: { ...item.unitGroup, type: types.get(item.unitGroup.id) } } : item);
+  const typed = <T extends { unitGroup?: { id: string; type?: string } }>(item: T): T =>
+    item.unitGroup && !item.unitGroup.type ? { ...item, unitGroup: { ...item.unitGroup, type: types.get(item.unitGroup.id) } } : item;
   const units = snapshot.units.map(typed);
   const reservations = snapshot.reservations.map(typed);
 
   // A changed event names no particular change, so assignments are dated by the reservation's last modification.
-  const webhook = (topic: string, entityId: string): ApaleoWebhook => ({ topic, type: "changed", id: "live-check", accountId, propertyId: property.id, timestamp: Date.parse(snapshot.fetchedAt), data: { entityId } });
+  const webhook = (topic: string, entityId: string): ApaleoWebhook => ({
+    topic,
+    type: "changed",
+    id: "live-check",
+    accountId,
+    propertyId: property.id,
+    timestamp: Date.parse(snapshot.fetchedAt),
+    data: { entityId },
+  });
   // Units first, then their maintenances, then the reservations that use them, as an integration would load a property.
   const deliveries = (apaleo: ReturnType<typeof adapter>) => [
-    ...units.map((unit) => ({ event: "unit/changed", id: unit.id, handle: () => apaleo.handle({ received_at: snapshot.fetchedAt, webhook: webhook("Unit", unit.id), unit }) })),
-    ...snapshot.maintenances.map((maintenance) => ({ event: "maintenance/changed", id: maintenance.id, handle: () => apaleo.handle({ received_at: snapshot.fetchedAt, webhook: webhook("Maintenance", maintenance.id), maintenance }) })),
-    ...reservations.map((reservation) => ({ event: "reservation/changed", id: reservation.id, handle: () => apaleo.handle({ received_at: snapshot.fetchedAt, webhook: webhook("Reservation", reservation.id), reservation }) })),
+    ...units.map((unit) => ({
+      event: "unit/changed",
+      id: unit.id,
+      handle: () => apaleo.handle({ received_at: snapshot.fetchedAt, webhook: webhook("Unit", unit.id), unit }),
+    })),
+    ...snapshot.maintenances.map((maintenance) => ({
+      event: "maintenance/changed",
+      id: maintenance.id,
+      handle: () => apaleo.handle({ received_at: snapshot.fetchedAt, webhook: webhook("Maintenance", maintenance.id), maintenance }),
+    })),
+    ...reservations.map((reservation) => ({
+      event: "reservation/changed",
+      id: reservation.id,
+      handle: () => apaleo.handle({ received_at: snapshot.fetchedAt, webhook: webhook("Reservation", reservation.id), reservation }),
+    })),
   ];
 
   return synchronise({

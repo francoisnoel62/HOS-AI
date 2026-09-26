@@ -7,13 +7,21 @@ import { PageHero } from "@/components/content/page-hero";
 import { SectionFrame } from "@/components/content/section-frame";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { comparisonSources, contractAnswers, htngExpressQuotes, htngExpressRoom, layers, standardsCompared } from "@/lib/content/standards-comparison";
+import {
+  comparisonSources,
+  contractAnswers,
+  htngExpressQuotes,
+  htngExpressRoom,
+  layers,
+  standardsCompared,
+} from "@/lib/content/standards-comparison";
 import { loadScenario } from "@/lib/spec";
 import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = {
   title: "HOS, HTNG and OpenTravel",
-  description: "OpenTravel and HTNG carry hotel messages. HOS makes operational facts trustworthy: who is the authority, when it happened, what stays out, and a public corpus to prove it.",
+  description:
+    "OpenTravel and HTNG carry hotel messages. HOS makes operational facts trustworthy: who is the authority, when it happened, what stays out, and a public corpus to prove it.",
 };
 
 const htngExpressUrl = "https://github.com/HTNG/htng-express";
@@ -24,7 +32,14 @@ export default function StandardsComparisonPage() {
   const occupancy = manifests.flatMap((manifest) =>
     manifest.events
       .filter((declaration) => declaration.type === "unit.status_changed" && declaration.dimensions?.includes("occupancy"))
-      .map(({ type, dimensions, authoritative, note }) => [`"${manifest.producer}": {`, `  "type": "${type}",`, `  "dimensions": [${(dimensions ?? []).map((dimension) => `"${dimension}"`).join(", ")}],`, `  "authoritative": ${authoritative}${note ? "," : ""}`, ...(note ? [`  "note": ${JSON.stringify(note)}`] : []), "}"]),
+      .map(({ type, dimensions, authoritative, note }) => [
+        `"${manifest.producer}": {`,
+        `  "type": "${type}",`,
+        `  "dimensions": [${(dimensions ?? []).map((dimension) => `"${dimension}"`).join(", ")}],`,
+        `  "authoritative": ${authoritative}${note ? "," : ""}`,
+        ...(note ? [`  "note": ${JSON.stringify(note)}`] : []),
+        "}",
+      ]),
   );
   const manifestExcerpt = `{\n${occupancy.map((lines) => lines.map((line) => `  ${line}`).join("\n")).join(",\n")}\n}`;
 
@@ -81,7 +96,8 @@ export default function StandardsComparisonPage() {
           ))}
         </div>
         <p className="mt-8 max-w-3xl text-lg leading-8">
-          HTNG Express makes that data quicker to fetch from one PMS. <strong>HOS makes it trustworthy across all of them:</strong> who is in the room and what state it is in, as facts with a source, a time and a declared authority, for every system on the property at once.
+          HTNG Express makes that data quicker to fetch from one PMS. <strong>HOS makes it trustworthy across all of them:</strong> who is in the room
+          and what state it is in, as facts with a source, a time and a declared authority, for every system on the property at once.
         </p>
       </SectionFrame>
 
@@ -93,16 +109,22 @@ export default function StandardsComparisonPage() {
         <div className="grid gap-4 lg:grid-cols-2">
           <div className="min-w-0">
             <CodePanel code={JSON.stringify(htngExpressRoom, null, 2)} label="HTNG Express · example room, verbatim" />
-            <p className="mt-3 text-sm text-[var(--muted-foreground)]">Two views of occupancy, side by side. Which one is right is left to the reader.</p>
+            <p className="mt-3 text-sm text-[var(--muted-foreground)]">
+              Two views of occupancy, side by side. Which one is right is left to the reader.
+            </p>
           </div>
           <div className="min-w-0">
             <CodePanel code={manifestExcerpt} label="HOS 0.1 · the manifests decide" />
-            <p className="mt-3 text-sm text-[var(--muted-foreground)]">One authority for occupancy at this property. The other view is still recorded, marked not authoritative.</p>
+            <p className="mt-3 text-sm text-[var(--muted-foreground)]">
+              One authority for occupancy at this property. The other view is still recorded, marked not authoritative.
+            </p>
           </div>
         </div>
         <Card className="mt-6 flex flex-col gap-4 p-6 sm:flex-row sm:items-center sm:justify-between">
           <p className="max-w-2xl text-sm leading-6">
-            <strong>See it happen.</strong> In the late check-out scenario, a room attendant finds the room empty and reports it vacant. HOS records it and keeps the room held: an empty room is not a checked-out guest. The risk resolves only when the PMS, the declared authority, records the departure.
+            <strong>See it happen.</strong> In the late check-out scenario, a room attendant finds the room empty and reports it vacant. HOS records
+            it and keeps the room held: an empty room is not a checked-out guest. The risk resolves only when the PMS, the declared authority, records
+            the departure.
           </p>
           <Link className="shrink-0" href="/demo/late-checkout">
             <Button variant="secondary">
@@ -123,22 +145,36 @@ export default function StandardsComparisonPage() {
               <p className="font-mono text-xs text-[var(--accent)]">{String(index + 1).padStart(2, "0")}</p>
               <h3 className="mt-3 text-xl font-semibold tracking-[-0.03em]">{answer.title}</h3>
               <p className="mt-3 flex-1 text-sm leading-6 text-[var(--muted-foreground)]">{answer.text}</p>
-              <Link className="mt-5 inline-flex items-center gap-1 text-sm text-[var(--accent-strong)] underline-offset-4 hover:underline" href={answer.proof.href}>
+              <Link
+                className="mt-5 inline-flex items-center gap-1 text-sm text-[var(--accent-strong)] underline-offset-4 hover:underline"
+                href={answer.proof.href}
+              >
                 {answer.proof.label} <ArrowRight aria-hidden="true" size={14} />
               </Link>
             </Card>
           ))}
         </div>
         <p className="mt-8 max-w-3xl text-sm leading-6 text-[var(--muted-foreground)]">
-          The contrast is by design, not a defect: a booking needs the guest’s profile and a payment guarantee, so OpenTravel’s reservation notification can carry both, and HTNG Express’s example reservation has fields for the guest’s name, phone and email, for the systems that contact the guest. An operational fact does not need any of it, so HOS leaves it where it is.
+          The contrast is by design, not a defect: a booking needs the guest’s profile and a payment guarantee, so OpenTravel’s reservation
+          notification can carry both, and HTNG Express’s example reservation has fields for the guest’s name, phone and email, for the systems that
+          contact the guest. An operational fact does not need any of it, so HOS leaves it where it is.
         </p>
       </SectionFrame>
 
-      <SectionFrame eyebrow="Better together" title="Three layers. HOS adds the one that was missing." description="HOS does not replace distribution or device interfaces, and it never sends a booking or cuts a key. It sits beside them and turns what they do into facts everyone can trust.">
+      <SectionFrame
+        eyebrow="Better together"
+        title="Three layers. HOS adds the one that was missing."
+        description="HOS does not replace distribution or device interfaces, and it never sends a booking or cuts a key. It sits beside them and turns what they do into facts everyone can trust."
+      >
         <ol className="grid gap-3">
           {layers.map((layer, index) => (
             <li key={layer.verb}>
-              <Card className={cn("grid gap-3 p-5 sm:grid-cols-[12rem_1fr_auto] sm:items-center", layer.standard === "HOS" && "border-[var(--accent)] bg-[var(--accent-soft)]")}>
+              <Card
+                className={cn(
+                  "grid gap-3 p-5 sm:grid-cols-[12rem_1fr_auto] sm:items-center",
+                  layer.standard === "HOS" && "border-[var(--accent)] bg-[var(--accent-soft)]",
+                )}
+              >
                 <p className="font-semibold">
                   <span className="mr-3 font-mono text-xs text-[var(--muted-foreground)]">{index + 1}</span>
                   {layer.verb}
@@ -151,9 +187,18 @@ export default function StandardsComparisonPage() {
         </ol>
         <div className="mt-8 grid gap-4 md:grid-cols-3">
           {[
-            ["Keep their identifiers", "A HOS reservation keeps the confirmation numbers other systems issued as typed external references: who issued them, what kind they are, and whether they were verified."],
-            ["Publish from what you have", "A system that already receives an HTNG check-in notice or an OpenTravel reservation notification can publish the matching HOS fact, as HOS's experimental adapters already do from Mews, Apaleo and Cloudbeds payloads."],
-            ["Rip nothing out", "Your channel manager, CRS and door locks keep their interfaces. HOS 0.1 observes; controlled action comes later, and only with a declared authority and human approval."],
+            [
+              "Keep their identifiers",
+              "A HOS reservation keeps the confirmation numbers other systems issued as typed external references: who issued them, what kind they are, and whether they were verified.",
+            ],
+            [
+              "Publish from what you have",
+              "A system that already receives an HTNG check-in notice or an OpenTravel reservation notification can publish the matching HOS fact, as HOS's experimental adapters already do from Mews, Apaleo and Cloudbeds payloads.",
+            ],
+            [
+              "Rip nothing out",
+              "Your channel manager, CRS and door locks keep their interfaces. HOS 0.1 observes; controlled action comes later, and only with a declared authority and human approval.",
+            ],
           ].map(([title, text]) => (
             <Card className="p-6" key={title}>
               <h3 className="font-semibold">{title}</h3>
@@ -166,15 +211,23 @@ export default function StandardsComparisonPage() {
       <SectionFrame eyebrow="Where HOS is behind" title="Credit where it is due.">
         <Card className="grid gap-6 p-6 md:grid-cols-2">
           <p className="text-sm leading-6">
-            OpenTravel and HTNG have more than two decades of adoption, published releases and production integrations behind them. <strong>HOS 0.1 is a draft.</strong> Its scenarios are synthetic, its three PMS mappings are unofficial, no implementation is certified, and no producer publishes a signed manifest yet.
+            OpenTravel and HTNG have more than two decades of adoption, published releases and production integrations behind them.{" "}
+            <strong>HOS 0.1 is a draft.</strong> Its scenarios are synthetic, its three PMS mappings are unofficial, no implementation is certified,
+            and no producer publishes a signed manifest yet.
           </p>
           <p className="text-sm leading-6">
-            HOS covers the operations around a stay: reservations, stays, rooms, housekeeping, maintenance and guest signals. It has no rates, availability, folio or payment messages, and none is planned. That is OpenTravel’s and HTNG’s ground, and they hold it well. <strong>HOS earns its place only if it makes their messages more useful.</strong>
+            HOS covers the operations around a stay: reservations, stays, rooms, housekeeping, maintenance and guest signals. It has no rates,
+            availability, folio or payment messages, and none is planned. That is OpenTravel’s and HTNG’s ground, and they hold it well.{" "}
+            <strong>HOS earns its place only if it makes their messages more useful.</strong>
           </p>
         </Card>
       </SectionFrame>
 
-      <SectionFrame eyebrow="Proof, not promises" title="Don't take our word for it. Replay it." description="Every claim this page makes about HOS is backed by a published file you can run through your own implementation.">
+      <SectionFrame
+        eyebrow="Proof, not promises"
+        title="Don't take our word for it. Replay it."
+        description="Every claim this page makes about HOS is backed by a published file you can run through your own implementation."
+      >
         <div className="flex flex-wrap gap-3">
           <Link href="/demo">
             <Button>
@@ -193,11 +246,20 @@ export default function StandardsComparisonPage() {
         </div>
       </SectionFrame>
 
-      <SectionFrame eyebrow="Sources" title="What this page relies on." description="HOS AI is not affiliated with the OpenTravel Alliance, HTNG or the American Hotel & Lodging Association. Their names describe their public specifications; this page is our reading of them, checked on 25 September 2026.">
+      <SectionFrame
+        eyebrow="Sources"
+        title="What this page relies on."
+        description="HOS AI is not affiliated with the OpenTravel Alliance, HTNG or the American Hotel & Lodging Association. Their names describe their public specifications; this page is our reading of them, checked on 25 September 2026."
+      >
         <ul className="divide-y divide-[var(--border)] border-y border-[var(--border)]">
           {comparisonSources.map((source) => (
             <li className="grid gap-1 py-4 sm:grid-cols-[1fr_1.4fr] sm:gap-6" key={source.href}>
-              <a className="inline-flex items-center gap-1 text-sm text-[var(--accent-strong)] underline" href={source.href} rel="noreferrer" target="_blank">
+              <a
+                className="inline-flex items-center gap-1 text-sm text-[var(--accent-strong)] underline"
+                href={source.href}
+                rel="noreferrer"
+                target="_blank"
+              >
                 {source.label} <ArrowUpRight aria-hidden="true" size={13} />
               </a>
               <p className="text-sm leading-6 text-[var(--muted-foreground)]">{source.note}</p>

@@ -21,7 +21,13 @@ const manifest: ProducerManifest = {
   entities: ["Unit", "Task"],
   events: [
     { type: "unit.status_changed", dimensions: ["housekeeping"], authoritative: true, snapshot: true },
-    { type: "unit.status_changed", dimensions: ["occupancy"], authoritative: false, snapshot: true, note: "Occupancy is reported for context; the PMS is the authority." },
+    {
+      type: "unit.status_changed",
+      dimensions: ["occupancy"],
+      authoritative: false,
+      snapshot: true,
+      note: "Occupancy is reported for context; the PMS is the authority.",
+    },
     { type: "housekeeping.task.created", authoritative: true },
     { type: "housekeeping.task.completed", authoritative: true },
   ],
@@ -44,7 +50,13 @@ const signed = await signManifest(manifest, ed25519.privateJwk, current);
 const [header, , signature] = signed.split(".");
 const headerOf = (fields: Record<string, unknown>) => base64url.encode(JSON.stringify(fields));
 
-type Vector = { description: string; manifest: unknown; jws: string; jwks: { keys: JWK[] }; expected: { valid: true } | { valid: false; error: string } };
+type Vector = {
+  description: string;
+  manifest: unknown;
+  jws: string;
+  jwks: { keys: JWK[] };
+  expected: { valid: true } | { valid: false; error: string };
+};
 
 const vectors: Record<string, Vector> = {
   "valid-ed25519": {
@@ -123,7 +135,10 @@ const wellKnown = new URL("well-known/", directory);
 const producerKey = await generateManifestKey({ alg: "Ed25519" });
 mkdirSync(wellKnown, { recursive: true });
 writeFileSync(new URL("manifest.json", wellKnown), json(manifest));
-writeFileSync(new URL("manifest.jws", wellKnown), `${await signManifest(manifest, producerKey.privateJwk, { issuedAt: day("2026-09-26"), expiresAt: day("2027-09-26") })}\n`);
+writeFileSync(
+  new URL("manifest.jws", wellKnown),
+  `${await signManifest(manifest, producerKey.privateJwk, { issuedAt: day("2026-09-26"), expiresAt: day("2027-09-26") })}\n`,
+);
 writeFileSync(new URL("jwks.json", wellKnown), json(publicKeys(producerKey.publicJwk)));
 
 console.log(`Wrote ${Object.keys(vectors).length} vectors and the /.well-known/hos/ example in public/spec/0.1/conformance/signing`);

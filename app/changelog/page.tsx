@@ -150,7 +150,11 @@ const entries = [
 export default function ChangelogPage() {
   return (
     <>
-      <PageHero eyebrow="Changelog" title="Nothing is announced before it exists." description="This changelog lists released artefacts and published decisions, newest first. HOS AI does not promise a content rhythm before the project has one." />
+      <PageHero
+        eyebrow="Changelog"
+        title="Nothing is announced before it exists."
+        description="This changelog lists released artefacts and published decisions, newest first. HOS AI does not promise a content rhythm before the project has one."
+      />
       <section className="mx-auto max-w-6xl space-y-4 px-5 pb-20 lg:px-8">
         {entries.map((entry) => (
           <Card className="p-8" key={entry.title}>

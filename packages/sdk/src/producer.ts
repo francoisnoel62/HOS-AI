@@ -46,12 +46,16 @@ const settle = (result: StreamResult, issues: StreamIssue[]): StreamResult => ({
 
 export function checkProducer({ manifest, recording, redelivery }: { manifest: unknown; recording: string; redelivery?: string }): ProducerCheck {
   const checked = validate(manifest);
-  const errors: ValidationError[] = checked.kind === "manifest" ? [...checked.errors] : [{ path: "", message: "This is not a producer manifest: a manifest has hosmanifestversion.", rule: "events/producers" }];
+  const errors: ValidationError[] =
+    checked.kind === "manifest"
+      ? [...checked.errors]
+      : [{ path: "", message: "This is not a producer manifest: a manifest has hosmanifestversion.", rule: "events/producers" }];
   const declared = checked.kind === "manifest" && checked.valid ? (manifest as ProducerManifest) : undefined;
   if (declared && !declared.limitations.length) {
     errors.push({
       path: "/limitations",
-      message: "limitations is empty. A producer states its known gaps, unsupported states and access constraints, which the Event Producer checks require.",
+      message:
+        "limitations is empty. A producer states its known gaps, unsupported states and access constraints, which the Event Producer checks require.",
       rule: "events/producers",
     });
   }
@@ -65,15 +69,32 @@ export function checkProducer({ manifest, recording, redelivery }: { manifest: u
     for (const { line, fact } of producer ? facts : []) {
       if (fact.source === producer) continue;
       foreign.add(line);
-      issues.push({ severity: "error", line, path: "/source", message: `source is ${fact.source}, but the manifest is ${producer}'s. A producer publishes its facts under the source its manifest declares.`, rule: "events/producers" });
+      issues.push({
+        severity: "error",
+        line,
+        path: "/source",
+        message: `source is ${fact.source}, but the manifest is ${producer}'s. A producer publishes its facts under the source its manifest declares.`,
+        rule: "events/producers",
+      });
     }
     // A fact under another source is reported as such, not also as undeclared.
-    const kept = issues.filter((issue) => !(issue.line !== null && foreign.has(issue.line) && (issue.rule === "events/declared-capability" || issue.rule === "events/explicit-snapshots")));
+    const kept = issues.filter(
+      (issue) =>
+        !(
+          issue.line !== null &&
+          foreign.has(issue.line) &&
+          (issue.rule === "events/declared-capability" || issue.rule === "events/explicit-snapshots")
+        ),
+    );
     return { result: settle(result, kept), facts };
   };
 
   const first = check(recording);
-  if (!first.result.events) first.result = settle(first.result, [...first.result.issues, { severity: "error", line: null, path: "", message: "The recording holds no fact." }]);
+  if (!first.result.events)
+    first.result = settle(first.result, [
+      ...first.result.issues,
+      { severity: "error", line: null, path: "", message: "The recording holds no fact." },
+    ]);
 
   let again: ProducerCheck["redelivery"];
   if (redelivery !== undefined) {

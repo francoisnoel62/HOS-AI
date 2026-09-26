@@ -97,7 +97,13 @@ export type MewsResourceBlock = {
 };
 
 // What the integration received and fetched for one webhook message.
-export type MewsDelivery = { received_at: string; webhook: MewsWebhook; reservations?: MewsReservation[]; resources?: MewsResource[]; resourceBlocks?: MewsResourceBlock[] };
+export type MewsDelivery = {
+  received_at: string;
+  webhook: MewsWebhook;
+  reservations?: MewsReservation[];
+  resources?: MewsResource[];
+  resourceBlocks?: MewsResourceBlock[];
+};
 
 type PublishedStatus = "tentative" | "confirmed" | "cancelled" | "no_show";
 
@@ -157,8 +163,23 @@ export function createMewsAdapter(config: MewsAdapterConfig) {
   function handle(delivery: MewsDelivery): MappingResult {
     const unmapped: Unmapped[] = [];
     const property = config.properties.find((candidate) => candidate.enterpriseId === delivery.webhook.EnterpriseId);
-    if (!property) return { events: [], unmapped: delivery.webhook.Events.map(({ Discriminator, Value }) => ({ event: Discriminator, id: Value.Id, reason: "The enterprise is not configured as a HOS property." })) };
-    const { events, publish } = createFactWriter({ source: config.source, tenant: config.tenant, propertyId: property.propertyId, timezone: property.timezone, recordedAt: delivery.received_at, idPrefix: "mews" });
+    if (!property)
+      return {
+        events: [],
+        unmapped: delivery.webhook.Events.map(({ Discriminator, Value }) => ({
+          event: Discriminator,
+          id: Value.Id,
+          reason: "The enterprise is not configured as a HOS property.",
+        })),
+      };
+    const { events, publish } = createFactWriter({
+      source: config.source,
+      tenant: config.tenant,
+      propertyId: property.propertyId,
+      timezone: property.timezone,
+      recordedAt: delivery.received_at,
+      idPrefix: "mews",
+    });
     const handled = new Set<string>();
 
     function reservation(mews: MewsReservation, { timezone, accommodationServiceIds }: MewsPropertyConfig) {
@@ -191,19 +212,30 @@ export function createMewsAdapter(config: MewsAdapterConfig) {
         );
 
       if (!stay) {
-        if (!status) return skip(mews.State === "Canceled" ? "Cancelled before HOS knew the reservation." : `${mews.State} is not a commitment yet; published once Optional or Confirmed.`);
+        if (!status)
+          return skip(
+            mews.State === "Canceled"
+              ? "Cancelled before HOS knew the reservation."
+              : `${mews.State} is not a commitment yet; published once Optional or Confirmed.`,
+          );
         const refs: ExternalRef[] = [
           { source_system: config.source, id_type: "confirmation_number", source_id: mews.Number, verification: "verified" },
           { source_system: config.source, id_type: "reservation_id", source_id: mews.Id, verification: "verified" },
         ];
-        publish<ReservationCreated>("reservation.created", mews.Id, mews.CreatedUtc, [`reservation:${reservationId}`, ...(guestId ? [`guest:${guestId}`] : [])], {
-          reservation_id: reservationId,
-          status,
-          planned_arrival_date: plan.arrivalDate,
-          planned_departure_date: plan.departureDate,
-          ...guest,
-          external_refs: refs,
-        });
+        publish<ReservationCreated>(
+          "reservation.created",
+          mews.Id,
+          mews.CreatedUtc,
+          [`reservation:${reservationId}`, ...(guestId ? [`guest:${guestId}`] : [])],
+          {
+            reservation_id: reservationId,
+            status,
+            planned_arrival_date: plan.arrivalDate,
+            planned_departure_date: plan.departureDate,
+            ...guest,
+            external_refs: refs,
+          },
+        );
         // Mews has no separate expected-arrival moment: a committed accommodation reservation is an expected stay.
         expected(mews.CreatedUtc);
         stay = { updatedUtc: mews.UpdatedUtc, status, ...plan, guestId, unitId: null, assignedBefore: false, checkedIn: false, checkedOut: false };
@@ -213,11 +245,25 @@ export function createMewsAdapter(config: MewsAdapterConfig) {
         if (stay.status === "cancelled" || stay.status === "no_show") return;
         const cancelled = at(mews.CancelledUtc);
         if (mews.CancellationReason === "NoShow") {
-          publish<ReservationUpdated>("reservation.updated", mews.Id, cancelled.time, [`reservation:${reservationId}`], { reservation_id: reservationId, changed_fields: ["status"], status: "no_show" }, cancelled.options);
+          publish<ReservationUpdated>(
+            "reservation.updated",
+            mews.Id,
+            cancelled.time,
+            [`reservation:${reservationId}`],
+            { reservation_id: reservationId, changed_fields: ["status"], status: "no_show" },
+            cancelled.options,
+          );
           stay.status = "no_show";
         } else {
           const reason = cancellationReasons[mews.CancellationReason ?? ""] ?? "other";
-          publish<ReservationCancelled>("reservation.cancelled", mews.Id, cancelled.time, [`reservation:${reservationId}`], { reservation_id: reservationId, reason }, cancelled.options);
+          publish<ReservationCancelled>(
+            "reservation.cancelled",
+            mews.Id,
+            cancelled.time,
+            [`reservation:${reservationId}`],
+            { reservation_id: reservationId, reason },
+            cancelled.options,
+          );
           stay.status = "cancelled";
         }
         return;
@@ -232,7 +278,8 @@ export function createMewsAdapter(config: MewsAdapterConfig) {
         if (plan.arrivalDate !== stay.arrivalDate) change("planned_arrival_date", plan.arrivalDate);
         if (plan.departureDate !== stay.departureDate) change("planned_departure_date", plan.departureDate);
         if (guestId && guestId !== stay.guestId) change("guest_id", guestId);
-        if (update.changed_fields.length) publish<ReservationUpdated>("reservation.updated", mews.Id, mews.UpdatedUtc, [`reservation:${reservationId}`], update, modified);
+        if (update.changed_fields.length)
+          publish<ReservationUpdated>("reservation.updated", mews.Id, mews.UpdatedUtc, [`reservation:${reservationId}`], update, modified);
         if (arrivalAt !== stay.arrivalAt || departureAt !== stay.departureAt) expected(mews.UpdatedUtc, modified);
         Object.assign(stay, { updatedUtc: mews.UpdatedUtc, ...plan, guestId }, status ? { status } : {});
       }
@@ -250,7 +297,14 @@ export function createMewsAdapter(config: MewsAdapterConfig) {
         );
         Object.assign(stay, { unitId, assignedBefore: true });
       } else if (!unitId && stay.unitId) {
-        publish<StayUnitUnassigned>("stay.unit_unassigned", mews.Id, mews.UpdatedUtc, [`stay:${stayId}`, `unit:${stay.unitId}`], { stay_id: stayId, unit_id: stay.unitId }, modified);
+        publish<StayUnitUnassigned>(
+          "stay.unit_unassigned",
+          mews.Id,
+          mews.UpdatedUtc,
+          [`stay:${stayId}`, `unit:${stay.unitId}`],
+          { stay_id: stayId, unit_id: stay.unitId },
+          modified,
+        );
         stay.unitId = null;
       }
 
@@ -261,10 +315,18 @@ export function createMewsAdapter(config: MewsAdapterConfig) {
           return false;
         }
         const { time, options } = at(actual);
-        publish<StayCheckedIn | StayCheckedOut>(type, mews.Id, time, [`stay:${stayId}`, `unit:${unitId}`], { stay_id: stayId, unit_id: unitId }, options);
+        publish<StayCheckedIn | StayCheckedOut>(
+          type,
+          mews.Id,
+          time,
+          [`stay:${stayId}`, `unit:${unitId}`],
+          { stay_id: stayId, unit_id: unitId },
+          options,
+        );
         return true;
       };
-      if ((mews.State === "Started" || mews.State === "Processed") && !stay.checkedIn) stay.checkedIn = lifecycle("stay.checked_in", mews.ActualStartUtc);
+      if ((mews.State === "Started" || mews.State === "Processed") && !stay.checkedIn)
+        stay.checkedIn = lifecycle("stay.checked_in", mews.ActualStartUtc);
       if (mews.State === "Processed" && stay.checkedIn && !stay.checkedOut) stay.checkedOut = lifecycle("stay.checked_out", mews.ActualEndUtc);
     }
 
@@ -293,7 +355,13 @@ export function createMewsAdapter(config: MewsAdapterConfig) {
           `${mews.Id}/${changed}`,
           mews.UpdatedUtc,
           [`unit:${unitId}`],
-          { unit_id: unitId, dimension: changed, ...(statuses[changed] ? { previous: statuses[changed] } : {}), current, authority_source: config.source },
+          {
+            unit_id: unitId,
+            dimension: changed,
+            ...(statuses[changed] ? { previous: statuses[changed] } : {}),
+            current,
+            authority_source: config.source,
+          },
           // UpdatedUtc is the resource's last modification, not necessarily the moment of this change.
           { timeBasis: "modified" },
         );
@@ -313,8 +381,17 @@ export function createMewsAdapter(config: MewsAdapterConfig) {
       windows.set(mews.Id, { updatedUtc: mews.UpdatedUtc, unitId, cancelled: !mews.IsActive || Boolean(mews.DeletedUtc) });
       if (!mews.IsActive || mews.DeletedUtc) {
         if (!known || known.cancelled) return skip(known ? "Already cancelled." : "Deleted before HOS knew the block.");
-        const cancelledAt = mews.DeletedUtc ? { time: mews.DeletedUtc, options: {} } : { time: mews.UpdatedUtc, options: { timeBasis: "modified" as const } };
-        publish<UnitMaintenanceCancelled>("unit.maintenance_cancelled", mews.Id, cancelledAt.time, [`unit:${known.unitId}`], { maintenance_id: maintenanceId, unit_id: known.unitId }, cancelledAt.options);
+        const cancelledAt = mews.DeletedUtc
+          ? { time: mews.DeletedUtc, options: {} }
+          : { time: mews.UpdatedUtc, options: { timeBasis: "modified" as const } };
+        publish<UnitMaintenanceCancelled>(
+          "unit.maintenance_cancelled",
+          mews.Id,
+          cancelledAt.time,
+          [`unit:${known.unitId}`],
+          { maintenance_id: maintenanceId, unit_id: known.unitId },
+          cancelledAt.options,
+        );
         return;
       }
       const internal = mews.Type === "InternalUse";
@@ -370,7 +447,10 @@ export function createMewsAdapter(config: MewsAdapterConfig) {
 
 // Replays a recording's Mews deliveries: each webhook message with the reservations and resources fetched for it.
 export function mewsRecordingAdapter({ adapter }: MappingRecording): RecordingAdapter {
-  const mews = createMewsAdapter({ ...(adapter as unknown as Omit<MewsAdapterConfig, "identities">), identities: createIdentityRegistry(adapter.crosswalk) });
+  const mews = createMewsAdapter({
+    ...(adapter as unknown as Omit<MewsAdapterConfig, "identities">),
+    identities: createIdentityRegistry(adapter.crosswalk),
+  });
   return (delivery) => {
     const fetched = responses<{ Reservations?: MewsReservation[]; Resources?: MewsResource[]; ResourceBlocks?: MewsResourceBlock[] }>(delivery);
     return mews.handle({

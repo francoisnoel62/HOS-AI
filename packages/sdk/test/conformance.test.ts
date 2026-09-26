@@ -1,6 +1,15 @@
 import { describe, expect, it } from "vitest";
 
-import { type HosFact, toExpectedOutcome, validateEvent, validateMaintenanceWindow, validateManifest, validateProperty, validateSituation, validateUnit } from "../src/index.ts";
+import {
+  type HosFact,
+  toExpectedOutcome,
+  validateEvent,
+  validateMaintenanceWindow,
+  validateManifest,
+  validateProperty,
+  validateSituation,
+  validateUnit,
+} from "../src/index.ts";
 import { replayArrivalReadiness } from "../src/reference/index.ts";
 import { conformanceScenarios, errors, listExamples, loadArrivalScenario, loadExpectedOutcome, loadScenario, readJson } from "./spec.ts";
 
@@ -9,7 +18,13 @@ const eventTypes: string[] = readJson("schemas/events.schema.json").allOf[1].pro
 
 describe("HOS Core 0.1", () => {
   it("defines the four independent unit status dimensions, each with unknown", () => {
-    expect(validateUnit({ unit_id: "unit_204", property_id: "prop_demo", statuses: { occupancy: "unknown", housekeeping: "inspected", maintenance: "out_of_service", commercial: "not_sellable" } })).toBe(true);
+    expect(
+      validateUnit({
+        unit_id: "unit_204",
+        property_id: "prop_demo",
+        statuses: { occupancy: "unknown", housekeeping: "inspected", maintenance: "out_of_service", commercial: "not_sellable" },
+      }),
+    ).toBe(true);
     expect(validateUnit({ unit_id: "unit_204", property_id: "prop_demo", statuses: { housekeeping: "dirty" } })).toBe(false);
   });
 
@@ -50,7 +65,11 @@ describe("HOS Events 0.1 published artefacts", () => {
     const claims = manifests.flatMap((manifest) =>
       manifest.events
         .filter((declaration) => declaration.authoritative)
-        .flatMap((declaration) => manifest.property_ids.flatMap((property) => (declaration.dimensions ?? ["*"]).map((dimension) => `${property}|${declaration.type}|${dimension}`))),
+        .flatMap((declaration) =>
+          manifest.property_ids.flatMap((property) =>
+            (declaration.dimensions ?? ["*"]).map((dimension) => `${property}|${declaration.type}|${dimension}`),
+          ),
+        ),
     );
     expect(new Set(claims).size).toBe(claims.length);
   });
@@ -77,7 +96,8 @@ describe("arrival-readiness reference projection", () => {
 
   it("covers every case of the conformance corpus", () => {
     const dispositions = new Set(steps.map((step) => step.disposition));
-    for (const disposition of ["applied", "duplicate", "superseded", "non_authoritative", "undeclared_capability"] as const) expect(dispositions).toContain(disposition);
+    for (const disposition of ["applied", "duplicate", "superseded", "non_authoritative", "undeclared_capability"] as const)
+      expect(dispositions).toContain(disposition);
     expect(events.some((event) => event.hosdatamode === "snapshot")).toBe(true);
   });
 
@@ -105,7 +125,8 @@ describe("stay facts that undo earlier ones", () => {
   const dirty = events[3];
   const signal = events.find((event) => event.type === "guest.message.received")!;
   const checkedIn = events.find((event) => event.type === "stay.checked_in")!;
-  const fact = (type: string, id: string, time: string, data: Record<string, unknown>) => ({ ...checkedIn, id, type, time, data }) as unknown as HosFact;
+  const fact = (type: string, id: string, time: string, data: Record<string, unknown>) =>
+    ({ ...checkedIn, id, type, time, data }) as unknown as HosFact;
   const released = fact("stay.unit_unassigned", "pms-u1", "2026-07-30T07:00:00Z", { stay_id: "stay_1042", unit_id: "unit_204" });
   const replay = (stream: HosFact[]) => replayArrivalReadiness(stream, manifests, scenario.projection);
 
@@ -117,7 +138,12 @@ describe("stay facts that undo earlier ones", () => {
   });
 
   it("ignores a release of a unit the stay no longer holds, and a release older than the assignment", () => {
-    const moved = fact("stay.unit_assigned", "pms-u2", "2026-07-30T07:30:00Z", { stay_id: "stay_1042", unit_id: "unit_207", previous_unit_id: "unit_204", reason: "room_move" });
+    const moved = fact("stay.unit_assigned", "pms-u2", "2026-07-30T07:30:00Z", {
+      stay_id: "stay_1042",
+      unit_id: "unit_207",
+      previous_unit_id: "unit_204",
+      reason: "room_move",
+    });
     const stale = fact("stay.unit_unassigned", "pms-u3", "2026-07-30T08:00:00Z", { stay_id: "stay_1042", unit_id: "unit_204" });
     const steps = replay([created, expected, assigned, moved, stale, released]);
     expect(steps.slice(4).map((step) => step.disposition)).toEqual(["superseded", "superseded"]);
@@ -140,7 +166,12 @@ describe("maintenance windows in the reference projection", () => {
   const pms = events.find((event) => event.type === "stay.checked_in")!;
   const window = (id: string, time: string, data: Record<string, unknown>, type = "unit.maintenance_scheduled") =>
     ({ ...pms, id, type, time, hossubjects: "unit:unit_204", data: { maintenance_id: "mnt_7", unit_id: "unit_204", ...data } }) as unknown as HosFact;
-  const blocking = window("pms-m1", "2026-07-29T08:00:00Z", { starts_at: "2026-07-30T06:00:00Z", ends_at: "2026-07-30T16:00:00Z", statuses: { maintenance: "out_of_service", commercial: "not_sellable" }, reason: "repair" });
+  const blocking = window("pms-m1", "2026-07-29T08:00:00Z", {
+    starts_at: "2026-07-30T06:00:00Z",
+    ends_at: "2026-07-30T16:00:00Z",
+    statuses: { maintenance: "out_of_service", commercial: "not_sellable" },
+    reason: "repair",
+  });
   const cancelled = window("pms-m2", "2026-07-30T07:00:00Z", {}, "unit.maintenance_cancelled");
   const replay = (stream: HosFact[]) => replayArrivalReadiness(stream, manifests, scenario.projection);
   const situations = (stream: HosFact[]) => replay(stream).flatMap((step) => step.emitted);
@@ -149,7 +180,11 @@ describe("maintenance windows in the reference projection", () => {
     const [risk] = situations([created, expected, assigned, blocking]);
     expect(risk).toMatchObject({
       type: "arrival.room_readiness_at_risk",
-      data: { unit_id: "unit_204", expected_arrival_at: "2026-07-30T13:00:00Z", maintenance: { maintenance_id: "mnt_7", statuses: { maintenance: "out_of_service", commercial: "not_sellable" }, event_id: "pms-m1" } },
+      data: {
+        unit_id: "unit_204",
+        expected_arrival_at: "2026-07-30T13:00:00Z",
+        maintenance: { maintenance_id: "mnt_7", statuses: { maintenance: "out_of_service", commercial: "not_sellable" }, event_id: "pms-m1" },
+      },
     });
     expect(risk.data.evidence).toContainEqual({ source: "urn:hos:pms:demo", id: "pms-m1" });
     expect(validateSituation({ ...risk, id: "s-1" }), errors(validateSituation)).toBe(true);
@@ -163,15 +198,29 @@ describe("maintenance windows in the reference projection", () => {
   });
 
   it("checks the window against when the guest is expected, not only the planned check-in", () => {
-    const early = window("pms-m3", "2026-07-29T08:00:00Z", { starts_at: "2026-07-30T10:00:00Z", ends_at: "2026-07-30T11:00:00Z", statuses: { maintenance: "out_of_service" } });
-    const afternoon = window("pms-m4", "2026-07-29T08:00:00Z", { starts_at: "2026-07-30T13:30:00Z", ends_at: "2026-07-30T15:00:00Z", statuses: { maintenance: "out_of_service" } });
+    const early = window("pms-m3", "2026-07-29T08:00:00Z", {
+      starts_at: "2026-07-30T10:00:00Z",
+      ends_at: "2026-07-30T11:00:00Z",
+      statuses: { maintenance: "out_of_service" },
+    });
+    const afternoon = window("pms-m4", "2026-07-29T08:00:00Z", {
+      starts_at: "2026-07-30T13:30:00Z",
+      ends_at: "2026-07-30T15:00:00Z",
+      statuses: { maintenance: "out_of_service" },
+    });
     const ready = [created, expected, assigned, inspected, signal];
-    expect(situations([...ready, early])).toMatchObject([{ type: "arrival.room_readiness_at_risk", data: { expected_arrival_at: "2026-07-30T10:30:00Z" } }]);
+    expect(situations([...ready, early])).toMatchObject([
+      { type: "arrival.room_readiness_at_risk", data: { expected_arrival_at: "2026-07-30T10:30:00Z" } },
+    ]);
     expect(situations([...ready, afternoon])).toEqual([]);
   });
 
   it("keeps the latest plan, ignores an older cancellation and windows on other units", () => {
-    const moved = window("pms-m5", "2026-07-29T12:00:00Z", { starts_at: "2026-07-31T06:00:00Z", ends_at: "2026-07-31T16:00:00Z", statuses: { maintenance: "out_of_service" } });
+    const moved = window("pms-m5", "2026-07-29T12:00:00Z", {
+      starts_at: "2026-07-31T06:00:00Z",
+      ends_at: "2026-07-31T16:00:00Z",
+      statuses: { maintenance: "out_of_service" },
+    });
     const stale = window("pms-m6", "2026-07-29T07:00:00Z", {}, "unit.maintenance_cancelled");
     const steps = replay([created, expected, assigned, blocking, stale, moved]);
     expect(steps.map((step) => step.disposition).slice(3)).toEqual(["applied", "superseded", "applied"]);
@@ -189,14 +238,22 @@ describe.each(conformanceScenarios)("conformance scenario %s", (id) => {
   it("publishes only valid events and manifests", () => {
     for (const event of corpus.events) expect(validateEvent(event), `${event.id}: ${errors(validateEvent)}`).toBe(true);
     for (const manifest of corpus.manifests) expect(validateManifest(manifest), `${manifest.producer}: ${errors(validateManifest)}`).toBe(true);
-    expect(corpus.events.every((event) => event.hosproperty === corpus.scenario.property.id && event.hospropertytimezone === corpus.scenario.property.timezone)).toBe(true);
+    expect(
+      corpus.events.every(
+        (event) => event.hosproperty === corpus.scenario.property.id && event.hospropertytimezone === corpus.scenario.property.timezone,
+      ),
+    ).toBe(true);
   });
 
   it("declares at most one authoritative producer per property, event type and dimension", () => {
     const claims = corpus.manifests.flatMap((manifest) =>
       manifest.events
         .filter((declaration) => declaration.authoritative)
-        .flatMap((declaration) => manifest.property_ids.flatMap((property) => (declaration.dimensions ?? ["*"]).map((dimension) => `${property}|${declaration.type}|${dimension}`))),
+        .flatMap((declaration) =>
+          manifest.property_ids.flatMap((property) =>
+            (declaration.dimensions ?? ["*"]).map((dimension) => `${property}|${declaration.type}|${dimension}`),
+          ),
+        ),
     );
     expect(new Set(claims).size).toBe(claims.length);
   });
@@ -241,12 +298,17 @@ describe("guests still in house in the late-checkout scenario", () => {
   const replay = (facts: HosFact[]) => replayArrivalReadiness(facts, toronto, turnover.projection);
   const byId = (id: string) => stream.find((event) => event.id === id)!;
   const lateCheckout = byId("pms-031418");
-  const plan = (id: string, time: string, departure: string) => ({ ...lateCheckout, id, time, data: { ...lateCheckout.data, planned_departure_at: departure } }) as HosFact;
+  const plan = (id: string, time: string, departure: string) =>
+    ({ ...lateCheckout, id, time, data: { ...lateCheckout.data, planned_departure_at: departure } }) as HosFact;
   const atRisk = stream.slice(0, 7);
 
   it("keeps a unit held by another guest not ready, without a situation while that guest leaves first", () => {
     const steps = replay(stream.slice(0, 6));
-    expect(steps.at(-1)!.stays.stay_3140).toMatchObject({ readiness: "not_ready", situation: "none", occupied_by: { stay_id: "stay_3088", planned_departure_at: "2026-08-21T15:00:00Z" } });
+    expect(steps.at(-1)!.stays.stay_3140).toMatchObject({
+      readiness: "not_ready",
+      situation: "none",
+      occupied_by: { stay_id: "stay_3088", planned_departure_at: "2026-08-21T15:00:00Z" },
+    });
     expect(steps.flatMap((step) => step.emitted)).toEqual([]);
   });
 
@@ -265,17 +327,40 @@ describe("guests still in house in the late-checkout scenario", () => {
       type: "guest.message.received",
       time: "2026-08-21T12:00:00Z",
       hossubjects: "message:msg_x1 stay:stay_3140",
-      data: { message_id: "msg_x1", channel: "email", stay_id: "stay_3140", sensitivity: "confidential", signals: [{ kind: "early_arrival", expected_arrival_at: "2026-08-21T14:30:00Z" }] },
+      data: {
+        message_id: "msg_x1",
+        channel: "email",
+        stay_id: "stay_3140",
+        sensitivity: "confidential",
+        signals: [{ kind: "early_arrival", expected_arrival_at: "2026-08-21T14:30:00Z" }],
+      },
     } as unknown as HosFact;
-    const messaging = { ...toronto[0], producer: "urn:hos:messaging:demo", system_role: "messaging" as const, events: [{ type: "guest.message.received" as const, authoritative: true }] };
+    const messaging = {
+      ...toronto[0],
+      producer: "urn:hos:messaging:demo",
+      system_role: "messaging" as const,
+      events: [{ type: "guest.message.received" as const, authoritative: true }],
+    };
     const steps = replayArrivalReadiness([...stream.slice(0, 6), message], [...toronto, messaging], turnover.projection);
-    expect(steps.at(-1)!.emitted).toMatchObject([{ type: "arrival.room_readiness_at_risk", data: { expected_arrival_at: "2026-08-21T14:30:00Z", occupied_by: { stay_id: "stay_3088" } } }]);
+    expect(steps.at(-1)!.emitted).toMatchObject([
+      { type: "arrival.room_readiness_at_risk", data: { expected_arrival_at: "2026-08-21T14:30:00Z", occupied_by: { stay_id: "stay_3088" } } },
+    ]);
   });
 
   it("frees the unit when the guest in house moves to another unit", () => {
-    const moved = { ...byId("pms-031204"), id: "pms-x2", time: "2026-08-21T14:00:00Z", data: { stay_id: "stay_3088", unit_id: "unit_1302", previous_unit_id: "unit_1207", reason: "room_move" } } as HosFact;
+    const moved = {
+      ...byId("pms-031204"),
+      id: "pms-x2",
+      time: "2026-08-21T14:00:00Z",
+      data: { stay_id: "stay_3088", unit_id: "unit_1302", previous_unit_id: "unit_1207", reason: "room_move" },
+    } as HosFact;
     const resolved = replay([...atRisk, moved]).at(-1)!;
-    expect(resolved.emitted).toMatchObject([{ type: "arrival.room_readiness_resolved", data: { reason: "unit_vacated", evidence: expect.arrayContaining([{ source: "urn:hos:pms:demo", id: "pms-x2" }]) } }]);
+    expect(resolved.emitted).toMatchObject([
+      {
+        type: "arrival.room_readiness_resolved",
+        data: { reason: "unit_vacated", evidence: expect.arrayContaining([{ source: "urn:hos:pms:demo", id: "pms-x2" }]) },
+      },
+    ]);
     expect(resolved.stays.stay_3140.occupied_by).toBeNull();
   });
 

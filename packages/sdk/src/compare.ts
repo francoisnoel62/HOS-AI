@@ -19,7 +19,8 @@ export function differences(first: Record<string, unknown>, second: Record<strin
   const keys = [...new Set([...Object.keys(first), ...Object.keys(second)])].filter((key) => key !== "hosrecordedat");
   return keys.flatMap((key) => {
     if (canonical(first[key]) === canonical(second[key])) return [];
-    if (key === "data" && isObject(first.data) && isObject(second.data)) return differences(first.data, second.data).map((member) => `data.${member}`);
+    if (key === "data" && isObject(first.data) && isObject(second.data))
+      return differences(first.data, second.data).map((member) => `data.${member}`);
     return [key];
   });
 }

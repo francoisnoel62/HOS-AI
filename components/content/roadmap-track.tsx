@@ -3,9 +3,24 @@ import { Check, LockKeyhole, ScanSearch, Sparkles, Waypoints } from "lucide-reac
 import { Badge } from "@/components/ui/badge";
 
 const phases = [
-  { title: "Observe", icon: ScanSearch, state: "Now", text: "Spot problems: shared updates with clear sources, and alerts such as a room not ready for an arrival." },
-  { title: "Act", icon: Waypoints, state: "Later", text: "Act within the hotel's rules: assign a room, move a cleaning task up the list, message a guest." },
-  { title: "Trust", icon: LockKeyhole, state: "Later", text: "Written, versioned rules, approvals, a record of every action and clear limits on what each tool may do." },
+  {
+    title: "Observe",
+    icon: ScanSearch,
+    state: "Now",
+    text: "Spot problems: shared updates with clear sources, and alerts such as a room not ready for an arrival.",
+  },
+  {
+    title: "Act",
+    icon: Waypoints,
+    state: "Later",
+    text: "Act within the hotel's rules: assign a room, move a cleaning task up the list, message a guest.",
+  },
+  {
+    title: "Trust",
+    icon: LockKeyhole,
+    state: "Later",
+    text: "Written, versioned rules, approvals, a record of every action and clear limits on what each tool may do.",
+  },
   { title: "Agents", icon: Sparkles, state: "Later", text: "AI agents that state what they do and offer the same guarantees in every hotel." },
   { title: "Ecosystem", icon: Check, state: "Later", text: "Certified connectors and a voluntary community of systems that work together." },
 ];

@@ -33,7 +33,11 @@ if (!python && process.env.CI) throw new Error("The Python example needs Python 
 try {
   run(`npm pack --workspaces --pack-destination "${project}"`, root);
   writeFileSync(path.join(project, "package.json"), `${JSON.stringify({ name: "hos-try", private: true })}\n`);
-  run(`npm install --no-audit --no-fund ${readdirSync(project).filter((file) => file.endsWith(".tgz")).join(" ")}`);
+  run(
+    `npm install --no-audit --no-fund ${readdirSync(project)
+      .filter((file) => file.endsWith(".tgz"))
+      .join(" ")}`,
+  );
   run("npx --no -- hos --version");
   run('npx --no -- hos conformance run --all --impl "hos reference-impl"');
   if (python) {
