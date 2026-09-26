@@ -93,7 +93,7 @@ A validator CLI, SDKs, a production event processor and live PMS connectors are 
 | Independent stewardship                    | An objective. HOS AI is working toward an independent HOS Foundation; no established foundation is claimed.                                                                                                        |
 | Data Cooperative                           | A future, optional programme, separate from HOS Core. Not active.                                                                                                                                                  |
 
-The website is deployed on Vercel from `master`. The participation forms still need a production database, and email delivery, analytics and anti-spam services still need configuration and review. Public release also requires founder decisions and completed legal and privacy pages.
+The website is deployed on Vercel from `master`. The participation forms still need a production database, and email delivery, analytics and anti-spam services still need configuration and review. Public release also requires founder decisions and the publisher details still marked "To complete" on the legal pages.
 
 ## Principles worth building around
 
@@ -128,12 +128,14 @@ components/          Brand, navigation, UI, diagrams and participation forms
 lib/content/         Audience messaging and documentation status
 lib/forms/           Validation, encryption, persistence and local outbox
 lib/analytics/       Allowlisted, payload-free browser event signals
+lib/legal.ts         Publisher, host, processor and retention facts behind the legal pages
 lib/hos/             Reference arrival-readiness projection, spec loaders and PMS mappings
 database/migrations/ PostgreSQL schema migrations
 scripts/             Migration and seed utilities, and the read-only PMS live checks
 public/spec/0.1/     Draft HOS schemas, examples, conformance corpus and mapping recordings
 tests/               Vitest unit tests and Playwright browser/accessibility checks
 docs/operations/     Local operating procedures
+docs/legal/          Record of processing activities
 ```
 
 Start with the [homepage](app/page.tsx), [standard overview](app/standard/page.tsx), [manifesto](app/manifesto/page.tsx) or [governance commitments](app/governance/page.tsx). Shared audience copy lives in [site-copy.ts](lib/content/site-copy.ts).
@@ -247,19 +249,25 @@ The website also provides four participation paths: **founding member**, **pilot
 
 ## Operations and release readiness
 
-Local procedures cover [submission review](docs/operations/submission-review.md), [delivery failures](docs/operations/delivery-failure.md), [deletion requests](docs/operations/deletion-request.md), [abuse incidents](docs/operations/abuse-incident.md), [security issues](docs/operations/security-issue.md) and [content releases](docs/operations/content-release.md).
+Local procedures cover [submission review](docs/operations/submission-review.md), [delivery failures](docs/operations/delivery-failure.md), [privacy rights requests](docs/operations/rights-request.md), [abuse incidents](docs/operations/abuse-incident.md), [security issues](docs/operations/security-issue.md) and [content releases](docs/operations/content-release.md).
 
 The current scope excludes accounts, payments, scheduling, a CMS, comments, newsletters, live PMS integrations and an active Data Cooperative. The local outbox is a development substitute for transactional email. Analytics currently emit only local browser events.
 
-Before public release, the founder must resolve the external service and stewardship decisions, complete the [legal](app/legal/page.tsx) and [privacy](app/privacy/page.tsx) templates, and review production configuration and delivery. Publishing this repository does not make the website ready to operate as a public service.
+The [legal notice](app/legal/page.tsx), [privacy notice](app/privacy/page.tsx), [terms of use](app/terms/page.tsx) and [accessibility statement](app/accessibility/page.tsx) read their facts from [`lib/legal.ts`](lib/legal.ts). Details only the publisher can supply are marked "To complete" on the pages; `npm.cmd run legal:check` lists them and fails until none is left. The [record of processing activities](docs/legal/processing-register.md) mirrors the privacy notice.
 
-For security reports, keep secrets, personal data and exploitable details out of public issues. The linked security procedure currently covers local incident handling; a dedicated external reporting process is not documented here.
+A daily Vercel Cron job calls `/api/cron/purge` to delete submissions past their retention date and expired rate-limit keys; it needs a `CRON_SECRET` environment variable. Locally, run `npm.cmd run db:purge`.
+
+Before public release, the founder must resolve the external service and stewardship decisions, complete the legal details, and review production configuration and delivery. Publishing this repository does not make the website ready to operate as a public service.
+
+For security reports, follow the [security policy](SECURITY.md) and keep secrets, personal data and exploitable details out of public issues. `/.well-known/security.txt` is served once a security contact is set in `lib/legal.ts`.
 
 ## Licensing and identity
 
 The website code is licensed under **[Apache-2.0](LICENSE)**.
 
-The HOS AI name, temporary mark, logo and editorial content are not granted for reuse by that code licence. The proposed specification is intended for CC BY 4.0, as stated in the governance page; that intention is separate from the code licence included in this repository.
+The HOS 0.1 schemas, examples, conformance scenarios and mapping recordings in [`public/spec/0.1`](public/spec/0.1) are also Apache-2.0. The specification text, published at `/docs/core` and `/docs/events`, is under CC BY 4.0, separately from the code licence included in this repository. Contributions are accepted under Apache-2.0, section 5.
+
+The HOS AI name, temporary mark, logo and editorial content are not granted for reuse by that code licence. The [legal notice](app/legal/page.tsx) sets out each licence.
 
 ---
 

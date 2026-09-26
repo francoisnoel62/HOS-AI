@@ -2,6 +2,8 @@ import { ArrowUpRight } from "lucide-react";
 import Link from "next/link";
 
 import { Wordmark } from "@/components/brand/hos-mark";
+import { LegalText } from "@/components/legal/legal-document";
+import { publisher } from "@/lib/legal";
 import { siteConfig } from "@/lib/site";
 
 export function SiteFooter() {
@@ -28,8 +30,9 @@ export function SiteFooter() {
           <p className="font-mono text-xs uppercase tracking-[0.12em] text-[var(--muted-foreground)]">Trust</p>
           <div className="mt-3 flex flex-col gap-2 text-sm">
             <Link href="/privacy">Privacy</Link>
-            <Link href="/accessibility">Accessibility</Link>
+            <Link href="/terms">Terms of use</Link>
             <Link href="/legal">Legal notice</Link>
+            <Link href="/accessibility">Accessibility</Link>
             <a className="inline-flex items-center gap-1" href={siteConfig.githubUrl} rel="noreferrer" target="_blank">
               GitHub <ArrowUpRight aria-hidden="true" size={13} />
             </a>
@@ -37,7 +40,7 @@ export function SiteFooter() {
         </div>
       </div>
       <div className="border-t border-[var(--border)] px-5 py-5 text-center font-mono text-[0.68rem] uppercase tracking-[0.08em] text-[var(--muted-foreground)]">
-        © {new Date().getFullYear()} HOS AI · Early-stage initiative
+        © {new Date().getFullYear()} <LegalText value={publisher.name} /> · HOS AI · Early-stage initiative
       </div>
     </footer>
   );

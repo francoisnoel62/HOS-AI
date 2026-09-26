@@ -2,7 +2,7 @@
   "name": "hos-ai-website",
   "version": "0.1.0",
   "private": true,
-  "description": "Local development website for HOS AI.",
+  "description": "Website for HOS AI.",
   "license": "Apache-2.0",
   "scripts": {
     "dev": "next dev",
@@ -18,6 +18,8 @@
     "format:check": "prettier --check .",
     "db:migrate": "tsx --env-file-if-exists=.env.local scripts/migrate.ts",
     "db:seed": "tsx --env-file-if-exists=.env.local scripts/seed.ts",
+    "db:purge": "tsx --env-file-if-exists=.env.local scripts/purge.ts",
+    "legal:check": "tsx scripts/legal-check.ts",
     "mews:live": "tsx --env-file-if-exists=.env.local scripts/mews-live.ts",
     "apaleo:live": "tsx --env-file-if-exists=.env.local scripts/apaleo-live.ts",
     "cloudbeds:live": "tsx --env-file-if-exists=.env.local scripts/cloudbeds-live.ts"

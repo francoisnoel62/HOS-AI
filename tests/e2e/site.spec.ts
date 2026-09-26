@@ -31,6 +31,39 @@ test("every participation path keeps a native form action and confidentiality wa
   }
 });
 
+test("the footer leads to every legal page", async ({ page }) => {
+  for (const [link, heading] of [
+    ["Privacy", "Privacy notice"],
+    ["Terms of use", "Terms of use"],
+    ["Legal notice", "Legal notice"],
+    ["Accessibility", "Accessibility statement"],
+  ] as const) {
+    await page.goto("/");
+    await page.getByRole("contentinfo").getByRole("link", { name: link, exact: true }).click();
+    await expect(page.getByRole("heading", { level: 1, name: heading })).toBeVisible();
+  }
+});
+
+test("the legal notice names the publisher, the host and each licence", async ({ page }) => {
+  await page.goto("/legal");
+  await expect(page.locator("#publisher")).toContainText("Publication director");
+  await expect(page.locator("#hosting")).toContainText("Vercel Inc.");
+  await expect(page.getByRole("region", { name: "Licence of each kind of material" })).toContainText("Apache License 2.0");
+  await expect(page.getByText("To complete:")).toHaveCount(0);
+});
+
+test("security.txt names a security contact", async ({ request }) => {
+  const response = await request.get("/.well-known/security.txt");
+  expect(response.ok()).toBe(true);
+  expect(await response.text()).toMatch(/^Contact: mailto:\S+@\S+$/m);
+});
+
+test("every form states who uses the data and for how long", async ({ page }) => {
+  await page.goto("/contact");
+  await expect(page.locator("form")).toContainText(/deletes it 12 months after our last exchange/);
+  await expect(page.locator("form").getByRole("link", { name: "privacy notice" }).last()).toHaveAttribute("href", "/privacy#rights");
+});
+
 test("contact and confirmation routes are not indexable", async ({ page }) => {
   await page.goto("/contact");
   await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
