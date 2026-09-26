@@ -265,7 +265,7 @@ For security reports, follow the [security policy](SECURITY.md) and keep secrets
 
 The website code is licensed under **[Apache-2.0](LICENSE)**.
 
-The HOS 0.1 schemas, examples, conformance scenarios and mapping recordings in [`public/spec/0.1`](public/spec/0.1) are also Apache-2.0. The specification text is intended for CC BY 4.0, as stated on the governance page; that intention is separate from the code licence included in this repository. Contributions are accepted under Apache-2.0, section 5.
+The HOS 0.1 schemas, examples, conformance scenarios and mapping recordings in [`public/spec/0.1`](public/spec/0.1) are also Apache-2.0. The specification text, published at `/docs/core` and `/docs/events`, is under CC BY 4.0, separately from the code licence included in this repository. Contributions are accepted under Apache-2.0, section 5.
 
 The HOS AI name, temporary mark, logo and editorial content are not granted for reuse by that code licence. The [legal notice](app/legal/page.tsx) sets out each licence.
 

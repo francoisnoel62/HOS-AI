@@ -10,6 +10,20 @@ export const metadata: Metadata = { title: "Changelog", description: "Published 
 const entries = [
   {
     date: "26 September 2026",
+    title: "The specification text is published under CC BY 4.0, and the legal pages are complete.",
+    items: [
+      "The HOS Core 0.1 and HOS Events 0.1 drafts can be reused and adapted under CC BY 4.0, with credit. Schemas, examples and conformance files stay under Apache-2.0.",
+      "The legal notice, privacy notice and accessibility statement replace their templates, and terms of use are added. They name the publisher, the host and each provider that processes form data, with its location and transfer safeguard.",
+      "Form submissions are now deleted automatically twelve months after the last exchange, as the privacy notice states.",
+    ],
+    links: [
+      ["/legal#licensing", "Licensing"],
+      ["/privacy", "Privacy notice"],
+      ["/terms", "Terms of use"],
+    ],
+  },
+  {
+    date: "26 September 2026",
     title: "The Apaleo mapping runs against a live account, and a Cloudbeds check is ready.",
     items: [
       "Read-only live checks now exist for Apaleo and Cloudbeds, as for Mews. Each fetches what an integration fetches before its first webhook, runs it through the adapter and reports facts by type, schema errors, what a second pass would publish, and today's arrivals as the reference projection sees them. Reports keep no PMS payloads, guest data or credentials.",

@@ -2,7 +2,7 @@
 
 Machine-readable artefacts of the HOS 0.1 drafts. The readable specifications are published at `/docs/core` (HOS Core 0.1) and `/docs/events` (HOS Events 0.1) on the HOS AI website, and the conformance scenarios can be replayed at `/demo`, `/demo/room-out-of-order` and `/demo/late-checkout`.
 
-Status: draft for review. Names and fields may change before 0.1 is final. The specification is intended for publication under CC BY 4.0; schemas are Apache-2.0. Every example is synthetic.
+Status: draft for review. Names and fields may change before 0.1 is final. The specification text, published at `/docs/core` and `/docs/events`, is under CC BY 4.0; the schemas and every other file here are Apache-2.0. Every example is synthetic.
 
 ## Contents
 

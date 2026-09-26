@@ -32,22 +32,22 @@ export const documentDates = {
 } as const;
 
 export const publisher = {
-  name: pending("Publisher's legal name: your full name, or the name of the organisation"),
-  legalForm: pending("Legal form, e.g. individual entrepreneur, association (loi 1901) or SAS"),
-  registration: pending("Registration: SIREN and RCS city, or RNA number for an association; set to null if none") as LegalValue | null,
-  shareCapital: pending("Share capital, for a company only; set to null otherwise") as LegalValue | null,
-  vatNumber: pending("Intra-EU VAT number; set to null if none") as LegalValue | null,
-  address: pending("Postal address of the registered office or of the publisher"),
-  phone: pending("Telephone number"),
-  email: pending("Contact email address, also used for privacy and accessibility requests"),
+  name: "François Noel" as LegalValue,
+  legalForm: "Individual, publishing in a personal capacity" as LegalValue,
+  registration: null as LegalValue | null,
+  shareCapital: null as LegalValue | null,
+  vatNumber: null as LegalValue | null,
+  address: "Lille, France" as LegalValue,
+  phone: "+33 7 49 15 42 69" as LegalValue,
+  email: "francoisnoel62@gmail.com" as LegalValue,
 };
 
-export const publicationDirector = pending("Full name of the publication director (for an organisation, its legal representative)");
+export const publicationDirector: LegalValue = "François Noel";
 
 export const host = {
   name: "Vercel Inc.",
   address: "440 N Barranca Avenue #4133, Covina, CA 91723, United States",
-  phone: pending("Vercel's telephone number, as required for the host"),
+  phone: "+1 (559) 288-7060" as LegalValue,
   website: "https://vercel.com",
 };
 
@@ -61,16 +61,16 @@ export const processors: Processor[] = [
     safeguard: "EU-U.S. Data Privacy Framework certification",
   },
   {
-    name: pending("Database provider"),
+    name: "Neon (Databricks, Inc.)",
     purpose: "Stores form submissions, encrypted, and short-lived rate-limit keys.",
-    location: pending("Database hosting region"),
-    safeguard: pending("Transfer safeguard if the database is outside the EU, or \"No transfer outside the EU\""),
+    location: "European Union (Frankfurt, Germany)",
+    safeguard: "Data stored in the EU; any access from the United States is covered by the EU-U.S. Data Privacy Framework and standard contractual clauses",
   },
   {
-    name: pending("Email delivery provider"),
+    name: "Resend, Inc.",
     purpose: "Sends the acknowledgement to you and a notification to the team.",
-    location: pending("Email provider's processing location"),
-    safeguard: pending("Transfer safeguard if outside the EU, or \"No transfer outside the EU\""),
+    location: "United States",
+    safeguard: "EU-U.S. Data Privacy Framework certification and standard contractual clauses",
   },
   {
     name: "Cloudflare, Inc. (Turnstile)",
@@ -82,26 +82,22 @@ export const processors: Processor[] = [
 
 export const retention = {
   submissionMonths: 12,
-  hostingLogs: pending("Vercel request log retention for your plan: 1 hour on Hobby, 1 day on Pro"),
+  hostingLogs: "One hour, on the host's current plan." as LegalValue,
 };
 
 export const terms = {
-  governingLaw: pending("Governing law, e.g. French law"),
-  courts: pending("Competent courts for disputes between professionals, e.g. the courts of your registered office's city"),
+  governingLaw: "French law" as LegalValue,
+  courts: "the competent French courts" as LegalValue,
 };
 
-export const draftSpecificationLicence = pending(
-  "Licence of the draft specification text until its CC BY 4.0 publication, e.g. \"CC BY 4.0 from now on\" or \"all rights reserved until 0.1 is final\"",
-);
-
 export const accessibility = {
-  responseTime: pending("Response time you commit to for accessibility reports, e.g. 10 working days"),
-  knownLimitations: [pending("Known barriers, one entry each; empty this list if none is known")] as LegalValue[],
+  responseTime: "10 working days" as LegalValue,
+  knownLimitations: [] as LegalValue[],
 };
 
 export const security = {
   contact: publisher.email,
-  responseTime: pending("Time within which you acknowledge a security report, e.g. 5 working days"),
+  responseTime: "5 working days" as LegalValue,
 };
 
 /** Every placeholder still open, deduplicated, for the page banner and `npm run legal:check`. */
@@ -113,7 +109,6 @@ export function pendingLegalFields(): string[] {
     ...processors.flatMap((processor) => [processor.name, processor.location, processor.safeguard]),
     retention.hostingLogs,
     ...Object.values(terms),
-    draftSpecificationLicence,
     accessibility.responseTime,
     ...accessibility.knownLimitations,
     security.responseTime,

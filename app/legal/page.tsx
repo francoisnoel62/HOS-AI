@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { LegalDocument, LegalFacts, LegalSection, LegalTable, LegalText, legalLinkClass } from "@/components/legal/legal-document";
-import { documentDates, draftSpecificationLicence, host, publicationDirector, publisher } from "@/lib/legal";
+import { documentDates, host, publicationDirector, publisher } from "@/lib/legal";
 import { siteConfig } from "@/lib/site";
 
 export const metadata: Metadata = { title: "Legal notice", description: "Who publishes and hosts the HOS AI website, and the licences and marks that apply to its content." };
@@ -53,7 +53,7 @@ export default function LegalPage() {
           rows={[
             ["Website source code, in the public repository", <><a className={legalLinkClass} href="https://www.apache.org/licenses/LICENSE-2.0" rel="noreferrer" target="_blank">Apache License 2.0</a></>],
             [<>HOS 0.1 schemas, examples, conformance scenarios and mapping recordings, under <code>/spec/0.1</code></>, "Apache License 2.0"],
-            [<>HOS specification text, at <Link className={legalLinkClass} href="/docs/core">/docs/core</Link> and <Link className={legalLinkClass} href="/docs/events">/docs/events</Link></>, <>Intended for <a className={legalLinkClass} href="https://creativecommons.org/licenses/by/4.0/" rel="noreferrer" target="_blank">CC BY 4.0</a> when 0.1 is published. Until then: <LegalText value={draftSpecificationLicence} /></>],
+            [<>HOS specification text, at <Link className={legalLinkClass} href="/docs/core">/docs/core</Link> and <Link className={legalLinkClass} href="/docs/events">/docs/events</Link></>, <><a className={legalLinkClass} href="https://creativecommons.org/licenses/by/4.0/" rel="noreferrer" target="_blank">Creative Commons Attribution 4.0 (CC BY 4.0)</a>, drafts included. Credit “HOS Core 0.1” or “HOS Events 0.1”, <LegalText value={publisher.name} />, CC BY 4.0, with a link to the page.</>],
             ["Other website text, diagrams and illustrations", "All rights reserved. Short quotations with attribution are welcome."],
             ["HOS AI name, mark, logo, favicon and social images", <>Not licensed. See <a className={legalLinkClass} href="#marks">HOS AI name and marks</a>.</>],
           ]}

@@ -15,4 +15,4 @@ A breach is any accidental or unlawful destruction, loss, alteration, disclosure
 3. If the risk to people is high, for example readable emails and messages were exposed, tell the people affected without undue delay, in plain language, with what they can do.
 4. Ask the provider concerned for its own breach report where the breach happened in its service.
 
-Breach register: **[To complete: where the breach register is kept]**.
+Breach register: a private document in the publisher's Google Drive, never in this public repository.

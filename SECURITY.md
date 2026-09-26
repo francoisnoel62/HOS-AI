@@ -4,11 +4,11 @@ This policy covers the HOS AI website, its form handling and the HOS 0.1 artefac
 
 ## Reporting a vulnerability
 
-Report a vulnerability privately to **[To complete: security contact email]**. Do not open a public issue, and keep secrets, personal data and working exploit details out of any public channel.
+Report a vulnerability privately to **francoisnoel62@gmail.com**. Do not open a public issue, and keep secrets, personal data and working exploit details out of any public channel.
 
 Include what you found, where, how to reproduce it and the impact you expect. Use test data only: never access, modify or keep other people's data, and stop as soon as you have enough to show the problem.
 
-We acknowledge a report within **[To complete: acknowledgement time, e.g. 5 working days]**, keep you informed while we fix it, and credit you when the fix is published if you wish.
+We acknowledge a report within **5 working days**, keep you informed while we fix it, and credit you when the fix is published if you wish.
 
 ## Scope
 

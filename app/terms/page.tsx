@@ -61,7 +61,7 @@ export default function TermsPage() {
       </LegalSection>
 
       <LegalSection id="law" title="Governing law">
-        <p>These terms are governed by <LegalText value={terms.governingLaw} />. Disputes between professionals are submitted to <LegalText value={terms.courts} />. A consumer keeps the protection of the mandatory rules of their country of residence. Questions about these terms: <LegalText value={publisher.email} />.</p>
+        <p>These terms are governed by <LegalText value={terms.governingLaw} />. Disputes are submitted to <LegalText value={terms.courts} />. A consumer keeps the protection of the mandatory rules of their country of residence. Questions about these terms: <LegalText value={publisher.email} />.</p>
       </LegalSection>
     </LegalDocument>
   );

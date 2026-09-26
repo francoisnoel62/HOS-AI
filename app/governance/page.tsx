@@ -15,7 +15,7 @@ export default function GovernancePage() {
       <SectionFrame eyebrow="Public commitments" title="Neutrality is a practice, not a claim.">
         <div className="grid gap-4 md:grid-cols-2">
           {[
-            ["Open standard", "The specification is intended for CC BY 4.0; code artefacts use Apache-2.0. Marks and editorial content remain separately protected."],
+            ["Open standard", "The specification text is published under CC BY 4.0; schemas and code use Apache-2.0. Marks and editorial content remain separately protected."],
             ["Traceable decisions", "The work records its decisions and conflicts of interest so they can be inspected rather than assumed."],
             ["Independent direction", "The intended destination is a member-led HOS Association operating with one organisation, one vote."],
             ["Participation safeguards", "Funding, code and early contribution do not create exclusive rights over the standard, data or certification."],

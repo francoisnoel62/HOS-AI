@@ -4,8 +4,8 @@ GDPR Article 30. Kept up to date with the [privacy notice](../../app/privacy/pag
 
 | Field | Value |
 | :-- | :-- |
-| Controller | [To complete: publisher's legal name and address] |
-| Contact | [To complete: privacy contact email] |
+| Controller | François Noel, Lille, France |
+| Contact | francoisnoel62@gmail.com |
 | Data protection officer | None appointed |
 | Last reviewed | 2026-09-26 |
 
@@ -38,16 +38,16 @@ GDPR Article 30. Kept up to date with the [privacy notice](../../app/privacy/pag
 | Purpose | Deliver and secure the website |
 | Legal basis | Art. 6(1)(f) legitimate interest |
 | Data | IP address, user agent, requested path, date and time |
-| Retention | [To complete: Vercel log retention for the selected plan] |
+| Retention | One hour (Vercel Hobby plan runtime logs) |
 
 ## Processors
 
 | Processor | Role | Location | Transfer safeguard | Data processing agreement |
 | :-- | :-- | :-- | :-- | :-- |
-| Vercel Inc. | Hosting, form handler, logs | United States | EU-U.S. Data Privacy Framework | [To complete: DPA accepted on (date)] |
-| [To complete: database provider] | Encrypted submissions, rate-limit keys | [To complete] | [To complete] | [To complete] |
-| [To complete: email provider] | Acknowledgement and notification emails | [To complete] | [To complete] | [To complete] |
-| Cloudflare, Inc. | Turnstile bot protection | United States | EU-U.S. Data Privacy Framework | [To complete: DPA accepted on (date)] |
+| Vercel Inc. | Hosting, form handler, logs | United States | EU-U.S. Data Privacy Framework | [Vercel DPA](https://vercel.com/legal/dpa), binding on acceptance of the terms |
+| Neon (Databricks, Inc.) | Encrypted submissions, rate-limit keys | EU, Frankfurt (to select when the project is created) | Data stored in the EU; DPF and SCCs for any US access | [Neon DPA](https://neon.com/dpa): to check it applies to the account once created |
+| Resend, Inc. | Acknowledgement and notification emails | United States | EU-U.S. Data Privacy Framework and SCCs | [Resend DPA](https://resend.com/legal/dpa), pre-signed and in force for every account |
+| Cloudflare, Inc. | Turnstile bot protection | United States | EU-U.S. Data Privacy Framework | [Cloudflare DPA](https://www.cloudflare.com/cloudflare-customer-dpa/): to check it applies to the account once created |
 
 ## Related procedures
 
