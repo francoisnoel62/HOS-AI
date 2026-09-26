@@ -5,8 +5,10 @@ import { useRef, useState, useSyncExternalStore } from "react";
 
 import { trackAnalyticsEvent } from "@/lib/analytics/events";
 import type { FormRouteKind } from "@/lib/forms/types";
+import { publisher, retention } from "@/lib/legal";
 
 import { SelectField, TextareaField, TextField } from "@/components/forms/form-field";
+import { LegalText } from "@/components/legal/legal-document";
 import { Button } from "@/components/ui/button";
 
 const formTitles: Record<FormRouteKind, string> = {
@@ -83,8 +85,8 @@ export function SubmissionForm({ kind }: { kind: FormRouteKind }) {
       <section hidden={enhanced && hasTwoSteps && step !== 2}>
         {enhanced && hasTwoSteps ? <p className="eyebrow mb-5">Step 2 of 2 · Brief context and consent</p> : null}
         <TextareaField hint="Please do not include guest data, credentials, API keys, exports or confidential commercial information." label={kind === "contact" ? "Your message" : "Brief context"} name="context" required />
-        <label className="mt-5 flex gap-3 text-sm leading-6"><input className="mt-1" name="privacyAccepted" required type="checkbox" /><span>I understand that this form is for professional contact only and I have read the <a className="text-[var(--accent)] underline" href="/privacy">privacy notice</a>.</span></label>
-        <p className="mt-4 text-xs leading-5 text-[var(--muted-foreground)]">Local development: the human-verification widget is intentionally disabled. Production must validate it server-side before storage.</p>
+        <label className="mt-5 flex gap-3 text-sm leading-6"><input className="mt-1" name="privacyAccepted" required type="checkbox" /><span>This form is for professional contact only, and I have read the <a className="text-[var(--accent)] underline" href="/privacy">privacy notice</a>.</span></label>
+        <p className="mt-4 text-xs leading-5 text-[var(--muted-foreground)]"><LegalText value={publisher.name} /> uses this information only to assess and answer your request, and deletes it {retention.submissionMonths} months after our last exchange. You can access, correct or delete it, or object, at any time: see the <a className="text-[var(--accent)] underline" href="/privacy#rights">privacy notice</a>.</p>
       </section>
       {enhanced && hasTwoSteps && step === 1 ? <Button onClick={moveToSecondStep} type="button">Continue <ArrowRight aria-hidden="true" size={16} /></Button> : <div className="flex flex-wrap gap-3">{enhanced && hasTwoSteps ? <Button onClick={() => setStep(1)} type="button" variant="secondary"><ArrowLeft aria-hidden="true" size={16} />Back</Button> : null}<Button type="submit">Submit interest <Check aria-hidden="true" size={16} /></Button></div>}
     </form>
