@@ -86,11 +86,13 @@ export const toolsSections: ToolsSection[] = [
         description: "Run the conformance scenarios through your own program, in any language.",
       }),
       page("guides/check-a-producer", {
+        written: true,
         title: "Check what a producer publishes",
         navTitle: "Check a producer",
         description: "Check a producer's manifest, the facts it records and what it sends again when it restarts.",
       }),
       page("guides/sign-and-publish", {
+        written: true,
         title: "Sign and publish a producer manifest",
         navTitle: "Sign and publish",
         description: "Create a key, sign your manifest, publish it under /.well-known/hos/ and keep it valid.",

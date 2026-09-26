@@ -39,8 +39,19 @@ function shown(page: string, id: string) {
 }
 const block = (page: string, id: string) => shown(page, id).text;
 
-function expectShown(actual: string, { text, meta }: { text: string; meta: Record<string, string> }) {
-  const lines = actual.replace(/\r\n/g, "\n").trimEnd().split("\n");
+// A block with varies="kid" or varies="kid time" shows one run's key ids and times: each reader gets others.
+const keyId = /(?<![A-Za-z0-9_-])[A-Za-z0-9_-]{43}(?![A-Za-z0-9_-])/g;
+const instant = /\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z/g;
+function steady(text: string, varies = "") {
+  let result = text;
+  if (varies.includes("kid")) result = result.replace(keyId, "<kid>");
+  if (varies.includes("time")) result = result.replace(instant, "<time>");
+  return result;
+}
+
+function expectShown(actual: string, { text: shownText, meta }: { text: string; meta: Record<string, string> }) {
+  const text = steady(shownText, meta.varies);
+  const lines = steady(actual.replace(/\r\n/g, "\n").trimEnd(), meta.varies).split("\n");
   const expected = text.split("\n");
   if (meta.excerpt === "head") expect(lines.slice(0, expected.length)).toEqual(expected);
   else if (meta.excerpt === "tail") expect(lines.slice(-expected.length)).toEqual(expected);
@@ -204,7 +215,109 @@ const checks: Record<string, Check> = {
     copyFolder(path.join(specDirectory, scenario), path.join(cwd, "scenarios", "arrival-readiness"));
     return printed("guides/test-a-consumer", "scenario-dir", ["conformance", "list", "--scenario-dir", "scenarios"], { cwd });
   },
+
+  // Check a producer, with the example kit and the reader's edits
+  "guides/check-a-producer#pass": () => printed("guides/check-a-producer", "pass", producerCheck, { files: producerKit() }),
+  "guides/check-a-producer#new-id": () =>
+    printed("guides/check-a-producer", "new-id", producerCheck, { files: producerKit({ redelivery: ["pms-000312", "pms-000999"] }), code: 1 }),
+  "guides/check-a-producer#changed-content": () =>
+    printed("guides/check-a-producer", "changed-content", producerCheck, {
+      files: producerKit({ redelivery: ["2026-07-12T14:03:00Z", "2026-07-30T12:00:00Z"] }),
+      code: 1,
+    }),
+  "guides/check-a-producer#no-redelivery": () =>
+    printed("guides/check-a-producer", "no-redelivery", producerCheck.slice(0, -2), { files: producerKit() }),
+  "guides/check-a-producer#json": () => printed("guides/check-a-producer", "json", [...producerCheck, "--json"], { files: producerKit() }),
+
+  // Sign and publish: the example producer, then a key and a signature of the reader's own
+  "guides/sign-and-publish#example-verify": () =>
+    printed("guides/sign-and-publish", "example-verify", ["manifest", "verify", "manifest.json", "--jwks", "jwks.json"], { files: signingExample() }),
+  "guides/sign-and-publish#example-tampered": () => {
+    const files = signingExample();
+    // The reader's edit: the producer now claims authority on occupancy.
+    const tampered = files["manifest.json"].replace('"authoritative": false', '"authoritative": true');
+    expect(tampered).not.toBe(files["manifest.json"]);
+    return printed("guides/sign-and-publish", "example-tampered", ["manifest", "verify", "manifest.json", "--jwks", "jwks.json"], {
+      files: { ...files, "manifest.json": tampered },
+      code: 1,
+    });
+  },
+  "guides/sign-and-publish#example-expired": () =>
+    printed(
+      "guides/sign-and-publish",
+      "example-expired",
+      ["manifest", "verify", "manifest.json", "--jwks", "jwks.json", "--at", "2027-10-01T00:00:00Z"],
+      {
+        files: signingExample(),
+        code: 1,
+      },
+    ),
+  "guides/sign-and-publish#verify-url": async () => {
+    const base = "https://hos-ai.vercel.app/spec/0.1/conformance/signing/well-known";
+    const files = signingExample();
+    const urls = Object.fromEntries(Object.entries(files).map(([name, text]) => [`${base}/${name}`, text]));
+    const result = await hos(["manifest", "verify", `${base}/manifest.json`, "--jws", `${base}/manifest.jws`, "--jwks-url", `${base}/jwks.json`], {
+      urls,
+    });
+    expect(result.code, result.stderr).toBe(0);
+    expectShown(result.stdout, shown("guides/sign-and-publish", "verify-url"));
+  },
+  "guides/sign-and-publish#keygen": () => ownKey(),
+  "guides/sign-and-publish#sign": () => ownSignature(),
+  "guides/sign-and-publish#verify": async () => {
+    const files = await ownSignature();
+    return printed("guides/sign-and-publish", "verify", ["manifest", "verify", "manifest.json", "--jwks", "jwks.json"], { files });
+  },
+  "guides/sign-and-publish#rotate": async () => {
+    const { written } = await ownKey();
+    return printed("guides/sign-and-publish", "rotate", ["manifest", "keygen", "--key", "private-key-2.json", "--jwks", "jwks.json"], {
+      files: { "private-key.json": written["private-key.json"], "jwks.json": written["jwks.json"] },
+    });
+  },
+  "guides/sign-and-publish#exposed": async () => {
+    // A key set that publishes the private key by mistake.
+    const files = await ownSignature();
+    const exposed = JSON.stringify({ keys: [JSON.parse(files["private-key.json"])] });
+    return printed("guides/sign-and-publish", "exposed", ["manifest", "verify", "manifest.json", "--jwks", "jwks.json"], {
+      files: { ...files, "jwks.json": exposed },
+      code: 1,
+    });
+  },
 };
+
+// The example producer of the check-a-producer guide, with the reader's find-and-replace in its redelivery.
+const producerCheck = ["conformance", "producer", "--manifest", "manifest.json", "--stream", "recording.jsonl", "--redelivery", "redelivery.jsonl"];
+const kitDirectory = fileURLToPath(new URL("../../public/docs/tools/examples/producer/", import.meta.url));
+function producerKit({ redelivery }: { redelivery?: [string, string] } = {}) {
+  const files = Object.fromEntries(
+    ["manifest.json", "recording.jsonl", "redelivery.jsonl"].map((name) => [name, readFileSync(path.join(kitDirectory, name), "utf8")]),
+  );
+  if (redelivery) {
+    const [from, to] = redelivery;
+    expect(files["redelivery.jsonl"].split(from)).toHaveLength(2);
+    files["redelivery.jsonl"] = files["redelivery.jsonl"].replace(from, to);
+  }
+  return files;
+}
+
+// The fictional producer HOS publishes with its signature and key set.
+const signingExample = () =>
+  Object.fromEntries(["manifest.json", "manifest.jws", "jwks.json"].map((name) => [name, published(`conformance/signing/well-known/${name}`)]));
+
+// The reader's own key, then signature, on the example PMS manifest.
+async function ownKey() {
+  return printed("guides/sign-and-publish", "keygen", ["manifest", "keygen", "--key", "private-key.json", "--jwks", "jwks.json"]);
+}
+async function ownSignature() {
+  const { written } = await ownKey();
+  const files = {
+    "manifest.json": producerKit()["manifest.json"],
+    "private-key.json": written["private-key.json"],
+    "jwks.json": written["jwks.json"],
+  };
+  const signed = await printed("guides/sign-and-publish", "sign", ["manifest", "sign", "manifest.json", "--key", "private-key.json"], { files });
+  return { ...files, "manifest.jws": signed.written["manifest.jws"] };
+}
 
 // The checks that run the Python example.
 const pythonChecks: Record<string, Check> = {
@@ -241,6 +354,25 @@ describe("outputs shown in the tools documentation", () => {
     const withId = blocks.filter((item) => item.meta.id).map((item) => `${item.page}#${item.meta.id}`);
     expect(new Set(withId).size, "ids are unique on each page").toBe(withId.length);
     expect(withId.sort()).toEqual([...Object.keys(checks), ...Object.keys(pythonChecks)].sort());
+  });
+
+  it("publishes an example producer made of the PMS facts of the early-arrival scenario", () => {
+    const kit = producerKit();
+    const pms = JSON.parse(published(`${scenario}/producers/pms.json`));
+    const facts = published(`${scenario}/events.jsonl`)
+      .split("\n")
+      .filter((line) => line.trim())
+      .map((line) => JSON.parse(line))
+      // The one fact the PMS does not declare: the example producer passes its checks.
+      .filter((fact) => fact.source === pms.producer && fact.type !== "housekeeping.task.created");
+    const lines = (text: string) =>
+      text
+        .trim()
+        .split("\n")
+        .map((line) => JSON.parse(line));
+    expect(JSON.parse(kit["manifest.json"])).toEqual(pms);
+    expect(lines(kit["recording.jsonl"])).toEqual(facts);
+    expect(lines(kit["redelivery.jsonl"])).toEqual(facts);
   });
 
   it("shows what hos --version prints", async () => {

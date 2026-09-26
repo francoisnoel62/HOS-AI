@@ -21,6 +21,8 @@ for (const path of [
   "/docs/tools/guides/validate",
   "/docs/tools/guides/replay",
   "/docs/tools/guides/test-a-consumer",
+  "/docs/tools/guides/check-a-producer",
+  "/docs/tools/guides/sign-and-publish",
   // Every component of the tools documentation, on one page.
   "/docs/tools/authoring",
   "/docs/tools/glossary",

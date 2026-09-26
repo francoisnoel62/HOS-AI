@@ -1,10 +1,187 @@
-<PageInProgress>
+<InShort>
 
-This guide will show how to check what a producer publishes with `hos conformance producer`:
+`hos conformance producer` checks a system that publishes HOS facts on what it actually publishes: its manifest, a recording of its facts, and what it publishes again when it restarts on the same data. A producer that passes publishes facts every consumer can trust, and never makes them count a fact twice.
 
-- why a producer is checked on what it publishes, where a consumer is checked with scenarios;
-- the four checks: a valid manifest with its limitations stated; valid facts, from the right source, declared for the property; never two facts for the same source and id; and a redelivery that sends the same ids with the same content;
-- how to record `recording.jsonl` and `redelivery.jsonl`, by restarting the adapter on the same data;
-- why fact ids must be deterministic.
+</InShort>
 
-</PageInProgress>
+<FactSheet audience="Developers of a system that publishes HOS facts: PMS, housekeeping, messaging" time="20 minutes" needs={["hos, see Install"]} />
+
+## Why this matters
+
+A <Term id="consumer">consumer</Term> is tested with made-up scenarios. A <Term id="producer">producer</Term> is judged on what it publishes, because every consumer relies on it. If its facts are not declared in its <Term id="manifest">manifest</Term>, consumers ignore them. If, after a restart, it publishes the same reservation under a new id, every consumer takes it for a new fact: a stay counted twice, a room status that jumps back. The producer checks catch both before a hotel does.
+
+## The four checks
+
+1. **The manifest is valid, and states its limitations**: what the system does not do, does not know, or cannot share.
+2. **Every recorded fact is valid**, published under the manifest's `producer`, and declared for the hotel it concerns.
+3. **No source and id name two different facts.**
+4. **A redelivery gives the same facts back**: published again from the same data, for example after a restart, every fact comes back with the same id and the same content.
+
+<Steps>
+<Step title="Check an example producer">
+
+HOS publishes the files of an example PMS: its manifest, five facts it published, and what it published again after a restart. Download them into a new folder:
+
+<Command
+  powershell={`curl.exe -O https://hos-ai.vercel.app/docs/tools/examples/producer/manifest.json
+curl.exe -O https://hos-ai.vercel.app/docs/tools/examples/producer/recording.jsonl
+curl.exe -O https://hos-ai.vercel.app/docs/tools/examples/producer/redelivery.jsonl`}
+  cmd={`curl -O https://hos-ai.vercel.app/docs/tools/examples/producer/manifest.json
+curl -O https://hos-ai.vercel.app/docs/tools/examples/producer/recording.jsonl
+curl -O https://hos-ai.vercel.app/docs/tools/examples/producer/redelivery.jsonl`}
+  bash={`curl -O https://hos-ai.vercel.app/docs/tools/examples/producer/manifest.json
+curl -O https://hos-ai.vercel.app/docs/tools/examples/producer/recording.jsonl
+curl -O https://hos-ai.vercel.app/docs/tools/examples/producer/redelivery.jsonl`}
+/>
+
+```sh
+npx @hos-ai/cli conformance producer --manifest manifest.json --stream recording.jsonl --redelivery redelivery.jsonl
+```
+
+```output id="pass"
+Producer urn:hos:pms:demo
+✓ manifest.json: valid manifest, with its limitations
+✓ recording.jsonl: 5 facts, valid and declared
+✓ redelivery.jsonl: 5 facts, each already in the recording with the same id and content
+
+✓ urn:hos:pms:demo passes the producer checks.
+```
+
+**What just happened.** hos read the manifest of `urn:hos:pms:demo` and checked it. It checked each of the five recorded facts against the HOS schemas and against the manifest. Then it compared the redelivery with the recording: the same five facts, with the same ids and content. A consumer that receives them again discards them as duplicates.
+
+</Step>
+<Step title="Restart with new ids">
+
+A common mistake: the adapter gives each fact a new id when it publishes it, for example a random one or a counter. After a restart, the same reservation comes back under another id.
+
+Open `redelivery.jsonl`, replace `pms-000312` with `pms-000999`, save, and run the check again:
+
+```output id="new-id"
+Producer urn:hos:pms:demo
+✓ manifest.json: valid manifest, with its limitations
+✓ recording.jsonl: 5 facts, valid and declared
+✗ redelivery.jsonl: 5 facts, 4 already in the recording unchanged (1 error)
+  error   line 1: pms-000999 from urn:hos:pms:demo is not in the recording. Publishing the same data again, a producer publishes the same facts with the same ids, so consumers discard them as duplicates.
+          rule events/at-least-once-delivery · at /id
+
+✗ urn:hos:pms:demo fails the producer checks.
+```
+
+Every consumer would take this fact for a new reservation. Put `pms-000312` back.
+
+</Step>
+<Step title="Restart with changed content">
+
+Another mistake: the adapter fills a field from its own clock rather than from the source data. After a restart, the same fact comes back with another value.
+
+In `redelivery.jsonl`, replace `2026-07-12T14:03:00Z`, the time the reservation was made, with `2026-07-30T12:00:00Z`, and run the check again:
+
+```output id="changed-content"
+Producer urn:hos:pms:demo
+✓ manifest.json: valid manifest, with its limitations
+✓ recording.jsonl: 5 facts, valid and declared
+✗ redelivery.jsonl: 5 facts, 4 already in the recording unchanged (1 error)
+  error   line 1: pms-000312 comes back with different content (time). A source and id name one fact, which never changes: a correction is a new event.
+          rule events/immutable-facts
+
+✗ urn:hos:pms:demo fails the producer checks.
+```
+
+A fact never changes once published. A consumer that has the first version discards the second as a duplicate, and never sees the difference. Put the time back.
+
+</Step>
+</Steps>
+
+## Check your own producer
+
+You need the same three files from your system.
+
+- **manifest.json**: your producer's manifest. [Sign and publish a producer manifest](/docs/tools/guides/sign-and-publish) explains how to publish it.
+- **recording.jsonl**: every fact your adapter publishes during a test, one JSON object per line, in the order it published them. The simplest way is to have the adapter append each fact it publishes to a file, one line each. Record one producer per file.
+- **redelivery.jsonl**: stop the adapter, start it again with the state it keeps between runs, such as its identity crosswalk, feed it the same source data, and record what it publishes. A producer that remembers what it already published may publish nothing again: an empty redelivery passes.
+
+The HOS mappings of Mews, Apaleo and Cloudbeds are checked this way, from their read-only live checks: [`lib/hos/mappings/sync.ts`](https://github.com/francoisnoel62/HOS-AI/blob/master/lib/hos/mappings/sync.ts) delivers the same data twice, then through a restarted adapter, and runs the same check.
+
+`--redelivery` is optional. Without it, hos checks the manifest and the recording:
+
+```sh
+npx @hos-ai/cli conformance producer --manifest manifest.json --stream recording.jsonl
+```
+
+```output id="no-redelivery"
+Producer urn:hos:pms:demo
+✓ manifest.json: valid manifest, with its limitations
+✓ recording.jsonl: 5 facts, valid and declared
+
+✓ urn:hos:pms:demo passes the producer checks.
+```
+
+## Same data, same facts
+
+To pass the fourth check, derive every part of a fact from the source data, never from the moment you publish it:
+
+- **the id**, from the source's own key for the event, the HOS type and the source's time for it. The same source event then always gets the same id, whatever the process that publishes it.
+- **the content**, from what the source says: its times, its statuses, its references.
+- **the HOS ids of entities**, such as `stay_1042` or `unit_204`, from a crosswalk your adapter keeps between runs, so that a restart finds the same ones.
+
+`hosrecordedat`, the time your system recorded the fact, is the exception: hos leaves it out of the comparison, as a producer may record the same fact again.
+
+<TechnicalDetail title="With the SDK">
+
+`createFactWriter` of `@hos-ai/sdk` builds each id from a prefix, the source's key, the HOS type and the source's time, and `createIdentityRegistry` keeps the crosswalk of entity ids, which you persist. `checkProducer` runs these checks in your own tests. [Build an adapter](/docs/tools/guides/build-an-adapter) will show them together.
+
+</TechnicalDetail>
+
+## Get the result as JSON
+
+```sh
+npx @hos-ai/cli conformance producer --manifest manifest.json --stream recording.jsonl --redelivery redelivery.jsonl --json
+```
+
+```json id="json"
+{
+  "valid": true,
+  "producer": "urn:hos:pms:demo",
+  "manifest": {
+    "valid": true,
+    "errors": []
+  },
+  "recording": {
+    "valid": true,
+    "events": 5,
+    "issues": []
+  },
+  "redelivery": {
+    "valid": true,
+    "events": 5,
+    "issues": [],
+    "repeated": 5
+  }
+}
+```
+
+`repeated` counts the facts of the redelivery already in the recording, with the same id and content.
+
+<Checkpoint>
+
+The report ends with `passes the producer checks`, and the exit code is 0. When a check fails, the report ends with `fails the producer checks`, and the exit code is 1.
+
+</Checkpoint>
+
+<IfItFails>
+
+- `source is ..., but the manifest is ...'s`: the recording holds another producer's facts. Record one producer per file, and give its own manifest.
+- `does not declare ... (undeclared_capability)`: your system publishes a fact its manifest does not declare for that hotel. Declare it, or stop publishing it.
+- `limitations is empty`: state what your system does not do or cannot share. An empty list is not accepted.
+- `The recording holds no fact`: the file is empty, or is not the recording.
+- `... is not in the recording`: ids are not stable across restarts. See [Same data, same facts](#same-data-same-facts).
+- `comes back with different content`: a field is taken from the clock, or from state that changed. The message names the field.
+- `producer needs --manifest and --stream`, exit code 2: give both files.
+
+</IfItFails>
+
+## Next steps
+
+- [Sign and publish a producer manifest](/docs/tools/guides/sign-and-publish): let consumers check who declared what.
+- [Validate events, manifests and streams](/docs/tools/guides/validate): the checks behind the recording line.
+- [Run the checks in CI](/docs/tools/guides/ci): run the producer check on every change of your adapter.

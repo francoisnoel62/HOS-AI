@@ -72,9 +72,11 @@ test("the search finds a page from a few words or a pasted message, and / moves 
     .getByRole("link", { name: /Sign and publish a producer manifest/ })
     .first()
     .click();
-  await expect(page).toHaveURL(/\/docs\/tools\/guides\/sign-and-publish$/);
+  // The page, or one of its sections.
+  await expect(page).toHaveURL(/\/docs\/tools\/guides\/sign-and-publish(#[a-z0-9-]+)?$/);
 
-  await search.fill("a valid manifest with its limitations stated");
+  // A message pasted from hos, with the level it starts with.
+  await search.fill("error   comes back with different content (time). A source and id name one fact, which never changes");
   await expect(page.getByRole("link", { name: /Check what a producer publishes/ }).first()).toBeVisible();
   await search.fill("zzzz qqqq");
   await expect(page.getByText("No result. Try fewer words, or the words of the error message.").last()).toBeVisible();

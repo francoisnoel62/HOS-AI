@@ -1,15 +1,300 @@
-<PageInProgress>
+<InShort>
 
-This guide will take a vendor through signing its producer manifest and publishing it:
+A producer signs its manifest, so that every system that reads it can check who declared it and that nobody changed it since. You create a key once, sign the manifest, publish three files on your website under `/.well-known/hos/`, and sign again before the signature expires, every few months.
 
-- why sign: a manifest that fails verification counts as no manifest, so nothing it declares is processed;
-- creating a key with `hos manifest keygen`, and signing with `hos manifest sign`;
-- serving the three files, `manifest.json`, `manifest.jws` and `jwks.json`, under `https://<your origin>/.well-known/hos/`, with recipes for common hosts;
-- checking the result with `hos manifest verify`, from the files or from the URL, and `--at` to test a future date;
-- signing again before the signature expires, and rotating keys;
-- keeping the private key safe, and what to do if it leaks;
-- producers that are not public.
+</InShort>
 
-Meanwhile, [HOS Events 0.1](/docs/events#signed-manifests) states the signing rules, and the [npm page of the hos command](https://www.npmjs.com/package/@hos-ai/cli) has the three commands.
+<FactSheet
+  audience="Vendors that publish HOS facts: developers, and whoever runs the website"
+  time="30 minutes"
+  needs={["hos, see Install", "Your producer's manifest", "A website you can publish files on, over HTTPS"]}
+/>
 
-</PageInProgress>
+## Why this matters
+
+A <Term id="manifest">manifest</Term> decides what consumers trust: the facts you publish, and the values you are the <Term id="authority">authority</Term> on. If anyone could change it, anyone could claim to be the authority on a hotel's rooms. So HOS Events 0.1 has producers sign their manifest, and consumers verify it before trusting it. A manifest that fails verification counts as no manifest: nothing it declares is processed.
+
+<PlainLanguage>
+
+Think of a wax seal. Your **private key** is the seal: only you have it. Your **key set**, the <Term id="jwks">JWKS</Term>, is the public register of your seals, which anyone can consult. The **signature** is the imprint of the seal, published next to the manifest. Anyone can compare the imprint with the register; nobody can make a new imprint without the seal.
+
+</PlainLanguage>
+
+## What you publish
+
+A public producer serves three files, on one HTTPS origin, the address of its website:
+
+| File                             | What it is                                       |
+| :------------------------------- | :----------------------------------------------- |
+| `/.well-known/hos/manifest.json` | the manifest, as readable JSON                   |
+| `/.well-known/hos/manifest.jws`  | its <Term id="signature">signature</Term>, a JWS |
+| `/.well-known/hos/jwks.json`     | your public keys                                 |
+
+The private key is never published.
+
+<Steps>
+<Step title="Verify an example producer">
+
+HOS publishes the three files of a fictional producer, Example Housekeeping. Download them into a new folder:
+
+<Command
+  powershell={`curl.exe -O https://hos-ai.vercel.app/spec/0.1/conformance/signing/well-known/manifest.json
+curl.exe -O https://hos-ai.vercel.app/spec/0.1/conformance/signing/well-known/manifest.jws
+curl.exe -O https://hos-ai.vercel.app/spec/0.1/conformance/signing/well-known/jwks.json`}
+  cmd={`curl -O https://hos-ai.vercel.app/spec/0.1/conformance/signing/well-known/manifest.json
+curl -O https://hos-ai.vercel.app/spec/0.1/conformance/signing/well-known/manifest.jws
+curl -O https://hos-ai.vercel.app/spec/0.1/conformance/signing/well-known/jwks.json`}
+  bash={`curl -O https://hos-ai.vercel.app/spec/0.1/conformance/signing/well-known/manifest.json
+curl -O https://hos-ai.vercel.app/spec/0.1/conformance/signing/well-known/manifest.jws
+curl -O https://hos-ai.vercel.app/spec/0.1/conformance/signing/well-known/jwks.json`}
+/>
+
+Verify the manifest with its key set. hos finds the signature next to the manifest, in `manifest.jws`:
+
+```sh
+npx @hos-ai/cli manifest verify manifest.json --jwks jwks.json
+```
+
+```output id="example-verify"
+✓ manifest.jws: signed with key Rmvn6iiK5EPEKShAwybtwHfST8XHnptFp5kdveGjsfk (Ed25519) on 2026-09-26T00:00:00Z, valid until 2027-09-26T00:00:00Z
+✓ manifest.json: valid manifest of https://housekeeping.example
+
+✓ The manifest of https://housekeeping.example is signed and valid.
+```
+
+**What just happened.** hos read the signature, found the key it names in the key set, and checked that the signature matches the manifest, byte for byte in its canonical form. It checked the dates, and that the manifest itself is valid.
+
+</Step>
+<Step title="Change the manifest without signing it">
+
+Open `manifest.json`. In the occupancy declaration, this producer says it is not the authority. Replace `"authoritative": false` with `"authoritative": true`, as someone claiming authority on occupancy would, save, and verify again:
+
+```output id="example-tampered"
+✗ manifest.jws: bad signature
+  error   The signature does not match this manifest and key Rmvn6iiK5EPEKShAwybtwHfST8XHnptFp5kdveGjsfk: the manifest changed after it was signed, or another key signed it.
+          rule events/signed-manifests
+✓ manifest.json: valid manifest of https://housekeeping.example
+
+✗ The manifest of https://housekeeping.example fails verification. A consumer treats it as no manifest: nothing it declares is processed.
+```
+
+The manifest is still valid, but the signature no longer matches it: a consumer ignores the whole manifest, and every fact of this producer. Put `false` back.
+
+</Step>
+<Step title="Verify as of a later date">
+
+A signature expires. `--at` verifies as of another time, to see what a consumer will see then:
+
+```sh
+npx @hos-ai/cli manifest verify manifest.json --jwks jwks.json --at 2027-10-01T00:00:00Z
+```
+
+```output id="example-expired"
+✗ manifest.jws: expired
+  error   The signature expired on 2027-09-26T00:00:00.000Z. The producer signs its manifest again before it expires.
+          rule events/signed-manifests
+✓ manifest.json: valid manifest of https://housekeeping.example
+
+✗ The manifest of https://housekeeping.example fails verification. A consumer treats it as no manifest: nothing it declares is processed.
+```
+
+</Step>
+<Step title="Create your key">
+
+Now for your own manifest. In the folder where you keep it, create a key. No manifest yet? Download the example PMS's, from [Check what a producer publishes](/docs/tools/guides/check-a-producer), to try:
+
+<Command
+  powershell="curl.exe -O https://hos-ai.vercel.app/docs/tools/examples/producer/manifest.json"
+  cmd="curl -O https://hos-ai.vercel.app/docs/tools/examples/producer/manifest.json"
+  bash="curl -O https://hos-ai.vercel.app/docs/tools/examples/producer/manifest.json"
+/>
+
+Then:
+
+```sh
+npx @hos-ai/cli manifest keygen --key private-key.json --jwks jwks.json
+```
+
+```output id="keygen" varies="kid"
+Wrote the private key JX2SZbhtnWjL3S56tqzpZ-uCF0aAYhGO7RMRmQoI9hY (Ed25519) to private-key.json. Keep it secret: whoever holds it can sign as this producer.
+Added its public key to jwks.json, which now holds 1 key. Publish it at /.well-known/hos/jwks.json.
+```
+
+Your key has another id, its `kid`: the fingerprint of the public key, which names it in the key set. hos writes two files: `private-key.json`, the private key, and `jwks.json`, the key set with the public key. The key is Ed25519; `--alg ES256` creates an ES256 key instead, for systems that only support that one.
+
+<Callout type="warning" title="Keep the private key secret">
+
+Whoever holds `private-key.json` can sign as your producer.
+
+- Never commit it. Add it to your `.gitignore`:
+
+```text
+private-key.json
+```
+
+- Store it in your secrets manager, or wherever your organisation keeps signing keys, and give it only to the system that signs.
+- On macOS and Linux, hos makes the file readable by you alone. Windows does not enforce that: store it in a folder only you can read.
+
+</Callout>
+
+</Step>
+<Step title="Sign the manifest">
+
+```sh
+npx @hos-ai/cli manifest sign manifest.json --key private-key.json
+```
+
+```output id="sign" varies="kid time"
+Signed manifest.json with key JX2SZbhtnWjL3S56tqzpZ-uCF0aAYhGO7RMRmQoI9hY (Ed25519), until 2026-12-25T22:21:29Z: manifest.jws.
+Publish it beside the manifest, at /.well-known/hos/manifest.jws, and sign again before it expires.
+```
+
+hos checks that the manifest is valid, then writes its signature to `manifest.jws`. The signature lasts 90 days; `--days` sets another length. Verify it, as for the example:
+
+```sh
+npx @hos-ai/cli manifest verify manifest.json --jwks jwks.json
+```
+
+```output id="verify" varies="kid time"
+✓ manifest.jws: signed with key JX2SZbhtnWjL3S56tqzpZ-uCF0aAYhGO7RMRmQoI9hY (Ed25519) on 2026-09-26T22:21:29Z, valid until 2026-12-25T22:21:29Z
+✓ manifest.json: valid manifest of urn:hos:pms:demo
+
+✓ The manifest of urn:hos:pms:demo is signed and valid.
+```
+
+The manifest itself does not change: its signature is a separate file. Change the manifest, and you sign it again.
+
+</Step>
+<Step title="Publish the three files">
+
+Put `manifest.json`, `manifest.jws` and `jwks.json` in the folder `.well-known/hos/` at the root of your website, and serve them over HTTPS as they are. How depends on your host:
+
+- **A static site or a folder served by your web server**: create `.well-known/hos/` in the site's root folder. Some tools skip folders whose name starts with a dot: check that the files are deployed.
+- **Vercel, Netlify and most front-end hosts**: put the folder in the folder your host publishes as is, often `public/`, so that it becomes `public/.well-known/hos/`.
+- **Nginx**: serve the folder with a `location`, for example:
+
+```text
+location /.well-known/hos/ {
+    root /var/www/hos;
+}
+```
+
+The files are small, static and public. `application/json` is the usual content type for the two JSON files; hos reads them whatever their type.
+
+</Step>
+<Step title="Verify what you published">
+
+Give hos the address of your manifest. It fetches the signature and the key set from the same folder:
+
+```sh
+npx @hos-ai/cli manifest verify https://your-domain.example/.well-known/hos/manifest.json
+```
+
+Here is what it prints for the example producer, whose files HOS publishes in another folder, given with `--jws` and `--jwks-url`:
+
+```sh
+npx @hos-ai/cli manifest verify https://hos-ai.vercel.app/spec/0.1/conformance/signing/well-known/manifest.json --jws https://hos-ai.vercel.app/spec/0.1/conformance/signing/well-known/manifest.jws --jwks-url https://hos-ai.vercel.app/spec/0.1/conformance/signing/well-known/jwks.json
+```
+
+```output id="verify-url"
+✓ https://hos-ai.vercel.app/spec/0.1/conformance/signing/well-known/manifest.jws: signed with key Rmvn6iiK5EPEKShAwybtwHfST8XHnptFp5kdveGjsfk (Ed25519) on 2026-09-26T00:00:00Z, valid until 2027-09-26T00:00:00Z
+✓ https://hos-ai.vercel.app/spec/0.1/conformance/signing/well-known/manifest.json: valid manifest of https://housekeeping.example
+
+✓ The manifest of https://housekeeping.example is signed and valid.
+```
+
+</Step>
+</Steps>
+
+## Sign again before it expires
+
+A signature lasts 90 days by default. Sign again well before, for example every 60 days, and publish the new `manifest.jws`. The same key can sign again: nothing else changes.
+
+To be warned in time, verify your published manifest as of a date a few weeks ahead, for example in a scheduled CI job. It fails while there is still time to sign:
+
+```sh
+npx @hos-ai/cli manifest verify https://your-domain.example/.well-known/hos/manifest.json --at 2027-01-15T00:00:00Z
+```
+
+[Run the checks in CI](/docs/tools/guides/ci) will give a complete workflow.
+
+## Change keys
+
+Change keys from time to time, and whenever a key may have been seen by someone it should not. Add the new key to the same key set:
+
+```sh
+npx @hos-ai/cli manifest keygen --key private-key-2.json --jwks jwks.json
+```
+
+```output id="rotate" varies="kid"
+Wrote the private key sqWWEPDBWPptMJ4bVa9WOEcSImfGPBGGoxFosvSI9rc (Ed25519) to private-key-2.json. Keep it secret: whoever holds it can sign as this producer.
+Added its public key to jwks.json, which now holds 2 keys. Publish it at /.well-known/hos/jwks.json.
+```
+
+Then:
+
+1. publish the new `jwks.json`, with both keys;
+2. sign with the new key, `--key private-key-2.json`, and publish the new `manifest.jws`;
+3. keep the old key in the key set until every signature made with it has expired, then remove it from `jwks.json`, publish, and delete the old private key.
+
+## If a private key leaks
+
+Whatever the key signed can be forged until the key is gone. At once:
+
+1. remove its public key from `jwks.json`, and publish the key set;
+2. create a new key, sign the manifest with it, and publish `manifest.jws` and `jwks.json`;
+3. delete the old private key everywhere it was stored.
+
+Once the old key is gone from the key set, anything signed with it fails verification, including forgeries.
+
+A private key published by mistake in the key set is a leak too. hos refuses it:
+
+```output id="exposed" varies="kid" excerpt="head"
+✗ manifest.jws: unusable key
+  error   Key _qrqVc4ppJqRlSjHYaHTqNznScDUivyY67dYQl78kiw is a private key. A key set publishes public keys only: this private key is exposed and must be replaced.
+          rule events/signed-manifests
+```
+
+## A producer that is not public
+
+A producer that does not publish on the web gives its consumers the three files through configured, authenticated URLs, or as files. Consumers verify them from files:
+
+```sh
+npx @hos-ai/cli manifest verify manifest.json --jws manifest.jws --jwks jwks.json
+```
+
+## Why a signature fails
+
+| Error                   | What it means                                                      | What to do                                      |
+| :---------------------- | :----------------------------------------------------------------- | :---------------------------------------------- |
+| `bad_signature`         | the manifest changed after it was signed, or another key signed it | sign the manifest again, and publish both files |
+| `expired`               | the signature's end date has passed                                | sign again                                      |
+| `not_yet_valid`         | the signature's start date is in the future: a clock is wrong      | check the clock of the system that signed       |
+| `unknown_key`           | no key in the key set has the signature's `kid`, or two keys do    | publish the key set with the signing key        |
+| `unusable_key`          | the key cannot verify this signature, or it is a private key       | publish the public key; replace a private one   |
+| `unsupported_algorithm` | the signature uses another algorithm than Ed25519 or ES256         | sign with hos, or with Ed25519 or ES256         |
+| `malformed`             | `manifest.jws` is not a detached signature with a key and dates    | sign again with hos                             |
+
+Clocks may differ by up to 60 seconds: hos and consumers allow it.
+
+<Checkpoint>
+
+`hos manifest verify` on your published manifest ends with `is signed and valid`, and exit code 0. It prints exit code 1 when the manifest or its signature is invalid, and 2 when a file or URL cannot be read.
+
+</Checkpoint>
+
+<IfItFails>
+
+- `answers 404 Not Found`: the file is not at that address. Check that `.well-known/hos/` was deployed, including the files of a folder whose name starts with a dot.
+- `private-key.json already exists`: `keygen` never overwrites a key. Choose another file name for a new key.
+- `bad signature` right after signing: the manifest you publish is not the one you signed. Publish both files from the same folder, together.
+- `unknown key`: the published key set does not have the signing key. Publish the `jwks.json` that `keygen` updated.
+- A consumer rejects your manifest while hos accepts it: compare the time of both systems, and the files each one fetched.
+
+</IfItFails>
+
+## Next steps
+
+- [Check what a producer publishes](/docs/tools/guides/check-a-producer): the facts that your manifest declares.
+- [Run the checks in CI](/docs/tools/guides/ci): verify your manifest every day, and be warned before it expires.
+- [HOS Events 0.1, signed manifests](/docs/events#signed-manifests): the rules themselves.
