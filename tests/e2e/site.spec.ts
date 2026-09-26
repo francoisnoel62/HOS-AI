@@ -49,6 +49,13 @@ test("the legal notice names the publisher, the host and each licence", async ({
   await expect(page.locator("#publisher")).toContainText("Publication director");
   await expect(page.locator("#hosting")).toContainText("Vercel Inc.");
   await expect(page.getByRole("region", { name: "Licence of each kind of material" })).toContainText("Apache License 2.0");
+  await expect(page.getByText("To complete:")).toHaveCount(0);
+});
+
+test("security.txt names a security contact", async ({ request }) => {
+  const response = await request.get("/.well-known/security.txt");
+  expect(response.ok()).toBe(true);
+  expect(await response.text()).toMatch(/^Contact: mailto:\S+@\S+$/m);
 });
 
 test("every form states who uses the data and for how long", async ({ page }) => {

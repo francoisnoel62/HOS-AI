@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { GET as purgeRoute } from "@/app/api/cron/purge/route";
 import { purgeExpiredRecords } from "@/lib/forms/retention";
-import { documentDates, legalText, pending, pendingLegalFields, privacyVersion, publisher } from "@/lib/legal";
+import { documentDates, legalText, pending, pendingLegalFields, privacyVersion } from "@/lib/legal";
 
 describe("legal facts", () => {
   it("renders a missing fact as a visible placeholder", () => {
@@ -13,7 +13,6 @@ describe("legal facts", () => {
   it("lists each open placeholder once, however many pages use it", () => {
     const open = pendingLegalFields();
     expect(open).toEqual([...new Set(open)]);
-    if (typeof publisher.email !== "string") expect(open.filter((label) => label === publisher.email.pending)).toHaveLength(1);
   });
 
   it("stores submissions under the privacy notice version the page shows", () => {
