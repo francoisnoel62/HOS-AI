@@ -28,7 +28,7 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
-    "embed-schemas": "node scripts/embed-schemas.mjs",
+    "generate": "node scripts/generate.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },

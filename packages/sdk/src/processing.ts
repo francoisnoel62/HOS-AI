@@ -1,4 +1,4 @@
-import type { HosFact, ProducerManifest, UnitStatusChanged, UnitStatusDimension } from "./types.ts";
+import type { HosFact, ProducerManifest, UnitStatusChanged, UnitStatusDimension } from "./types.generated.ts";
 
 // The processing rules of HOS Events 0.1 that every consumer applies, whatever it builds on the facts: deduplication,
 // occurrence order, declared capability and authority. They are normative; the arrival-readiness projection under

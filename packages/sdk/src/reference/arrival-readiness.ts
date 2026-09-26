@@ -1,30 +1,31 @@
 import { authority, byOccurrence, type Disposition, factKey, isLater, statusChanges } from "../processing.ts";
 import type {
-  ConflictRef,
-  EventRef,
-  FactRef,
   GuestMessageReceived,
   HosFact,
   HousekeepingTaskCompleted,
   HousekeepingTaskCreated,
-  MaintenanceRef,
-  OccupantRef,
   ProducerManifest,
-  ProjectionConfig,
-  RoomReadinessAtRisk,
-  RoomReadinessResolved,
-  Situation,
   StayCheckedIn,
   StayCheckedOut,
   StayCheckInReverted,
   StayExpected,
   StayUnitAssigned,
   StayUnitUnassigned,
-  TaskRef,
   UnitMaintenanceCancelled,
   UnitMaintenanceScheduled,
   UnitStatusChanged,
-} from "../types.ts";
+} from "../types.generated.ts";
+import type {
+  ArrivalRoomReadinessAtRisk,
+  ArrivalRoomReadinessResolved,
+  ConflictRef,
+  EventRef,
+  FactRef,
+  MaintenanceRef,
+  OccupantRef,
+  Situation,
+  TaskRef,
+} from "./types.generated.ts";
 
 // Reference implementation of the non-normative arrival-readiness projection over HOS Events 0.1. It applies the
 // normative processing rules of ../processing.ts (deduplication, occurrence order, declared capability and authority,
@@ -32,6 +33,9 @@ import type {
 // published rules.
 
 export const projectionSource = "urn:hos:projection:arrival-readiness";
+
+// How a scenario configures the projection: the housekeeping statuses that make a unit ready.
+export type ProjectionConfig = { ready_housekeeping_statuses: string[] };
 
 export type Readiness = "unknown" | "not_ready" | "ready";
 export type SituationStatus = "none" | "at_risk" | "resolved";
@@ -253,7 +257,7 @@ export function replayArrivalReadiness(events: HosFact[], manifests: ProducerMan
       situation: situations.get(stay.data.stay_id) ?? "none",
     };
     const previous = { unit: lastUnit.get(stay.data.stay_id), blocked: blocked.get(stay.data.stay_id), overlapped: overlapped.get(stay.data.stay_id) };
-    const reason: RoomReadinessResolved["data"]["reason"] = !reservationActive
+    const reason: ArrivalRoomReadinessResolved["data"]["reason"] = !reservationActive
       ? "reservation_inactive"
       : stayStatus !== "expected"
         ? "stay_started"
@@ -310,7 +314,7 @@ export function replayArrivalReadiness(events: HosFact[], manifests: ProducerMan
       const { view, facts, atRisk, reason } = assess(stay);
       const current = situations.get(stay.data.stay_id) ?? "none";
       if (atRisk && current !== "at_risk") {
-        const situation: RoomReadinessAtRisk = {
+        const situation: ArrivalRoomReadinessAtRisk = {
           ...envelope("arrival.room_readiness_at_risk", `${stay.data.stay_id}.at_risk.${delivery}`, stay, view, facts, event),
           data: {
             stay_id: view.stay_id,
@@ -329,7 +333,7 @@ export function replayArrivalReadiness(events: HosFact[], manifests: ProducerMan
         situations.set(stay.data.stay_id, "at_risk");
         emitted.push(situation);
       } else if (!atRisk && current === "at_risk") {
-        const situation: RoomReadinessResolved = {
+        const situation: ArrivalRoomReadinessResolved = {
           ...envelope("arrival.room_readiness_resolved", `${stay.data.stay_id}.resolved.${delivery}`, stay, view, facts, event),
           data: {
             stay_id: view.stay_id,

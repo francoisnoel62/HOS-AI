@@ -1,5 +1,5 @@
 import { localDate, utc } from "./time.ts";
-import type { HosFact } from "./types.ts";
+import type { HosFact } from "./types.generated.ts";
 
 // Creating HOS facts from a source system: opaque identities, and the HOS envelope around each fact.
 
