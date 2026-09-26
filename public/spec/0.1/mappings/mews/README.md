@@ -1,6 +1,6 @@
 # Mews Connector API → HOS Events 0.1 — experimental mapping
 
-Status: **experimental and unofficial**. It is written from Mews's public Connector API documentation ([MewsSystems/gitbook-connector-api](https://github.com/MewsSystems/gitbook-connector-api), revision `e8732c7`). HOS AI is not affiliated with Mews, and Mews has not reviewed or endorsed this mapping. Every payload is synthetic. The adapter has not yet run against a live Mews environment; the [live check](#live-check) is ready for it.
+Status: **experimental and unofficial**. It is written from Mews's public Connector API documentation ([MewsSystems/gitbook-connector-api](https://github.com/MewsSystems/gitbook-connector-api), revision `e8732c7`). HOS AI is not affiliated with Mews, and Mews has not reviewed or endorsed this mapping. Every payload in the replay is synthetic. The adapter has also run, read-only, against Mews's two public demo enterprises; see the [live check](#live-check).
 
 The mapping covers the facts the arrival-readiness scenario needs from a PMS: reservations, stays, unit assignment, check-in and check-out, and room states. It reads three documented Mews surfaces:
 
@@ -53,7 +53,7 @@ Mews webhooks carry entity ids only. For each id, the integration calls the matc
 | Resource block deleted (`IsActive` false, `DeletedUtc`) | `unit.maintenance_cancelled`            | At `DeletedUtc`.                                                                                                                                                                                                                        |
 | `PaymentUpdated`                                        | —                                       | No HOS 0.1 counterpart in this mapping.                                                                                                                                                                                                 |
 
-Only accommodation services listed in the configuration become stays. Only active, top-level `Space` resources become units.
+Only accommodation services listed in the configuration become stays. Every active `Space` resource becomes a unit, a bed as well as its room: Mews assigns a dorm stay to the bed, a child resource of the room.
 
 ## Differences from the synthetic corpus
 
@@ -92,12 +92,31 @@ The run does what an integration does before its first webhook. Every fetched en
 - how many facts a second pass over the same data publishes: none, if the adapter is idempotent;
 - today's arrivals as the arrival-readiness projection sees them: readiness, maintenance windows and situations.
 
-The report keeps HOS ids, counts and room names. It never keeps Mews payloads or customer data. Nightly bookable services are taken as accommodation; `MEWS_SERVICE_IDS` overrides them. The logic is `lib/hos/mappings/mews-sync.ts`, tested offline in `tests/unit/mews-sync.test.ts`.
+The report keeps HOS ids, counts and room names. It never keeps Mews payloads or customer data. Accommodation services are the active bookable services, sold by the day or the month, that have a resource category of a place to stay: `Room`, `Bed`, `Dorm`, `Apartment`, `Suite`, `Villa`, `Site`, `Tent`, `CaravanOrRV` or `UnequippedCampsite`. That takes one more call, Get all resource categories. `MEWS_SERVICE_IDS` overrides the selection. A `429` waits for `Retry-After`, or backs off, and retries: the demo tokens are public and shared. The logic is `lib/hos/mappings/mews-sync.ts`, on top of `lib/hos/mappings/sync.ts`, which the [Apaleo](../apaleo/README.md#live-check) and [Cloudbeds](../cloudbeds/README.md#live-check) live checks share. It is tested offline in `tests/unit/mews-sync.test.ts`.
 
-The check has not run yet: the environment this mapping was built in could not reach `api.mews-demo.com`.
+### First runs, 25 September 2026
+
+The check ran against both demo enterprises, with a one-day window:
+
+| Enterprise                     | Fetched                                              | HOS facts | Schema errors | Second pass | Arrivals still expected  |
+| :----------------------------- | :--------------------------------------------------- | --------: | ------------: | ----------: | :----------------------- |
+| Gross pricing, Europe/Budapest | 632 reservations, 1,532 resources, 6 resource blocks |     2,293 |             0 |           0 | 10: 1 ready, 9 not ready |
+| Net pricing, America/New_York  | 57 reservations, 1,052 resources                     |     1,192 |             0 |           0 | 7: 3 ready, 4 not ready  |
+
+Every Mews field the adapter reads was present, and every state it met is documented. The only entities not mapped were reservations cancelled before HOS knew them, as expected on a first synchronisation. The demo data is shared and changes all day, so these counts are a snapshot.
+
+The first runs changed the integration in three ways:
+
+- **Beds are units.** The demo enterprises assign dorm stays to beds, 13 of 188 live stays in the Gross enterprise and 2 of 36 in the Net one. The adapter used to keep top-level resources only, so those stays pointed to units HOS never heard of, and their readiness could not be known.
+- **Accommodation is chosen by category, not by time unit.** Parking and full-day meeting rooms are sold by the day, and long stays by the month. Taking the services sold by the day, as the check first did, took in a parking service, a meeting-room service and a membership, and left out a monthly long-stay service.
+- **The public tokens are rate-limited together.** The very first call answered `429`. The check now retries.
+
+The summary line now counts readiness only among the stays still expected. Stays that arrived today and are already in house, or gone, read not ready in the room they used.
 
 ## Not covered yet
 
 - Occupancy from Get resources' occupancy state.
-- Rate limits and webhook subscriptions in a live integration.
+- A room and its beds as one space: a guest in a whole dorm does not occupy its beds in HOS, nor a guest in a bed the dorm.
+- Parking spots, meeting rooms and desks are units too, since they are spaces. Their resource categories would tell them apart, but the adapter does not read resource category assignments yet.
+- Webhook subscriptions in a live integration.
 - Persistence of the crosswalk and of the adapter's published state.

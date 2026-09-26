@@ -1,8 +1,9 @@
-import { writeFile } from "node:fs/promises";
+import { setTimeout as sleep } from "node:timers/promises";
 import { parseArgs } from "node:util";
 
 import type { MewsReservation, MewsResource, MewsResourceBlock } from "../lib/hos/mappings/mews";
-import { type MewsSnapshot, syncMews } from "../lib/hos/mappings/mews-sync";
+import { accommodationServices, type MewsResourceCategory, type MewsService, type MewsSnapshot, syncMews } from "../lib/hos/mappings/mews-sync";
+import { runLiveCheck, writeLiveReport } from "./live-report";
 
 // Runs the experimental Mews mapping against a live Mews Connector API environment, read-only: it calls Get operations
 // only and never writes to Mews. Tokens come from the environment and are never printed. Mews publishes demo tokens in
@@ -22,20 +23,30 @@ const client = "HOS AI mapping check 0.1";
 // Mews allows 1,000 items a page; ten pages is more than a live check needs.
 const pageSize = 1000;
 const maxPages = 10;
+// Mews allows 200 requests per access token in 30 seconds, and everyone who tries the public demo tokens shares them: a
+// 429 waits for Retry-After, or backs off, and retries.
+const retries = 5;
 
 type Page = { Cursor?: string | null };
 
 async function call<T>(operation: string, body: Record<string, unknown> = {}): Promise<T> {
-  const response = await fetch(`${platform}/api/connector/v1/${operation}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ ClientToken: clientToken, AccessToken: accessToken, Client: client, ...body }),
-  });
-  if (!response.ok) {
-    const detail = await response.text();
-    throw new Error(`${operation} answered ${response.status}: ${detail.slice(0, 300)}`);
+  for (let attempt = 0; ; attempt++) {
+    const response = await fetch(`${platform}/api/connector/v1/${operation}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ClientToken: clientToken, AccessToken: accessToken, Client: client, ...body }),
+    });
+    if (response.status === 429 && attempt < retries) {
+      await response.body?.cancel();
+      await sleep(1000 * (Number(response.headers.get("retry-after")) || 2 ** attempt));
+      continue;
+    }
+    if (!response.ok) {
+      const detail = await response.text();
+      throw new Error(`${operation} answered ${response.status}: ${detail.slice(0, 300)}`);
+    }
+    return (await response.json()) as T;
   }
-  return (await response.json()) as T;
 }
 
 async function getAll<T>(operation: string, key: string, body: Record<string, unknown>): Promise<T[]> {
@@ -52,8 +63,6 @@ async function getAll<T>(operation: string, key: string, body: Record<string, un
   return items;
 }
 
-type MewsService = { Id: string; IsActive: boolean; Names?: Record<string, string>; Name?: string; Data: { Discriminator: string; Value?: { TimeUnitPeriod?: string } } };
-
 async function main() {
   if (!clientToken || !accessToken) {
     console.error("Set MEWS_CLIENT_TOKEN and MEWS_ACCESS_TOKEN. The Mews Connector API documentation publishes demo tokens under Getting started, Environments.");
@@ -69,11 +78,16 @@ async function main() {
 
   const services = await getAll<MewsService>("services/getAll", "Services", scope);
   const bookable = services.filter((service) => service.IsActive && service.Data.Discriminator === "Bookable");
-  // Nightly bookable services are stays; hourly ones are meeting rooms, parking and the like. MEWS_SERVICE_IDS overrides.
+  // Bookable services with rooms, beds, apartments or pitches are stays; the others are parking, meeting rooms and the
+  // like. MEWS_SERVICE_IDS overrides.
   const override = process.env.MEWS_SERVICE_IDS?.split(",")
     .map((id) => id.trim())
     .filter(Boolean);
-  const accommodation = override ?? bookable.filter((service) => (service.Data.Value?.TimeUnitPeriod ?? "Day") === "Day").map((service) => service.Id);
+  const categories =
+    override || !bookable.length
+      ? []
+      : await getAll<MewsResourceCategory>("resourceCategories/getAll", "ResourceCategories", { ...scope, ServiceIds: bookable.map((service) => service.Id), ActivityStates: ["Active"] });
+  const accommodation = override ?? accommodationServices(bookable, categories);
   if (!accommodation.length) throw new Error("No accommodation service found; set MEWS_SERVICE_IDS.");
 
   // Yesterday to the end of the window, so stays in house today and their rooms are included.
@@ -90,51 +104,24 @@ async function main() {
   const report = syncMews(snapshot, { source: "urn:hos:pms:mews-live", tenant: "tenant_mews_live", propertyId: "prop_mews_live" });
 
   const serviceName = (service: MewsService) => service.Names?.["en-US"] ?? service.Names?.["en-GB"] ?? Object.values(service.Names ?? {})[0] ?? service.Name ?? service.Id;
-  const summary = {
-    platform,
-    fetched_at: fetchedAt,
-    window: colliding,
-    enterprise: { name: configuration.Enterprise.Name ?? null, timezone: enterprise.timezone },
-    accommodation_services: accommodation.map((id) => {
-      const service = services.find((candidate) => candidate.Id === id);
-      return service ? serviceName(service) : id;
-    }),
-    other_bookable_services: bookable.filter((service) => !accommodation.includes(service.Id)).map(serviceName),
-    fetched: report.fetched,
-    hos_events: report.events.length,
-    events_by_type: report.events_by_type,
-    schema_errors: report.schema_errors,
-    failures: report.failures,
-    resync_events: report.resync_events,
-    unmapped: report.unmapped,
-    dispositions: report.dispositions,
-    situations: report.situations,
-    arrivals: report.arrivals,
-  };
-
-  const arrivals = report.arrivals.stays;
-  const count = (predicate: (stay: (typeof arrivals)[number]) => boolean) => arrivals.filter(predicate).length;
-  console.log(`Mews ${platform} — ${summary.enterprise.name ?? enterprise.id} (${enterprise.timezone})`);
-  console.log(`Fetched ${report.fetched.reservations} reservations, ${report.fetched.resources} resources, ${report.fetched.resource_blocks} resource blocks.`);
-  console.log(`Accommodation services: ${summary.accommodation_services.join(", ")}`);
-  console.log(`HOS facts: ${report.events.length}, schema errors: ${report.schema_errors.length}, failures: ${report.failures.length}, facts on a second pass: ${report.resync_events}`);
-  for (const [type, total] of Object.entries(report.events_by_type).sort()) console.log(`  ${type.padEnd(28)} ${total}`);
-  console.log("Not mapped:");
-  for (const { event, reason, count: total } of report.unmapped) console.log(`  ${String(total).padStart(5)}  ${event}: ${reason}`);
-  console.log(`Dispositions: ${JSON.stringify(report.dispositions)}; situations: ${JSON.stringify(report.situations)}`);
-  console.log(
-    `Arrivals on ${report.arrivals.business_date}: ${arrivals.length} — ready ${count((stay) => stay.readiness === "ready")}, not ready ${count((stay) => stay.readiness === "not_ready")}, unknown ${count((stay) => stay.readiness === "unknown")}, blocked by maintenance ${count((stay) => Boolean(stay.maintenance))}, at risk ${count((stay) => stay.situation === "at_risk")}`,
-  );
-  if (args.out) {
-    await writeFile(args.out, `${JSON.stringify(args.events ? { ...summary, events: report.events } : summary, null, 2)}\n`);
-    console.log(`Report written to ${args.out}.`);
-  }
-  if (report.schema_errors.length || report.failures.length || report.resync_events) process.exitCode = 1;
+  const accommodationNames = accommodation.map((id) => {
+    const service = services.find((candidate) => candidate.Id === id);
+    return service ? serviceName(service) : id;
+  });
+  await writeLiveReport(report, {
+    heading: `Mews ${platform} — ${configuration.Enterprise.Name ?? enterprise.id} (${enterprise.timezone})`,
+    notes: [`Accommodation services: ${accommodationNames.join(", ")}`],
+    context: {
+      platform,
+      fetched_at: fetchedAt,
+      window: colliding,
+      enterprise: { name: configuration.Enterprise.Name ?? null, timezone: enterprise.timezone },
+      accommodation_services: accommodationNames,
+      other_bookable_services: bookable.filter((service) => !accommodation.includes(service.Id)).map(serviceName),
+    },
+    out: args.out,
+    events: args.events,
+  });
 }
 
-main().catch((error: unknown) => {
-  // fetch reports network failures, such as a refused proxy tunnel, in its cause.
-  const cause = error instanceof Error && error.cause instanceof Error ? ` (${error.cause.message})` : "";
-  console.error(error instanceof Error ? `${error.message}${cause}` : error);
-  process.exit(1);
-});
+runLiveCheck(main);

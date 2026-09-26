@@ -275,7 +275,8 @@ export function createMewsAdapter(config: MewsAdapterConfig) {
 
     function resource(mews: MewsResource) {
       const skip = (reason: string) => unmapped.push({ event: "ResourceUpdated", id: mews.Id, reason });
-      if (mews.Data.Discriminator !== "Space" || mews.ParentResourceId) return skip("Not a unit: only top-level space resources are units.");
+      // A bed is a space too, a child of its room, and Mews assigns a dorm stay to the bed: rooms and beds are both units.
+      if (mews.Data.Discriminator !== "Space") return skip("Not a unit: only space resources are units.");
       if (!mews.IsActive) return skip("Inactive resource.");
       const known = units.get(mews.Id);
       if (known && !isNewer(mews.UpdatedUtc, known.updatedUtc)) return skip("No change since the last fetch.");

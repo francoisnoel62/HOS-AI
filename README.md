@@ -59,7 +59,7 @@ The website replays this scenario at `/demo` with a small, non-normative referen
 
 Each scenario's files are in [`public/spec/0.1/conformance/`](public/spec/0.1/conformance): producer manifests, the event stream and the expected outcome an implementation must reproduce.
 
-`/demo/mews`, `/demo/apaleo` and `/demo/cloudbeds` replay the same scenario with its PMS side recorded in a real PMS API's format: webhooks, then the entities an integration fetches. For each PMS, an experimental reference adapter turns them into HOS events and reaches the same expected outcome. The mappings are unofficial. They are built with synthetic data from each PMS's published documentation, packages or SDK, and none has run against a live system. Their notes list what each taught us about HOS 0.1: [Mews](public/spec/0.1/mappings/mews/README.md), [Apaleo](public/spec/0.1/mappings/apaleo/README.md) and [Cloudbeds](public/spec/0.1/mappings/cloudbeds/README.md). Those findings added the following to the HOS 0.1 draft:
+`/demo/mews`, `/demo/apaleo` and `/demo/cloudbeds` replay the same scenario with its PMS side recorded in a real PMS API's format: webhooks, then the entities an integration fetches. For each PMS, an experimental reference adapter turns them into HOS events and reaches the same expected outcome. The mappings are unofficial. They are built with synthetic data from each PMS's published documentation, packages or SDK, and Mews and Apaleo have since run against live demo data. Their notes list what each taught us about HOS 0.1: [Mews](public/spec/0.1/mappings/mews/README.md), [Apaleo](public/spec/0.1/mappings/apaleo/README.md) and [Cloudbeds](public/spec/0.1/mappings/cloudbeds/README.md). Those findings added the following to the HOS 0.1 draft:
 
 - `stay.unit_unassigned` and `stay.check_in_reverted`;
 - the `hosactor` envelope attribute and the `modified` time basis;
@@ -67,7 +67,7 @@ Each scenario's files are in [`public/spec/0.1/conformance/`](public/spec/0.1/co
 - rules for when `stay.expected` is due and for producers without a guest identity;
 - scheduled maintenance windows, which all three PMSs have: a ninth Core entity and the `unit.maintenance_scheduled` and `unit.maintenance_cancelled` events.
 
-`npm run mews:live` runs the Mews mapping, read-only, against a live Mews environment such as Mews's public demo, and reports whether real data maps to valid HOS events. It has not run yet; see the [Mews notes](public/spec/0.1/mappings/mews/README.md#live-check).
+`npm run mews:live`, `npm run apaleo:live` and `npm run cloudbeds:live` run each mapping, read-only, against a live environment: Mews's public demo, a free Apaleo developer account, or a Cloudbeds sandbox or property key. They report whether real data maps to valid HOS events. The Mews check has run against both Mews demo enterprises and the Apaleo check against the sample hotels of a developer account; the Cloudbeds check has not run yet. See the [Mews](public/spec/0.1/mappings/mews/README.md#live-check), [Apaleo](public/spec/0.1/mappings/apaleo/README.md#live-check) and [Cloudbeds](public/spec/0.1/mappings/cloudbeds/README.md#live-check) notes.
 
 A validator CLI, SDKs, a production event processor and live PMS connectors are future work.
 
