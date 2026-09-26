@@ -3,11 +3,11 @@ import { Check, LockKeyhole, ScanSearch, Sparkles, Waypoints } from "lucide-reac
 import { Badge } from "@/components/ui/badge";
 
 const phases = [
-  { title: "Observe", icon: ScanSearch, state: "Now", text: "Events, provenance, capabilities and a replayable arrival-readiness projection." },
-  { title: "Act", icon: Waypoints, state: "Later", text: "Policy-controlled commands for unit assignment, task reprioritisation and guest messaging." },
-  { title: "Trust", icon: LockKeyhole, state: "Later", text: "Versioned policies, approval, audit evidence and bounded operational permissions." },
-  { title: "Agents", icon: Sparkles, state: "Later", text: "Responsible agent manifests and portable operational guarantees." },
-  { title: "Ecosystem", icon: Check, state: "Later", text: "Certified profiles, mappings and an opt-in community of interoperable systems." },
+  { title: "Observe", icon: ScanSearch, state: "Now", text: "Spot problems: shared updates with clear sources, and alerts such as a room not ready for an arrival." },
+  { title: "Act", icon: Waypoints, state: "Later", text: "Act within the hotel's rules: assign a room, move a cleaning task up the list, message a guest." },
+  { title: "Trust", icon: LockKeyhole, state: "Later", text: "Written, versioned rules, approvals, a record of every action and clear limits on what each tool may do." },
+  { title: "Agents", icon: Sparkles, state: "Later", text: "AI agents that state what they do and offer the same guarantees in every hotel." },
+  { title: "Ecosystem", icon: Check, state: "Later", text: "Certified connectors and a voluntary community of systems that work together." },
 ];
 
 export function RoadmapTrack() {
