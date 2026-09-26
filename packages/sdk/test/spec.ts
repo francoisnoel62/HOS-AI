@@ -17,6 +17,13 @@ export const listExamples = () =>
     .filter((file) => file.endsWith(".json"))
     .sort();
 
+// Every published example, entities included, relative to examples/.
+export const listExampleFiles = () =>
+  readdirSync(path.join(specDirectory, "examples"), { recursive: true })
+    .map((file) => String(file).replaceAll("\\", "/"))
+    .filter((file) => file.endsWith(".json"))
+    .sort();
+
 export const conformanceScenarios = readdirSync(path.join(specDirectory, "conformance")).sort();
 
 const scenarioDirectory = (id: string) => path.join(specDirectory, "conformance", id);

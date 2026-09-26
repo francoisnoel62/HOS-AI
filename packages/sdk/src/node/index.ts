@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 
 import { type ConformanceScenario, type ExpectedOutcome, parseJsonLines } from "../conformance.ts";
-import type { HosFact, ProducerManifest } from "../types.ts";
+import type { HosFact, ProducerManifest } from "../types.generated.ts";
 
 // @hos-ai/sdk/node: loaders for a conformance scenario published as files. A scenario directory holds scenario.json, the
 // producer manifests and the events it names, and expected.json.

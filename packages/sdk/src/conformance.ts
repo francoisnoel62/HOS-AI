@@ -1,6 +1,6 @@
 import type { Disposition } from "./processing.ts";
-import type { Readiness, ReplayStep, SituationStatus } from "./reference/arrival-readiness.ts";
-import type { ProjectionConfig, Situation } from "./types.ts";
+import type { ProjectionConfig, Readiness, ReplayStep, SituationStatus } from "./reference/arrival-readiness.ts";
+import type { Situation } from "./reference/types.generated.ts";
 
 // The published HOS 0.1 conformance corpus: a scenario, the outcome it expects, and the comparable part of a replay.
 // Loading the files from disk is under @hos-ai/sdk/node.
