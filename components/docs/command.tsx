@@ -15,7 +15,12 @@ const trim = (text: string) => text.replace(/^\n+|\s+$/g, "");
 //   <Command>npx @hos-ai/cli --version</Command>
 // or once per shell when it differs, and the tabs follow the reader's shell:
 //   <Command powershell="curl.exe -O …" cmd="curl -O …" bash="curl -O …" />
-export function Command({ children, label = "Terminal", ...variants }: Variants & { children?: string; label?: string }) {
+export function Command({
+  children,
+  label = "Terminal",
+  copyLabel = "Copy command",
+  ...variants
+}: Variants & { children?: string; label?: string; copyLabel?: string }) {
   const baseId = useId();
   const shell = useShell();
   const perShell = Boolean(variants.powershell || variants.cmd || variants.bash);
@@ -23,7 +28,7 @@ export function Command({ children, label = "Terminal", ...variants }: Variants 
   if (!perShell) {
     const code = trim(children ?? "");
     return (
-      <Frame header={<Badge variant="active">{label}</Badge>} text={code}>
+      <Frame copyLabel={copyLabel} header={<Badge variant="active">{label}</Badge>} text={code}>
         <pre className="overflow-x-auto p-4 font-mono text-xs leading-6 sm:text-sm" tabIndex={0}>
           <code>{code}</code>
         </pre>
@@ -33,7 +38,7 @@ export function Command({ children, label = "Terminal", ...variants }: Variants 
 
   const codeFor = (id: keyof Variants) => trim(variants[id] ?? children ?? "");
   return (
-    <Frame header={<ShellTabs baseId={baseId} current={shell} />} text={codeFor(shell)}>
+    <Frame copyLabel={copyLabel} header={<ShellTabs baseId={baseId} current={shell} />} text={codeFor(shell)}>
       {(["powershell", "cmd", "bash"] as const).map((id) => (
         <pre
           aria-labelledby={tabId(baseId, id)}
@@ -51,12 +56,12 @@ export function Command({ children, label = "Terminal", ...variants }: Variants 
   );
 }
 
-function Frame({ header, text, children }: { header: ReactNode; text: string; children: ReactNode }) {
+function Frame({ header, text, copyLabel, children }: { header: ReactNode; text: string; copyLabel: string; children: ReactNode }) {
   return (
     <div className="my-5 overflow-hidden rounded-md border border-[var(--border-strong)] bg-[var(--code)] text-[var(--code-foreground)]">
       <div className="flex items-center justify-between gap-3 border-b border-white/10 px-3 py-2">
         {header}
-        <CopyButton label="Copy command" text={text} />
+        <CopyButton label={copyLabel} text={text} />
       </div>
       {children}
     </div>

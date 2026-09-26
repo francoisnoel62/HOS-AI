@@ -43,10 +43,13 @@ test("every link of the tools documentation leads somewhere, and every section l
 
 test("a page that is not written yet stays out of search engines and the sitemap; a written one enters both", async ({ page, request }) => {
   const sitemap = await (await request.get("/sitemap.xml")).text();
-  await page.goto("/docs/tools/guides/validate");
-  await expect(page.getByText("This page is being written.")).toBeVisible();
-  await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
-  expect(sitemap).not.toContain("/docs/tools/guides/validate<");
+  const unwritten = toolsPages.find((item) => !item.written);
+  if (unwritten) {
+    await page.goto(unwritten.href);
+    await expect(page.getByText("This page is being written.")).toBeVisible();
+    await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
+    expect(sitemap).not.toContain(`${unwritten.href}<`);
+  }
 
   await page.goto("/docs/tools/quickstart");
   await expect(page.getByText("This page is being written.")).toHaveCount(0);

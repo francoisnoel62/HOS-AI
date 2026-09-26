@@ -1,9 +1,160 @@
-<PageInProgress>
+<InShort>
 
-This guide will show how to use `hos replay` to see what a consumer does with each fact of a stream, to debug an adapter:
+`hos replay` plays a stream of facts back, one delivery at a time, and shows what a consumer does with each one: use it, or set it aside and why. It also shows how each arrival's readiness changes, as the HOS reference projection reads it. Use it to debug an adapter, or to understand a stream someone sent you.
 
-- reading the timeline column by column, and the ▲ and ▼ marks;
-- `--ready`, which sets the housekeeping statuses that make a unit ready (`clean` and `inspected` by default), and `--json`;
-- the most common mistake: forgetting `--manifest`, which makes every fact `undeclared_capability`.
+</InShort>
 
-</PageInProgress>
+<FactSheet
+  audience="Developers of adapters and consumers, integrators"
+  time="15 minutes"
+  needs={["hos, see Install", "The files of the Quickstart"]}
+/>
+
+## Why this matters
+
+`hos validate` says whether each fact is well formed. It does not say what happens next: whether a consumer will use the fact, ignore it as a repeat, or keep it only as a disagreement because its sender is not in charge of that information. When a room shows the wrong state, the question is which fact decided it. The replay answers it, delivery by delivery.
+
+<Steps>
+<Step title="Replay a stream with its manifests">
+
+In the folder of the [Quickstart](/docs/tools/quickstart), with `events.jsonl` and the three manifests:
+
+```sh
+npx @hos-ai/cli replay events.jsonl -m pms.json -m housekeeping.json -m messaging.json
+```
+
+```output id="replay"
+ 1  applied                reservation.created · pms-000312 · urn:hos:pms:demo
+ 2  applied                stay.expected · pms-000421 · urn:hos:pms:demo
+    stay_1042: expected, unit none, readiness unknown, situation none
+ 3  applied                stay.unit_assigned · pms-000422 · urn:hos:pms:demo
+    stay_1042: expected, unit unit_204, readiness unknown, situation none
+ 4  applied                unit.status_changed · hk-002231 · urn:hos:housekeeping:demo
+    stay_1042: expected, unit unit_204, readiness not_ready, situation none
+ 5  duplicate              unit.status_changed · hk-002231 · urn:hos:housekeeping:demo
+ 6  applied                housekeeping.task.created · hk-002232 · urn:hos:housekeeping:demo
+ 7  undeclared_capability  housekeeping.task.created · pms-000430 · urn:hos:pms:demo
+ 8  applied                housekeeping.task.completed · hk-002260 · urn:hos:housekeeping:demo
+ 9  non_authoritative      unit.status_changed · pms-000455 · urn:hos:pms:demo
+10  applied                guest.message.received · msg-000977 · urn:hos:messaging:demo
+    stay_1042: expected, unit unit_204, readiness not_ready, situation at risk
+    ▲ at risk: stay_1042 in unit unit_204, expected 2026-07-30T10:30:00Z, planned 2026-07-30T13:00:00Z
+11  superseded             guest.message.received · msg-000971 · urn:hos:messaging:demo
+12  applied                unit.status_changed · hk-002301 · urn:hos:housekeeping:demo
+    stay_1042: expected, unit unit_204, readiness ready, situation resolved
+    ▼ resolved: stay_1042, unit_ready
+13  applied                stay.checked_in · pms-000470 · urn:hos:pms:demo
+    stay_1042: in_house, unit unit_204, readiness ready, situation resolved
+
+13 deliveries: 9 applied, 1 duplicate, 1 undeclared_capability, 1 non_authoritative, 1 superseded · 2 situations
+```
+
+</Step>
+<Step title="Read the timeline">
+
+Each numbered line is one delivery, in the order of the file:
+
+| Column                                        | Example               | What it says                       |
+| :-------------------------------------------- | :-------------------- | :--------------------------------- |
+| the number                                    | `9`                   | the line of the stream             |
+| the <Term id="disposition">disposition</Term> | `non_authoritative`   | what a consumer does with the fact |
+| the type                                      | `unit.status_changed` | what happened                      |
+| the id                                        | `pms-000455`          | the fact's id in its producer      |
+| the producer                                  | `urn:hos:pms:demo`    | who published it: its `source`     |
+
+An indented line follows each delivery that changes a stay: its state (`expected`, then `in_house`), its unit, whether the unit is ready (`unknown`, `not_ready` or `ready`) and its situation (`none`, `at risk` or `resolved`).
+
+- **▲** marks a situation raised: the arrival of `stay_1042` is at risk, with the time the guest announced and the time planned, in UTC.
+- **▼** marks a situation resolved, with the reason: `unit_ready` here.
+
+The last line counts the dispositions and the situations.
+
+<TechnicalDetail>
+
+The dispositions follow the processing rules of HOS Events 0.1, and are normative. Readiness and situations come from the arrival-readiness <Term id="reference-projection">reference projection</Term> of `@hos-ai/sdk/reference`, which is not normative. [Concepts](/docs/tools/concepts#the-five-dispositions) gives the order in which the dispositions are decided.
+
+</TechnicalDetail>
+
+</Step>
+<Step title="Tell hos which statuses make a room ready">
+
+By default, a unit is ready when its housekeeping status is `clean` or `inspected`. Hotels differ: some release a room only once a supervisor has inspected it, others as soon as it is clean. `--ready` sets the statuses that count, one per `--ready`:
+
+```sh
+npx @hos-ai/cli replay events.jsonl -m pms.json -m housekeeping.json -m messaging.json --ready clean
+```
+
+```output id="ready-clean" excerpt="tail"
+12  applied                unit.status_changed · hk-002301 · urn:hos:housekeeping:demo
+13  applied                stay.checked_in · pms-000470 · urn:hos:pms:demo
+    stay_1042: in_house, unit unit_204, readiness not_ready, situation resolved
+    ▼ resolved: stay_1042, stay_started
+
+13 deliveries: 9 applied, 1 duplicate, 1 undeclared_capability, 1 non_authoritative, 1 superseded · 2 situations
+```
+
+The end of the timeline changes. At delivery 12 the room becomes `inspected`, which no longer counts as ready: nothing changes for the stay. The risk is only resolved at delivery 13, when the guest checks in: `stay_started`.
+
+</Step>
+<Step title="Get the timeline as JSON">
+
+`--json` prints one object per delivery, with its `line`, `source`, `id`, `type` and `disposition`, every stay after it and the `situations` it raised, as complete events. A `skipped` list names the lines that were not valid events:
+
+```sh
+npx @hos-ai/cli replay events.jsonl -m pms.json -m housekeeping.json -m messaging.json --json
+```
+
+```json id="json" excerpt="head"
+{
+  "deliveries": [
+    {
+      "line": 1,
+      "source": "urn:hos:pms:demo",
+      "id": "pms-000312",
+      "type": "reservation.created",
+      "disposition": "applied",
+      "stays": {},
+      "situations": []
+    },
+```
+
+</Step>
+</Steps>
+
+## The most common mistake: no manifest
+
+Without `-m`, hos has no manifest, so no fact is declared, and a consumer ignores them all:
+
+```sh
+npx @hos-ai/cli replay events.jsonl
+```
+
+```output id="no-manifest" excerpt="head"
+ 1  undeclared_capability  reservation.created · pms-000312 · urn:hos:pms:demo
+ 2  undeclared_capability  stay.expected · pms-000421 · urn:hos:pms:demo
+ 3  undeclared_capability  stay.unit_assigned · pms-000422 · urn:hos:pms:demo
+ 4  undeclared_capability  unit.status_changed · hk-002231 · urn:hos:housekeeping:demo
+ 5  duplicate              unit.status_changed · hk-002231 · urn:hos:housekeeping:demo
+```
+
+hos warns about it first: `hos replay: no --manifest given, so every fact is undeclared and nothing is applied.` Give the manifest of every producer in the stream. A producer left out has all its facts marked `undeclared_capability`.
+
+<Checkpoint>
+
+With the three manifests, the timeline shows 9 facts applied, and the arrival raised at risk at delivery 10 (▲), then resolved at delivery 12 (▼). The exit code is 0.
+
+</Checkpoint>
+
+<IfItFails>
+
+- Every line is `undeclared_capability`: give the manifests, [each after `-m`](#the-most-common-mistake-no-manifest).
+- Only one producer's facts are `undeclared_capability`: its manifest is missing, or declares another `producer` than the facts' `source`, or does not list the hotel in `property_ids`.
+- A line reads `skipped`, and the exit code is 1: that line is not a valid event. The reason follows on the line; `hos validate` on the stream gives every detail.
+- A room is never ready: check `--ready` against the housekeeping statuses the hotel uses.
+
+</IfItFails>
+
+## Next steps
+
+- [Test a system that receives HOS facts](/docs/tools/guides/test-a-consumer): check that your consumer reaches the same dispositions.
+- [Validate events, manifests and streams](/docs/tools/guides/validate): find the facts that are not well formed.

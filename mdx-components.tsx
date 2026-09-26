@@ -22,7 +22,6 @@ import { Os, OsTabs } from "@/components/docs/os-tabs";
 import { Term } from "@/components/docs/term";
 import { TerminalOutput } from "@/components/docs/terminal-output";
 import { CliVersion, NpxPrompt, SpecVersionOutput, VersionOutput, Versions } from "@/components/docs/versions";
-import { CodePanel } from "@/components/content/code-panel";
 import { slugify, textOf } from "@/lib/docs/markdown";
 
 // How the MDX pages of /docs/tools render: Markdown elements in the site's style, and the documentation components,
@@ -72,7 +71,7 @@ const codeLabels: Record<string, string> = {
   text: "Text",
 };
 
-// A fenced block: ```sh is a command to copy, ```output is what hos prints, anything else is a code panel.
+// A fenced block: ```sh is a command to copy, ```output is what hos prints, anything else is code to copy.
 function Pre({ children }: ComponentPropsWithoutRef<"pre">) {
   const code = isValidElement<{ className?: string; children?: ReactNode }>(children) ? children : null;
   const language = code?.props.className?.replace(/^language-/, "") ?? "text";
@@ -80,9 +79,9 @@ function Pre({ children }: ComponentPropsWithoutRef<"pre">) {
   if (language === "output") return <TerminalOutput>{text}</TerminalOutput>;
   if (language in shellLabels) return <Command label={shellLabels[language]}>{text}</Command>;
   return (
-    <div className="my-5">
-      <CodePanel code={text} label={codeLabels[language] ?? language.toUpperCase()} />
-    </div>
+    <Command copyLabel="Copy code" label={codeLabels[language] ?? language.toUpperCase()}>
+      {text}
+    </Command>
   );
 }
 

@@ -68,16 +68,19 @@ export const toolsSections: ToolsSection[] = [
     title: "Guides",
     pages: [
       page("guides/validate", {
+        written: true,
         title: "Validate events, manifests and streams",
         navTitle: "Validate files",
         description: "Check HOS documents and event streams against the schemas and the HOS Events rules, and read what the command reports.",
       }),
       page("guides/replay", {
+        written: true,
         title: "Replay a stream",
         navTitle: "Replay a stream",
         description: "See what a consumer does with each fact of a stream, delivery by delivery.",
       }),
       page("guides/test-a-consumer", {
+        written: true,
         title: "Test a system that receives HOS facts",
         navTitle: "Test a consumer",
         description: "Run the conformance scenarios through your own program, in any language.",
