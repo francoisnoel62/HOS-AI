@@ -23,7 +23,7 @@ export function ConformanceKit({ id }: { id: ConformanceScenarioId }) {
     <SectionFrame
       eyebrow="Conformance kit"
       title="Run the same scenario through your own system."
-      description="Replay events.jsonl in file order through your implementation, then compare its dispositions, readiness and situations with expected.json. Everything is synthetic; no guest or operational data is involved."
+      description="For technical teams: feed these files to your own system and check that it reaches the same result. Replay events.jsonl in file order, then compare its dispositions, readiness and situations with expected.json. All the data is made up; no guest or operational data is involved."
     >
       <div className="grid gap-3 md:grid-cols-2">
         {downloads.map((item) => (

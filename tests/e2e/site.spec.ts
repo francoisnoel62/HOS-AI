@@ -5,13 +5,13 @@ test("homepage explains HOS and exposes the two primary participation paths", as
   await expect(page.getByRole("heading", { level: 1, name: /Hospitality operations need an operating layer/i })).toBeVisible();
   await expect(page.getByRole("link", { name: /Become a founding member/i }).first()).toBeVisible();
   await expect(page.getByRole("link", { name: /Run a pilot/i }).first()).toBeVisible();
-  await expect(page.getByText("arrival.room_readiness_at_risk").first()).toBeVisible();
+  await expect(page.getByText("Alert: room 204 may not be ready in time")).toBeVisible();
 });
 
 test("audience selector exposes a concrete value without navigation", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("tab", { name: "Integrator" }).click();
-  await expect(page.getByText("Industrialise mappings, replay tests and conformance evidence.")).toBeVisible();
+  await page.getByRole("tab", { name: "PMS vendor" }).click();
+  await expect(page.getByText("Describe your data once, in an open format, and let hotel software partners connect more predictably.")).toBeVisible();
 });
 
 test("theme can be changed with an accessible control", async ({ page }) => {
