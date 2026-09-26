@@ -1,0 +1,202 @@
+<InShort>
+
+The pages of the tools documentation are MDX files in `content/docs/tools`, listed in `lib/docs/tools.ts`. This page shows each component they are built from, with the MDX that produces it.
+
+</InShort>
+
+Every guide follows the same outline, so readers always know where they are: in short, a fact sheet, why it matters, the steps with their expected output, a check that it worked, the likely failures, and the next steps. Write short sentences, define each term the first time with `<Term>`, show the output of every command, and say why before how.
+
+## Page structure
+
+### In short and fact sheet
+
+<FactSheet audience="Developers at a PMS vendor" time="10 minutes" needs={["Node.js 22 or later"]} />
+
+```mdx
+<InShort>
+
+Two or three sentences a hotel manager can read.
+
+</InShort>
+
+<FactSheet audience="Developers at a PMS vendor" time="10 minutes" needs={["Node.js 22 or later"]} />
+```
+
+### Steps
+
+<Steps>
+<Step title="Download an example">
+
+Every step has a title, a command and what it prints.
+
+</Step>
+<Step title="Validate it">
+
+Each title appears under "On this page".
+
+</Step>
+</Steps>
+
+```mdx
+<Steps>
+<Step title="Download an example">
+
+Every step has a title, a command and what it prints.
+
+</Step>
+</Steps>
+```
+
+Keep `<Step title="…">` on one line: "On this page" and the search read the titles from the source.
+
+## Commands and output
+
+### A command that is the same everywhere
+
+```sh
+npx @hos-ai/cli --version
+```
+
+A fenced block marked `sh` becomes a command with a copy button.
+
+### A command that differs by shell
+
+<Command
+  powershell="curl.exe -O https://hos-ai.vercel.app/spec/0.1/examples/stay.expected.json"
+  cmd="curl -O https://hos-ai.vercel.app/spec/0.1/examples/stay.expected.json"
+  bash="curl -O https://hos-ai.vercel.app/spec/0.1/examples/stay.expected.json"
+/>
+
+```mdx
+<Command
+  powershell="curl.exe -O https://…/stay.expected.json"
+  cmd="curl -O https://…/stay.expected.json"
+  bash="curl -O https://…/stay.expected.json"
+/>
+```
+
+The reader chooses a shell once: every block of the page follows, and the browser remembers the choice.
+
+### Instructions that differ by shell
+
+<OsTabs>
+<Os name="powershell">
+
+If PowerShell refuses to run `npx` because of its execution policy, type `npx.cmd` instead.
+
+</Os>
+<Os name="cmd">
+
+The Command Prompt runs `npx` as it is.
+
+</Os>
+<Os name="bash">
+
+On macOS and Linux, `npx` comes with Node.js.
+
+</Os>
+</OsTabs>
+
+### What hos prints
+
+```output
+Producer urn:hos:pms:demo
+✗ manifest.json: manifest that fails the checks (1 error)
+  error   limitations is empty. A producer states its known gaps, unsupported states and access constraints, which the Event Producer checks require.
+          rule events/producers · at /limitations
+✓ recording.jsonl: 5 facts, valid and declared
+✗ redelivery.jsonl: 1 fact, 0 already in the recording unchanged (1 error)
+  error   line 1: pms-new from urn:hos:pms:demo is not in the recording. Publishing the same data again, a producer publishes the same facts with the same ids, so consumers discard them as duplicates.
+          rule events/at-least-once-delivery · at /id
+
+✗ urn:hos:pms:demo fails the producer checks.
+```
+
+A fenced block marked `output` colours ✓ and ✗ and each message level, and links every rule to its explanation. Copy the output from a real run, or from the snapshots in `packages/cli/test/__snapshots__`.
+
+### Code
+
+```json
+{
+  "specversion": "1.0",
+  "id": "hk-002231",
+  "source": "urn:hos:housekeeping:demo",
+  "type": "unit.status_changed",
+  "time": "2026-07-30T06:40:00Z"
+}
+```
+
+Any other language gets a code panel. It is shortened here; an example in a guide is complete and valid.
+
+## Explanations
+
+### Callouts
+
+<Callout type="note">A note adds context the reader may need.</Callout>
+
+<Callout type="tip">A tip saves time.</Callout>
+
+<Callout type="warning">A warning prevents a mistake that is hard to undo, such as publishing a private key.</Callout>
+
+<Callout type="why">A "why" explains the reason behind a rule, for readers who want it.</Callout>
+
+```mdx
+<Callout type="warning">Never commit private-key.json.</Callout>
+```
+
+### Folded detail
+
+<TechnicalDetail>
+
+The normative reason, for developers: the section of the specification and the rule it states.
+
+</TechnicalDetail>
+
+<PlainLanguage>
+
+The same idea without jargon, for readers who do not write code.
+
+</PlainLanguage>
+
+### Glossary terms
+
+A <Term id="producer">producer</Term> declares what it publishes in its <Term id="manifest">manifest</Term>. Hover or focus a term to read its definition; the terms live in `lib/docs/glossary.ts`.
+
+```mdx
+A <Term id="producer">producer</Term> declares what it publishes.
+```
+
+## Checks and failures
+
+<Checkpoint>
+
+`hos --version` prints the version, and the command ends with exit code 0.
+
+</Checkpoint>
+
+<IfItFails>
+
+- `hos` is not recognised: see [Troubleshooting](/docs/tools/troubleshooting).
+- PowerShell refuses to run scripts: type `npx.cmd`.
+
+</IfItFails>
+
+## Files and navigation
+
+<DownloadCard href="/spec/0.1/examples/stay.expected.json" label="stay.expected.json">
+  A synthetic stay.expected event, valid against HOS Events 0.1.
+</DownloadCard>
+
+<IWantTo />
+
+| Code | Meaning                                           |
+| :--- | :------------------------------------------------ |
+| 0    | everything is valid, or every check passed        |
+| 1    | a file is invalid, or a check failed              |
+| 2    | the command is wrong, or a file could not be read |
+
+## A new page
+
+1. Add the page to `lib/docs/tools.ts`, with `written: false` until its text is complete.
+2. Write `content/docs/tools/<file>.mdx`, and add it to `app/docs/tools/[[...slug]]/content.ts`.
+3. Once the page is written, set `written: true`: it enters the sitemap and search engines.

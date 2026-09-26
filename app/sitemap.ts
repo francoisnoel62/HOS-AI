@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 
+import { toolsPages } from "@/lib/docs/tools";
 import { siteConfig } from "@/lib/site";
 
 export default function sitemap(): MetadataRoute.Sitemap {
@@ -21,6 +22,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
     "/docs",
     "/docs/core",
     "/docs/events",
+    // The tools documentation enters the sitemap page by page, once each is written.
+    ...toolsPages.filter((item) => item.written).map((item) => item.href),
     "/changelog",
     "/privacy",
     "/terms",

@@ -13,6 +13,10 @@ for (const path of [
   "/demo/cloudbeds",
   "/docs/core",
   "/docs/events",
+  "/docs/tools",
+  // Every component of the tools documentation, on one page.
+  "/docs/tools/authoring",
+  "/docs/tools/glossary",
   "/participate",
   "/participate/founding-member",
   "/contact",

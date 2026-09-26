@@ -1,9 +1,8 @@
-import { Download } from "lucide-react";
 import Link from "next/link";
 
+import { DownloadCard } from "@/components/content/download-card";
 import { SectionFrame } from "@/components/content/section-frame";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { type ConformanceScenarioId, loadScenario, scenarioPath, specVersionPath } from "@/lib/spec";
 
 // The published files of one conformance scenario, to replay through another implementation.
@@ -51,15 +50,9 @@ export function ConformanceKit({ id }: { id: ConformanceScenarioId }) {
     >
       <div className="grid gap-3 md:grid-cols-2">
         {downloads.map((item) => (
-          <a className="group" download href={item.href} key={item.href}>
-            <Card className="flex h-full items-start gap-3 p-4 transition-colors group-hover:border-[var(--border-strong)]">
-              <Download aria-hidden="true" className="mt-0.5 shrink-0 text-[var(--accent)]" size={16} />
-              <span>
-                <span className="block font-mono text-sm">{item.label}</span>
-                <span className="mt-1 block text-sm leading-6 text-[var(--muted-foreground)]">{item.text}</span>
-              </span>
-            </Card>
-          </a>
+          <DownloadCard href={item.href} key={item.href} label={item.label}>
+            {item.text}
+          </DownloadCard>
         ))}
       </div>
       <div className="mt-8 flex flex-wrap gap-3">
