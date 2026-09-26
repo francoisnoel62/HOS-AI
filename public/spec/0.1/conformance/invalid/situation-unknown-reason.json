@@ -1,0 +1,61 @@
+{
+  "description": "A resolved situation with a reason the reference projection does not define.",
+  "rule": "events/reference",
+  "document": {
+    "specversion": "1.0",
+    "source": "urn:hos:projection:arrival-readiness",
+    "type": "arrival.room_readiness_resolved",
+    "time": "2026-07-30T10:16:00Z",
+    "datacontenttype": "application/json",
+    "hosschemaversion": "0.1",
+    "hostenant": "tenant_demo",
+    "hosproperty": "prop_demo",
+    "hospropertytimezone": "Europe/Paris",
+    "hosbusinessdate": "2026-07-30",
+    "hossubjects": "stay:stay_1042 reservation:res_1042 unit:unit_204",
+    "hoscausationsource": "urn:hos:housekeeping:demo",
+    "hoscausationid": "hk-002301",
+    "data": {
+      "stay_id": "stay_1042",
+      "reservation_id": "res_1042",
+      "unit_id": "unit_204",
+      "reason": "room_cleaned",
+      "planned_arrival_at": "2026-07-30T13:00:00Z",
+      "expected_arrival_at": "2026-07-30T10:30:00Z",
+      "housekeeping": {
+        "value": "inspected",
+        "source": "urn:hos:housekeeping:demo",
+        "event_id": "hk-002301",
+        "time": "2026-07-30T10:16:00Z"
+      },
+      "evidence": [
+        {
+          "source": "urn:hos:pms:demo",
+          "id": "pms-000312"
+        },
+        {
+          "source": "urn:hos:pms:demo",
+          "id": "pms-000421"
+        },
+        {
+          "source": "urn:hos:pms:demo",
+          "id": "pms-000422"
+        },
+        {
+          "source": "urn:hos:housekeeping:demo",
+          "id": "hk-002260"
+        },
+        {
+          "source": "urn:hos:messaging:demo",
+          "id": "msg-000977"
+        },
+        {
+          "source": "urn:hos:housekeeping:demo",
+          "id": "hk-002301"
+        }
+      ]
+    },
+    "id": "stay_1042.resolved.12",
+    "hosrecordedat": "2026-07-30T10:16:00Z"
+  }
+}

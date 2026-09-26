@@ -62,39 +62,6 @@ describe("HOS Events 0.1 published artefacts", () => {
       expect(validateEvent(complete)).toBe(false);
     }
   });
-
-  describe("rejects", () => {
-    const [reservation] = events;
-    const statusChange = events[3];
-    const snapshot = events.find((event) => event.hosdatamode === "snapshot")!;
-    const cases: Array<[string, unknown]> = [
-      ["personal data the Core does not define", { ...reservation, data: { ...reservation.data, guest_name: "Jane Example" } }],
-      ["a housekeeping value outside the Core model", { ...statusChange, data: { ...statusChange.data, current: "cleaning" } }],
-      ["a snapshot without a sensitivity class", (({ hossensitivity: _omitted, ...rest }) => rest)(snapshot)],
-      ["snapshot mode on a type that does not allow it", { ...reservation, hosdatamode: "snapshot", hossensitivity: "internal" }],
-      ["subjects sent as an array", { ...reservation, hossubjects: ["reservation:res_1042"] }],
-      ["an event without a tenant", (({ hostenant: _omitted, ...rest }) => rest)(reservation)],
-      ["an extension outside an inverted domain namespace", { ...reservation, data: { ...reservation.data, extensions: { mews: { rate_plan: "BAR" } } } }],
-      ["a reservation update that omits a changed field", { ...reservation, type: "reservation.updated", data: { reservation_id: "res_1042", changed_fields: ["status"] } }],
-      ["an unassignment that does not name the released unit", { ...reservation, type: "stay.unit_unassigned", data: { stay_id: "stay_1042" } }],
-      ["an actor named by a person's name", { ...reservation, hosactor: "user:Jane Example" }],
-      ["an actor of an unknown kind", { ...reservation, hosactor: "robot:r2" }],
-      ["a time basis HOS does not define", { ...reservation, hostimebasis: "estimated" }],
-      ["a maintenance window that imposes no status", { ...reservation, type: "unit.maintenance_scheduled", data: { maintenance_id: "mnt_1", unit_id: "unit_204", starts_at: "2026-07-30T08:00:00Z", ends_at: "2026-07-30T12:00:00Z", statuses: {} } }],
-      ["a maintenance window that claims an operational unit", { ...reservation, type: "unit.maintenance_scheduled", data: { maintenance_id: "mnt_1", unit_id: "unit_204", starts_at: "2026-07-30T08:00:00Z", ends_at: "2026-07-30T12:00:00Z", statuses: { maintenance: "operational" } } }],
-    ];
-    it.each(cases)("%s", (_name, event) => {
-      expect(validateEvent(event)).toBe(false);
-    });
-
-    it("accepts a pseudonymous actor and a time the source only knows as a last modification", () => {
-      expect(validateEvent({ ...reservation, hosactor: "user:staff_k3", hostimebasis: "modified" }), errors(validateEvent)).toBe(true);
-    });
-
-    it("accepts vendor detail under an inverted domain namespace", () => {
-      expect(validateEvent({ ...reservation, data: { ...reservation.data, extensions: { "com.example.pms": { rate_plan: "BAR" } } } }), errors(validateEvent)).toBe(true);
-    });
-  });
 });
 
 describe("arrival-readiness reference projection", () => {

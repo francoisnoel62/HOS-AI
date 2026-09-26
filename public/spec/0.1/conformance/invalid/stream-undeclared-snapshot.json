@@ -1,0 +1,233 @@
+{
+  "description": "A snapshot from a producer that does not declare snapshots.",
+  "rule": "events/explicit-snapshots",
+  "manifests": [
+    {
+      "hosmanifestversion": "0.1",
+      "producer": "urn:hos:pms:demo",
+      "name": "Synthetic PMS",
+      "organization": {
+        "name": "HOS AI synthetic corpus"
+      },
+      "system_role": "pms",
+      "property_ids": [
+        "prop_demo"
+      ],
+      "entities": [
+        "Reservation",
+        "Stay",
+        "Unit",
+        "Guest"
+      ],
+      "events": [
+        {
+          "type": "reservation.created",
+          "authoritative": true
+        },
+        {
+          "type": "reservation.updated",
+          "authoritative": true
+        },
+        {
+          "type": "reservation.cancelled",
+          "authoritative": true
+        },
+        {
+          "type": "stay.expected",
+          "authoritative": true
+        },
+        {
+          "type": "stay.unit_assigned",
+          "authoritative": true
+        },
+        {
+          "type": "stay.checked_in",
+          "authoritative": true
+        },
+        {
+          "type": "stay.check_in_reverted",
+          "authoritative": true
+        },
+        {
+          "type": "stay.checked_out",
+          "authoritative": true
+        },
+        {
+          "type": "stay.unit_unassigned",
+          "authoritative": true
+        },
+        {
+          "type": "unit.maintenance_scheduled",
+          "authoritative": true
+        },
+        {
+          "type": "unit.maintenance_cancelled",
+          "authoritative": true
+        },
+        {
+          "type": "unit.status_changed",
+          "dimensions": [
+            "occupancy",
+            "commercial"
+          ],
+          "authoritative": true
+        },
+        {
+          "type": "unit.status_changed",
+          "dimensions": [
+            "housekeeping"
+          ],
+          "authoritative": false,
+          "note": "The PMS mirrors housekeeping status; at this property the housekeeping system is the authority."
+        }
+      ],
+      "delivery": {
+        "mechanisms": [
+          "webhook"
+        ],
+        "guarantee": "at-least-once",
+        "ordering": "per-subject"
+      },
+      "replay": {
+        "supported": true,
+        "window_days": 30,
+        "format": "jsonl"
+      },
+      "retention": {
+        "event_days": 90
+      },
+      "limitations": [
+        "The PMS task module is not a declared source of housekeeping tasks at this property.",
+        "Guest messages are not exposed."
+      ]
+    },
+    {
+      "hosmanifestversion": "0.1",
+      "producer": "urn:hos:housekeeping:demo",
+      "name": "Synthetic housekeeping system",
+      "organization": {
+        "name": "HOS AI synthetic corpus"
+      },
+      "system_role": "housekeeping",
+      "property_ids": [
+        "prop_demo"
+      ],
+      "entities": [
+        "Unit",
+        "Task"
+      ],
+      "events": [
+        {
+          "type": "unit.status_changed",
+          "dimensions": [
+            "housekeeping"
+          ],
+          "authoritative": true,
+          "snapshot": true
+        },
+        {
+          "type": "unit.status_changed",
+          "dimensions": [
+            "occupancy"
+          ],
+          "authoritative": false,
+          "snapshot": true,
+          "note": "Occupancy is reported for context; the PMS is the authority."
+        },
+        {
+          "type": "housekeeping.task.created",
+          "authoritative": true
+        },
+        {
+          "type": "housekeeping.task.completed",
+          "authoritative": true
+        }
+      ],
+      "delivery": {
+        "mechanisms": [
+          "webhook"
+        ],
+        "guarantee": "at-least-once",
+        "ordering": "none"
+      },
+      "replay": {
+        "supported": true,
+        "window_days": 30,
+        "format": "jsonl"
+      },
+      "retention": {
+        "event_days": 30
+      },
+      "limitations": [
+        "The property releases units on inspection only, so the housekeeping status goes from dirty to inspected without a clean step."
+      ]
+    },
+    {
+      "hosmanifestversion": "0.1",
+      "producer": "urn:hos:messaging:demo",
+      "name": "Synthetic guest messaging platform",
+      "organization": {
+        "name": "HOS AI synthetic corpus"
+      },
+      "system_role": "messaging",
+      "property_ids": [
+        "prop_demo"
+      ],
+      "entities": [
+        "Message",
+        "Guest"
+      ],
+      "events": [
+        {
+          "type": "guest.message.received",
+          "authoritative": true
+        }
+      ],
+      "delivery": {
+        "mechanisms": [
+          "webhook"
+        ],
+        "guarantee": "at-least-once",
+        "ordering": "none"
+      },
+      "replay": {
+        "supported": false
+      },
+      "retention": {
+        "event_days": 7
+      },
+      "limitations": [
+        "Signals are extracted automatically from free text and carry a confidence.",
+        "Replay is not available; a certified Event Producer profile requires at least 30 days."
+      ]
+    }
+  ],
+  "stream": [
+    {
+      "specversion": "1.0",
+      "id": "pms-x1",
+      "source": "urn:hos:pms:demo",
+      "type": "unit.status_changed",
+      "time": "2026-07-30T10:16:00Z",
+      "datacontenttype": "application/json",
+      "hosschemaversion": "0.1",
+      "hosrecordedat": "2026-07-30T10:16:02Z",
+      "hostenant": "tenant_demo",
+      "hosproperty": "prop_demo",
+      "hospropertytimezone": "Europe/Paris",
+      "hosbusinessdate": "2026-07-30",
+      "hossubjects": "unit:unit_204",
+      "hosdatamode": "snapshot",
+      "hossensitivity": "internal",
+      "data": {
+        "unit_id": "unit_204",
+        "statuses": {
+          "housekeeping": "inspected",
+          "occupancy": "vacant"
+        },
+        "authority_source": "urn:hos:housekeeping:demo",
+        "reason": "recovery"
+      }
+    }
+  ]
+}

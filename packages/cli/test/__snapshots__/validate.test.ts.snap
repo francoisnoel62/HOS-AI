@@ -1,0 +1,224 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`hos validate > accepts every published example and the events of the three scenarios 1`] = `
+"✓ examples/guest.message.received.json: valid event guest.message.received
+✓ examples/housekeeping.task.completed.json: valid event housekeeping.task.completed
+✓ examples/housekeeping.task.created.json: valid event housekeeping.task.created
+✓ examples/reservation.cancelled.json: valid event reservation.cancelled
+✓ examples/reservation.created.json: valid event reservation.created
+✓ examples/reservation.updated.json: valid event reservation.updated
+✓ examples/stay.checked_in.json: valid event stay.checked_in
+✓ examples/stay.checked_out.json: valid event stay.checked_out
+✓ examples/stay.check_in_reverted.json: valid event stay.check_in_reverted
+✓ examples/stay.expected.json: valid event stay.expected
+✓ examples/stay.unit_assigned.json: valid event stay.unit_assigned
+✓ examples/stay.unit_unassigned.json: valid event stay.unit_unassigned
+✓ examples/unit.maintenance_cancelled.json: valid event unit.maintenance_cancelled
+✓ examples/unit.maintenance_scheduled.json: valid event unit.maintenance_scheduled
+✓ examples/unit.status_changed.json: valid event unit.status_changed
+✓ examples/unit.status_changed.snapshot.json: valid event unit.status_changed
+✓ conformance/arrival-readiness/events.jsonl: valid stream of 13 events (1 note)
+  note    line 5: Repeats line 4: same source, id and content. A consumer discards it as a duplicate.
+          rule events/at-least-once-delivery
+✓ conformance/room-out-of-order/events.jsonl: valid stream of 14 events
+✓ conformance/late-checkout/events.jsonl: valid stream of 15 events
+
+19 files: 19 valid, 0 invalid
+"
+`;
+
+exports[`hos validate > rejects conformance/invalid/event-actor-kind.json on its rule 1`] = `
+"✗ event-actor-kind.json: invalid event reservation.created (1 error)
+  error   hosactor is "robot:r2", which does not have the expected form ^(?:user|guest|system|integration):[A-Za-z0-9][A-Za-z0-9._~-]{0,127}$. Who made the change in the producer, when it knows: user (a staff member), guest, system (the producer itself) or integration (another system through its API), with a pseudonymous, producer-scoped reference, for example user:staff_k3. Never a name or contact detail.
+          rule events/honest-time-and-actor · at /hosactor
+"
+`;
+
+exports[`hos validate > rejects conformance/invalid/event-actor-name.json on its rule 1`] = `
+"✗ event-actor-name.json: invalid event reservation.created (1 error)
+  error   hosactor is "user:Jane Example", which does not have the expected form ^(?:user|guest|system|integration):[A-Za-z0-9][A-Za-z0-9._~-]{0,127}$. Who made the change in the producer, when it knows: user (a staff member), guest, system (the producer itself) or integration (another system through its API), with a pseudonymous, producer-scoped reference, for example user:staff_k3. Never a name or contact detail.
+          rule events/honest-time-and-actor · at /hosactor
+"
+`;
+
+exports[`hos validate > rejects conformance/invalid/event-extension-namespace.json on its rule 1`] = `
+"✗ event-extension-namespace.json: invalid event reservation.created (1 error)
+  error   data.extensions has the key "mews", which is not allowed. Vendor detail under an inverted domain namespace such as com.example. Each namespace publishes its own schema and documentation, and can never redefine a Core field or enum.
+          rule core/extensions · at /data/extensions
+"
+`;
+
+exports[`hos validate > rejects conformance/invalid/event-housekeeping-value.json on its rule 1`] = `
+"✗ event-housekeeping-value.json: invalid event unit.status_changed (1 error)
+  error   data.current is "cleaning", not one of: dirty, clean, inspected, unknown. Readiness as reported by the housekeeping authority.
+          rule core/unit-status-model · at /data/current
+"
+`;
+
+exports[`hos validate > rejects conformance/invalid/event-identifier-with-space.json on its rule 1`] = `
+"✗ event-identifier-with-space.json: invalid event reservation.created (1 error)
+  error   data.reservation_id is "res 1042", which does not have the expected form ^[A-Za-z0-9][A-Za-z0-9._~-]{0,127}$. Opaque, stable HOS identifier, unique within its Tenant. It carries no business meaning and no personal data.
+          rule core/opaque-identifiers · at /data/reservation_id
+"
+`;
+
+exports[`hos validate > rejects conformance/invalid/event-maintenance-operational.json on its rule 1`] = `
+"✗ event-maintenance-operational.json: invalid event unit.maintenance_scheduled (1 error)
+  error   data.statuses.maintenance is "operational"; HOS requires "out_of_service".
+          rule events/plans-are-not-states · at /data/statuses/maintenance
+"
+`;
+
+exports[`hos validate > rejects conformance/invalid/event-maintenance-without-status.json on its rule 1`] = `
+"✗ event-maintenance-without-status.json: invalid event unit.maintenance_scheduled (1 error)
+  error   data.statuses must have at least one member. The Unit statuses a maintenance window imposes while it lasts: maintenance out_of_service when the unit cannot be used, commercial not_sellable when it cannot be sold.
+          rule events/plans-are-not-states · at /data/statuses
+"
+`;
+
+exports[`hos validate > rejects conformance/invalid/event-personal-data.json on its rule 1`] = `
+"✗ event-personal-data.json: invalid event reservation.created (1 error)
+  error   data.guest_name is not defined for reservation.created. Data objects are closed so that personal or commercial data cannot travel unnoticed; vendor detail goes in data.extensions under an inverted domain namespace.
+          rule events/minimal-data · at /data/guest_name
+"
+`;
+
+exports[`hos validate > rejects conformance/invalid/event-snapshot-on-other-type.json on its rule 1`] = `
+"✗ event-snapshot-on-other-type.json: invalid event reservation.created (1 error)
+  error   reservation.created does not allow snapshot mode: only unit.status_changed does.
+          rule events/explicit-snapshots · at /hosdatamode
+"
+`;
+
+exports[`hos validate > rejects conformance/invalid/event-snapshot-without-sensitivity.json on its rule 1`] = `
+"✗ event-snapshot-without-sensitivity.json: invalid event unit.status_changed (1 error)
+  error   hossensitivity is missing. Sensitivity class of data. Required for snapshots.
+          rule events/explicit-snapshots · at /hossensitivity
+"
+`;
+
+exports[`hos validate > rejects conformance/invalid/event-subjects-array.json on its rule 1`] = `
+"✗ event-subjects-array.json: invalid event reservation.created (1 error)
+  error   hossubjects must be a string, not an array. Typed HOS entity references implicated by the fact, as space-separated type:id pairs, for example stay:stay_1042 unit:unit_204. A string because CloudEvents attributes cannot hold arrays.
+          rule events/envelope · at /hossubjects
+"
+`;
+
+exports[`hos validate > rejects conformance/invalid/event-time-basis.json on its rule 1`] = `
+"✗ event-time-basis.json: invalid event reservation.created (1 error)
+  error   hostimebasis is "estimated", not one of: occurred, modified, recorded. What time represents. Absent means occurred. modified means the source's last modification of the entity, when it does not date the change itself: the fact occurred at or before time. recorded means the occurrence time is unknown and time is when the producer or adapter recorded the fact.
+          rule events/honest-time-and-actor · at /hostimebasis
+"
+`;
+
+exports[`hos validate > rejects conformance/invalid/event-unassignment-without-unit.json on its rule 1`] = `
+"✗ event-unassignment-without-unit.json: invalid event stay.unit_unassigned (1 error)
+  error   data.unit_id is missing. The unit released.
+          rule events/catalogue · at /data/unit_id
+"
+`;
+
+exports[`hos validate > rejects conformance/invalid/event-unknown-type.json on its rule 1`] = `
+"✗ event-unknown-type.json: invalid event reservation.confirmed (1 error)
+  error   type is "reservation.confirmed", which is not a type of HOS Events 0.1.
+          rule events/catalogue · at /type
+"
+`;
+
+exports[`hos validate > rejects conformance/invalid/event-update-missing-changed-field.json on its rule 1`] = `
+"✗ event-update-missing-changed-field.json: invalid event reservation.updated (1 error)
+  error   data.status is missing. A reservation changed. changed_fields lists what changed; only those fields are carried, with their new values.
+          rule events/catalogue · at /data/status
+"
+`;
+
+exports[`hos validate > rejects conformance/invalid/event-without-tenant.json on its rule 1`] = `
+"✗ event-without-tenant.json: invalid event reservation.created (1 error)
+  error   hostenant is missing. Tenant: the security, policy and data-autonomy boundary.
+          rule events/envelope · at /hostenant
+"
+`;
+
+exports[`hos validate > rejects conformance/invalid/manifest-exactly-once.json on its rule 1`] = `
+"✗ manifest-exactly-once.json: invalid manifest urn:hos:pms:demo (1 error)
+  error   delivery.guarantee is "exactly-once"; HOS requires "at-least-once". HOS delivery is at-least-once; consumers deduplicate on source and id.
+          rule events/at-least-once-delivery · at /delivery/guarantee
+"
+`;
+
+exports[`hos validate > rejects conformance/invalid/manifest-global-order.json on its rule 1`] = `
+"✗ manifest-global-order.json: invalid manifest urn:hos:pms:demo (1 error)
+  error   delivery.ordering is "global", not one of: none, per-subject, total. Ordering is never global; it holds only as declared here.
+          rule events/no-global-order · at /delivery/ordering
+"
+`;
+
+exports[`hos validate > rejects conformance/invalid/manifest-unknown-event-type.json on its rule 1`] = `
+"✗ manifest-unknown-event-type.json: invalid manifest urn:hos:pms:demo (1 error)
+  error   events[0].type is "reservation.confirmed", not one of: reservation.created, reservation.updated, reservation.cancelled, stay.expected, stay.checked_in, stay.check_in_reverted, stay.checked_out, stay.unit_assigned, stay.unit_unassigned, unit.status_changed, unit.maintenance_scheduled, unit.maintenance_cancelled, housekeeping.task.created, housekeeping.task.completed, guest.message.received.
+          rule events/catalogue · at /events/0/type
+"
+`;
+
+exports[`hos validate > rejects conformance/invalid/manifest-without-limitations.json on its rule 1`] = `
+"✗ manifest-without-limitations.json: invalid manifest urn:hos:pms:demo (1 error)
+  error   limitations is missing. Known gaps, unsupported states and access constraints, stated explicitly. Empty only when there are none.
+          rule events/producers · at /limitations
+"
+`;
+
+exports[`hos validate > rejects conformance/invalid/situation-unknown-reason.json on its rule 1`] = `
+"✗ situation-unknown-reason.json: invalid situation arrival.room_readiness_resolved (1 error)
+  error   data.reason is "room_cleaned", not one of: unit_ready, unit_available, unit_reassigned, unit_vacated, departure_before_arrival, arrival_not_early, reservation_inactive, stay_started. What stopped the risk: the stay was given another unit, the unit became ready, its maintenance window went, the guest in house left or is now due to leave first, the arrival is no longer early, the reservation became inactive, or the stay started.
+          rule events/reference · at /data/reason
+"
+`;
+
+exports[`hos validate > rejects conformance/invalid/stream-conflicting-id.json on its rule 1`] = `
+"✗ stream-conflicting-id.jsonl: invalid stream of 2 events (1 error)
+  error   line 2: Reuses the source and id of line 1 with different content (data.current). A source and id name one fact, which never changes: a correction is a new event.
+          rule events/immutable-facts
+"
+`;
+
+exports[`hos validate > rejects conformance/invalid/stream-property-tenant.json on its rule 1`] = `
+"✗ stream-property-tenant.jsonl: invalid stream of 2 events (1 error)
+  error   line 2: Puts prop_demo in tenant "tenant_other", where line 1 put it in "tenant_demo". A property belongs to one tenant.
+          rule core/entities · at /hostenant
+"
+`;
+
+exports[`hos validate > rejects conformance/invalid/stream-property-timezone.json on its rule 1`] = `
+"✗ stream-property-timezone.jsonl: invalid stream of 2 events (1 error)
+  error   line 2: Gives prop_demo the time zone "Europe/Lisbon", where line 1 gave "Europe/Paris". Local times derive from the property's time zone, which a stream does not change.
+          rule core/time · at /hospropertytimezone
+"
+`;
+
+exports[`hos validate > rejects conformance/invalid/stream-two-authorities.json on its rule 1`] = `
+"✗ stream-two-authorities.jsonl: invalid stream of 1 event (1 error)
+  error   urn:hos:pms:demo and urn:hos:housekeeping:demo are both authoritative for unit.status_changed (housekeeping) at prop_demo. At most one producer is authoritative for a property, event type and dimension.
+          rule events/one-authority
+"
+`;
+
+exports[`hos validate > rejects conformance/invalid/stream-undeclared-event.json on its rule 1`] = `
+"✗ stream-undeclared-event.jsonl: invalid stream of 1 event (1 error)
+  error   line 1: urn:hos:messaging:demo does not declare stay.checked_in at prop_demo: a consumer ignores this event (undeclared_capability).
+          rule events/declared-capability · at /type
+"
+`;
+
+exports[`hos validate > rejects conformance/invalid/stream-undeclared-snapshot.json on its rule 1`] = `
+"✗ stream-undeclared-snapshot.jsonl: invalid stream of 1 event (1 error)
+  error   line 1: urn:hos:pms:demo does not declare snapshots of unit.status_changed (housekeeping, occupancy) at prop_demo: a consumer ignores this event.
+          rule events/explicit-snapshots · at /hosdatamode
+"
+`;
+
+exports[`hos validate > rejects conformance/invalid/stream-unreadable-line.json on its rule 1`] = `
+"✗ stream-unreadable-line.jsonl: invalid stream of 2 events (1 error)
+  error   line 2: Not JSON: Expected ',' or '}' after property value in JSON at position 41. A stream is JSON Lines: one event per line.
+          rule events/replay
+"
+`;

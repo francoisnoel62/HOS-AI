@@ -1,8 +1,8 @@
-import { readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import type { Validator } from "../src/index.ts";
+import type { ProducerManifest, Validator } from "../src/index.ts";
 import { loadExpectedOutcome as loadExpectedOutcomeFrom, loadScenario as loadScenarioFrom } from "../src/node/index.ts";
 
 // The published HOS 0.1 artefacts the tests check the SDK against. They live in the site's public directory until the
@@ -24,7 +24,22 @@ export const listExampleFiles = () =>
     .filter((file) => file.endsWith(".json"))
     .sort();
 
-export const conformanceScenarios = readdirSync(path.join(specDirectory, "conformance")).sort();
+// The scenario directories of the corpus, each with its scenario.json.
+export const conformanceScenarios = readdirSync(path.join(specDirectory, "conformance"))
+  .filter((entry) => existsSync(path.join(specDirectory, "conformance", entry, "scenario.json")))
+  .sort();
+
+// A case of conformance/invalid or conformance/valid: a document, or the lines of a stream with the producers' manifests.
+export type ConformanceCase = { file: string; description: string; rule: string; document?: unknown; stream?: unknown[]; manifests?: ProducerManifest[] };
+
+export const loadCases = (folder: "invalid" | "valid"): ConformanceCase[] =>
+  readdirSync(path.join(specDirectory, "conformance", folder))
+    .filter((file) => file.endsWith(".json"))
+    .sort()
+    .map((file) => ({ file, ...readJson(`conformance/${folder}/${file}`) }));
+
+// A stream case lists its lines: an object is written as JSON, a string as it is.
+export const streamText = (lines: unknown[]) => lines.map((line) => (typeof line === "string" ? line : JSON.stringify(line))).join("\n");
 
 const scenarioDirectory = (id: string) => path.join(specDirectory, "conformance", id);
 export const loadScenario = (id: string) => loadScenarioFrom(scenarioDirectory(id));

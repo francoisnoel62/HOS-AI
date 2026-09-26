@@ -1,0 +1,30 @@
+{
+  "name": "@hos-ai/cli",
+  "version": "0.1.0-alpha.0",
+  "private": true,
+  "description": "The hos command: validate HOS 0.1 documents and streams.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "bin": {
+    "hos": "./dist/bin.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@hos-ai/sdk": "0.1.0-alpha.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.7",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.5"
+  }
+}

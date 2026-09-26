@@ -1,0 +1,191 @@
+{
+  "description": "Two producers authoritative for the same property, event type and dimension.",
+  "rule": "events/one-authority",
+  "manifests": [
+    {
+      "hosmanifestversion": "0.1",
+      "producer": "urn:hos:pms:demo",
+      "name": "Synthetic PMS",
+      "organization": {
+        "name": "HOS AI synthetic corpus"
+      },
+      "system_role": "pms",
+      "property_ids": [
+        "prop_demo"
+      ],
+      "entities": [
+        "Reservation",
+        "Stay",
+        "Unit",
+        "Guest"
+      ],
+      "events": [
+        {
+          "type": "reservation.created",
+          "authoritative": true
+        },
+        {
+          "type": "reservation.updated",
+          "authoritative": true
+        },
+        {
+          "type": "reservation.cancelled",
+          "authoritative": true
+        },
+        {
+          "type": "stay.expected",
+          "authoritative": true
+        },
+        {
+          "type": "stay.unit_assigned",
+          "authoritative": true
+        },
+        {
+          "type": "stay.checked_in",
+          "authoritative": true
+        },
+        {
+          "type": "stay.check_in_reverted",
+          "authoritative": true
+        },
+        {
+          "type": "stay.checked_out",
+          "authoritative": true
+        },
+        {
+          "type": "stay.unit_unassigned",
+          "authoritative": true
+        },
+        {
+          "type": "unit.maintenance_scheduled",
+          "authoritative": true
+        },
+        {
+          "type": "unit.maintenance_cancelled",
+          "authoritative": true
+        },
+        {
+          "type": "unit.status_changed",
+          "dimensions": [
+            "occupancy",
+            "commercial"
+          ],
+          "authoritative": true
+        },
+        {
+          "type": "unit.status_changed",
+          "dimensions": [
+            "housekeeping"
+          ],
+          "authoritative": true,
+          "note": "The PMS mirrors housekeeping status; at this property the housekeeping system is the authority."
+        }
+      ],
+      "delivery": {
+        "mechanisms": [
+          "webhook"
+        ],
+        "guarantee": "at-least-once",
+        "ordering": "per-subject"
+      },
+      "replay": {
+        "supported": true,
+        "window_days": 30,
+        "format": "jsonl"
+      },
+      "retention": {
+        "event_days": 90
+      },
+      "limitations": [
+        "The PMS task module is not a declared source of housekeeping tasks at this property.",
+        "Guest messages are not exposed."
+      ]
+    },
+    {
+      "hosmanifestversion": "0.1",
+      "producer": "urn:hos:housekeeping:demo",
+      "name": "Synthetic housekeeping system",
+      "organization": {
+        "name": "HOS AI synthetic corpus"
+      },
+      "system_role": "housekeeping",
+      "property_ids": [
+        "prop_demo"
+      ],
+      "entities": [
+        "Unit",
+        "Task"
+      ],
+      "events": [
+        {
+          "type": "unit.status_changed",
+          "dimensions": [
+            "housekeeping"
+          ],
+          "authoritative": true,
+          "snapshot": true
+        },
+        {
+          "type": "unit.status_changed",
+          "dimensions": [
+            "occupancy"
+          ],
+          "authoritative": false,
+          "snapshot": true,
+          "note": "Occupancy is reported for context; the PMS is the authority."
+        },
+        {
+          "type": "housekeeping.task.created",
+          "authoritative": true
+        },
+        {
+          "type": "housekeeping.task.completed",
+          "authoritative": true
+        }
+      ],
+      "delivery": {
+        "mechanisms": [
+          "webhook"
+        ],
+        "guarantee": "at-least-once",
+        "ordering": "none"
+      },
+      "replay": {
+        "supported": true,
+        "window_days": 30,
+        "format": "jsonl"
+      },
+      "retention": {
+        "event_days": 30
+      },
+      "limitations": [
+        "The property releases units on inspection only, so the housekeeping status goes from dirty to inspected without a clean step."
+      ]
+    }
+  ],
+  "stream": [
+    {
+      "specversion": "1.0",
+      "id": "hk-002231",
+      "source": "urn:hos:housekeeping:demo",
+      "type": "unit.status_changed",
+      "time": "2026-07-30T06:40:00Z",
+      "datacontenttype": "application/json",
+      "hosschemaversion": "0.1",
+      "hosrecordedat": "2026-07-30T06:40:02Z",
+      "hostenant": "tenant_demo",
+      "hosproperty": "prop_demo",
+      "hospropertytimezone": "Europe/Paris",
+      "hosbusinessdate": "2026-07-30",
+      "hossubjects": "unit:unit_204",
+      "data": {
+        "unit_id": "unit_204",
+        "dimension": "housekeeping",
+        "previous": "inspected",
+        "current": "dirty",
+        "authority_source": "urn:hos:housekeeping:demo",
+        "reason": "departure"
+      }
+    }
+  ]
+}

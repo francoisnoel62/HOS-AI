@@ -11,14 +11,17 @@
   },
   "exports": {
     ".": {
+      "@hos-ai/source": "./src/index.ts",
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
     "./node": {
+      "@hos-ai/source": "./src/node/index.ts",
       "types": "./dist/node/index.d.ts",
       "default": "./dist/node/index.js"
     },
     "./reference": {
+      "@hos-ai/source": "./src/reference/index.ts",
       "types": "./dist/reference/index.d.ts",
       "default": "./dist/reference/index.js"
     }
