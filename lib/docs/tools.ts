@@ -32,27 +32,32 @@ export const toolsSections: ToolsSection[] = [
     title: "Start here",
     pages: [
       page("", {
+        written: true,
         title: "The hos command and the SDK",
         navTitle: "Overview",
         description: "What @hos-ai/cli and @hos-ai/sdk do, which one you need, and what they do not do.",
       }),
       page("concepts", {
+        written: true,
         title: "Concepts",
         navTitle: "Concepts",
         description:
           "Facts, producers and consumers, manifests, authority, the five dispositions and the other ideas the tools rely on, in plain language.",
       }),
       page("install", {
+        written: true,
         title: "Install the tools",
         navTitle: "Install",
         description: "Install the hos command and the SDK on Windows, macOS or Linux, and check that they work.",
       }),
       page("quickstart", {
+        written: true,
         title: "Quickstart",
         navTitle: "Quickstart",
         description: "Validate an example, read an error and replay a scenario in ten minutes, without writing any code.",
       }),
       page("read-a-report", {
+        written: true,
         title: "Read a HOS report",
         navTitle: "Read a report",
         description: "What a report from the tools says, and what it does not prove. For readers who do not write code.",

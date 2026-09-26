@@ -21,6 +21,7 @@ import { GlossaryList, IWantTo } from "@/components/docs/lists";
 import { Os, OsTabs } from "@/components/docs/os-tabs";
 import { Term } from "@/components/docs/term";
 import { TerminalOutput } from "@/components/docs/terminal-output";
+import { CliVersion, NpxPrompt, SpecVersionOutput, VersionOutput, Versions } from "@/components/docs/versions";
 import { CodePanel } from "@/components/content/code-panel";
 import { slugify, textOf } from "@/lib/docs/markdown";
 
@@ -123,6 +124,11 @@ const components: MDXComponents = {
   TechnicalDetail,
   Term,
   TerminalOutput,
+  CliVersion,
+  NpxPrompt,
+  SpecVersionOutput,
+  VersionOutput,
+  Versions,
 };
 
 export function useMDXComponents(): MDXComponents {

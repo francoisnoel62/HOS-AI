@@ -1,16 +1,170 @@
-<PageInProgress>
+<InShort>
 
-This page will explain, in plain language and with an example from a hotel's day, the ideas the tools rely on:
+HOS is a shared way for hotel systems to say what happened: each system publishes facts, declares what it publishes and which values it is the authority for, and every system that receives the facts applies the same rules. Ten ideas are enough to read everything the tools print.
 
-- a fact, or event, and the CloudEvents format it travels in;
-- producers and consumers;
-- the Event Producer manifest, and the authority it declares;
-- the five dispositions a consumer gives a fact: `applied`, `duplicate`, `superseded`, `non_authoritative` and `undeclared_capability`;
-- streams in JSON Lines;
-- conformance scenarios, and the normative and reference levels;
-- signatures and key sets;
-- exit codes.
+</InShort>
 
-Meanwhile, the [glossary](/docs/tools/glossary) defines each of them in a few lines, and [HOS Events 0.1](/docs/events) gives the rules.
+The examples come from the [Quickstart](/docs/tools/quickstart)'s morning: guest `stay_1042` arrives early, and unit `unit_204` is not ready.
 
-</PageInProgress>
+## A fact
+
+A <Term id="fact">fact</Term>, or event, is one thing that happened in a hotel system: a reservation was made, a room became dirty, a guest checked in. It says what the system knows, when and about what. It does not ask anyone to do anything.
+
+**In a hotel**: a line in the front office log book. "06:40, housekeeping: room 204 dirty, the guest left."
+
+**Why it matters**: when every system writes the same kind of line, any other system can read it, without a custom integration for each pair of systems.
+
+Here is the fact of that line, as the housekeeping system publishes it:
+
+```json id="unit-status-changed"
+{
+  "specversion": "1.0",
+  "id": "hk-002231",
+  "source": "urn:hos:housekeeping:demo",
+  "type": "unit.status_changed",
+  "time": "2026-07-30T06:40:00Z",
+  "datacontenttype": "application/json",
+  "hosschemaversion": "0.1",
+  "hosrecordedat": "2026-07-30T06:40:02Z",
+  "hostenant": "tenant_demo",
+  "hosproperty": "prop_demo",
+  "hospropertytimezone": "Europe/Paris",
+  "hosbusinessdate": "2026-07-30",
+  "hossubjects": "unit:unit_204",
+  "data": {
+    "unit_id": "unit_204",
+    "dimension": "housekeeping",
+    "previous": "inspected",
+    "current": "dirty",
+    "authority_source": "urn:hos:housekeeping:demo",
+    "reason": "departure"
+  }
+}
+```
+
+- `source` is the system that published it, and `id` its number in that system: together, they identify the fact.
+- `type` says what happened: a unit's status changed.
+- `time` is when it happened, in UTC (the `Z`); `hosrecordedat`, when the system recorded it.
+- `hosproperty` is the hotel, and `hostenant` the organisation its data belongs to, such as a hotel group. `hospropertytimezone` is the hotel's time zone, and `hosbusinessdate` its operating day.
+- `hossubjects` names what the fact is about: unit 204.
+- `data` holds the detail: the housekeeping status of unit 204 went from `inspected` to `dirty` when the guest left.
+
+<TechnicalDetail>
+
+HOS events follow the [CloudEvents](https://cloudevents.io) format, with HOS attributes that start with `hos`. `data` is closed: only the fields its type defines are allowed, and vendor detail goes in `data.extensions`, under a namespace such as `com.example`. [HOS Events 0.1](/docs/events) defines the fifteen types and every attribute.
+
+</TechnicalDetail>
+
+## Producers and consumers
+
+A <Term id="producer">producer</Term> publishes facts: a property management system (PMS), a housekeeping app, a guest messaging platform. A <Term id="consumer">consumer</Term> receives them and decides what to do with each one: a dashboard, an operations app, an AI assistant. One system can be both.
+
+**In a hotel**: the housekeeper who reports a room's state, and the front desk that reads it before handing over a key.
+
+**Why it matters**: the tools check each side differently. A consumer is tested with made-up scenarios; a producer is checked on what it actually publishes.
+
+## The manifest
+
+A producer's <Term id="manifest">manifest</Term> is its declaration: the facts it publishes, for which hotels, the values it is the authority for, how it delivers them, how long it keeps them, and its known limitations.
+
+**In a hotel**: a job description. "I report the cleaning status of rooms, and I have the last word on it. I also report whether a room is occupied, but the PMS has the last word on that."
+
+**Why it matters**: a consumer processes only what a manifest declares. The manifest is how it knows whom to trust for what.
+
+Part of the housekeeping system's manifest:
+
+```json id="housekeeping-manifest"
+{
+  "hosmanifestversion": "0.1",
+  "producer": "urn:hos:housekeeping:demo",
+  "property_ids": ["prop_demo"],
+  "events": [
+    { "type": "unit.status_changed", "dimensions": ["housekeeping"], "authoritative": true, "snapshot": true },
+    { "type": "unit.status_changed", "dimensions": ["occupancy"], "authoritative": false, "snapshot": true },
+    { "type": "housekeeping.task.created", "authoritative": true },
+    { "type": "housekeeping.task.completed", "authoritative": true }
+  ],
+  "limitations": ["The property releases units on inspection only, so the housekeeping status goes from dirty to inspected without a clean step."]
+}
+```
+
+## Authority
+
+The <Term id="authority">authority</Term> on a value is the system of record for it: the housekeeping system for cleaning, the PMS for occupancy. Only the authority changes the value. When another system disagrees, its fact is kept and shown as a disagreement, never merged into the value.
+
+**In a hotel**: who has the last word on a room. The PMS may believe room 204 is clean because a task was closed; the supervisor who inspects rooms decides.
+
+**Why it matters**: without it, the last system to speak wins, and a front desk may hand over a room nobody released. That is delivery 9 of the Quickstart.
+
+## The five dispositions
+
+For each fact it receives, a consumer reaches one <Term id="disposition">disposition</Term>. HOS Events 0.1 decides which, in this order:
+
+| Disposition             | When                                                                                 | In the Quickstart |
+| :---------------------- | :----------------------------------------------------------------------------------- | :---------------- |
+| `duplicate`             | the consumer has already received a fact with the same `source` and `id`             | delivery 5        |
+| `undeclared_capability` | the producer's manifest does not declare this fact for this hotel                    | delivery 7        |
+| `non_authoritative`     | the manifest declares it, but the producer is not the authority: it is only recorded | delivery 9        |
+| `superseded`            | a fact about the same thing that happened later is already known                     | delivery 11       |
+| `applied`               | none of the above: the fact changes what the consumer knows                          | the others        |
+
+**Why it matters**: facts can arrive twice, late or out of order, and from systems that are not the authority. With these rules, every consumer that receives the same facts reaches the same result.
+
+<TechnicalDetail>
+
+"Later" compares the `time` of the two facts, then their `source`, then their `id`, so that every implementation breaks ties the same way. Unless the producer declares an ordering, delivery order never decides. The SDK exports these rules: `factKey`, `isLater`, `findDeclaration` and `authority`.
+
+</TechnicalDetail>
+
+## Streams
+
+A <Term id="stream">stream</Term> is a file of facts in JSON Lines: one fact per line, in the order they were delivered, usually named `.jsonl`. A `.json` file holds one document; a `.jsonl` file holds many, one per line.
+
+```text
+{"specversion":"1.0","id":"pms-000312","source":"urn:hos:pms:demo","type":"reservation.created",...}
+{"specversion":"1.0","id":"pms-000421","source":"urn:hos:pms:demo","type":"stay.expected",...}
+{"specversion":"1.0","id":"pms-000422","source":"urn:hos:pms:demo","type":"stay.unit_assigned",...}
+```
+
+**Why it matters**: some problems only show across facts: the same fact sent twice, two facts with the same id but different content, a fact that no manifest declares. `hos validate` checks a stream as a whole, and `hos replay` plays it back.
+
+## Conformance scenarios
+
+A <Term id="conformance-scenario">conformance scenario</Term> is a made-up day in a hotel: the facts of several systems, in delivery order, the manifests of those systems, and the outcome HOS expects. HOS publishes three: an early arrival to a room not ready, a room out of order, and a late check-out.
+
+**Why it matters**: a system that receives HOS facts can replay them and compare its answers with the expected ones, whatever its language. `hos conformance run` does it for you. All the data is made up: no guest or hotel data is involved.
+
+## Normative and reference
+
+A scenario checks two things of different standing, which reports show apart:
+
+- **Normative**: the dispositions. They follow the rules of HOS Events 0.1, and every conformant consumer must reach them.
+- **Reference**: whether each arrival's room is ready, and the situations raised, such as "arrival at risk". They come from the <Term id="reference-projection">reference projection</Term>, one way to read arrivals that HOS gives as an example. It is not normative: a system may assess arrivals differently and still follow HOS.
+
+**Why it matters**: a report of `normative 13/13` says the system follows the rules. A difference at the reference level may only mean the system reads arrivals its own way. See [Read a HOS report](/docs/tools/read-a-report).
+
+## Signatures and key sets
+
+A producer <Term id="signature">signs</Term> its manifest, so that a consumer can check who declared it and that nobody changed it since. It publishes three files on its website, under `/.well-known/hos/`: the manifest, its signature, and its public keys in a <Term id="jwks">JWKS</Term>, a JSON Web Key Set.
+
+**In a hotel**: a wax seal on a letter, and the public register of seals that anyone can check it against. The seal itself, the private key, never leaves the producer.
+
+**Why it matters**: a manifest decides what a consumer trusts. A manifest that fails verification counts as no manifest: nothing it declares is processed. A signature expires, 90 days after signing by default with hos, so the producer signs again in time.
+
+## Exit codes
+
+Every hos command ends with an <Term id="exit-code">exit code</Term>, a number that scripts and CI read without reading the text:
+
+| Code | Meaning                                                           |
+| :--- | :---------------------------------------------------------------- |
+| 0    | everything is valid, or every check passed                        |
+| 1    | a file is invalid, a check failed, or a signature does not verify |
+| 2    | the command is wrong, or a file or URL could not be read          |
+
+**Why it matters**: a CI pipeline stops on any code other than 0, so a broken file or a failed scenario blocks a release before it reaches a hotel.
+
+## Next steps
+
+- [Quickstart](/docs/tools/quickstart): see these ideas at work in ten minutes.
+- [Glossary](/docs/tools/glossary): every term in a few lines.
+- [HOS Events 0.1](/docs/events): the rules themselves.

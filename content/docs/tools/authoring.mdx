@@ -99,7 +99,7 @@ On macOS and Linux, `npx` comes with Node.js.
 
 ### What hos prints
 
-```output
+```output id="producer-fail"
 Producer urn:hos:pms:demo
 ✗ manifest.json: manifest that fails the checks (1 error)
   error   limitations is empty. A producer states its known gaps, unsupported states and access constraints, which the Event Producer checks require.
@@ -113,6 +113,8 @@ Producer urn:hos:pms:demo
 ```
 
 A fenced block marked `output` colours ✓ and ✗ and each message level, and links every rule to its explanation. Copy the output from a real run, or from the snapshots in `packages/cli/test/__snapshots__`.
+
+Every output block has an id, written after the language: `output id="validate-ok"`. `tests/unit/docs-examples.test.ts` runs hos for each id and compares, so a page never shows a message hos no longer prints. For output that another program prints, such as PowerShell, write `output from="powershell"` instead.
 
 ### Code
 

@@ -16,7 +16,7 @@ export const metadata: Metadata = {
   description: "HOS Core, event model, conformance scenario and mapping status as they are actually published.",
 };
 
-// The two packages, with the first commands of their npm pages.
+// The two packages, with their first commands and where their documentation starts.
 const tools = [
   {
     name: "@hos-ai/cli",
@@ -31,7 +31,7 @@ const tools = [
       "# On Windows, the Python launcher is py:",
       'npx @hos-ai/cli conformance run --all --level normative --impl "py impl.py"',
     ].join("\n"),
-    link: "Five-minute start",
+    link: { label: "Quickstart", href: "/docs/tools/quickstart" },
   },
   {
     name: "@hos-ai/sdk",
@@ -46,7 +46,7 @@ const tools = [
       "const { valid, errors } = validate(event);",
       "if (!valid) console.log(errors);",
     ].join("\n"),
-    link: "Examples",
+    link: { label: "Install the SDK", href: "/docs/tools/install#install-the-sdk" },
   },
 ];
 
@@ -107,13 +107,23 @@ export default function DocumentationPage() {
               <div className="mt-5 min-w-0 flex-1">
                 <CodePanel code={tool.code} label={tool.label} />
               </div>
-              <a className="mt-5 inline-block" href={`https://www.npmjs.com/package/${tool.name}`} rel="noreferrer" target="_blank">
-                <Button variant="secondary">
-                  {tool.link} <ArrowUpRight aria-hidden="true" size={15} />
-                </Button>
-              </a>
+              <div className="mt-5 flex flex-wrap gap-3">
+                <Link href={tool.link.href}>
+                  <Button variant="secondary">{tool.link.label}</Button>
+                </Link>
+                <a href={`https://www.npmjs.com/package/${tool.name}`} rel="noreferrer" target="_blank">
+                  <Button variant="ghost">
+                    npm <ArrowUpRight aria-hidden="true" size={15} />
+                  </Button>
+                </a>
+              </div>
             </Card>
           ))}
+        </div>
+        <div className="mt-8">
+          <Link href="/docs/tools">
+            <Button>Read the tools documentation</Button>
+          </Link>
         </div>
         <p className="mt-6 max-w-3xl text-sm leading-6 text-[var(--muted-foreground)]">
           An implementation in another language gets its verdict through the{" "}

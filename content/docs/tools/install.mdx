@@ -1,14 +1,203 @@
-<PageInProgress>
+<InShort>
 
-This page will take you through installing the tools on Windows, macOS or Linux, and checking that they work:
+The tools run on Node.js, on Windows, macOS and Linux. Check that Node.js 22 or later is installed, then run the hos command straight from npm, or install it. The HOS schemas and the conformance scenarios come inside the package, so once it is on your computer, it works offline.
 
-- checking that Node.js 22 or later is installed, and what to do if it is older;
-- the three ways to run the hos command, and when to use each: `npx @hos-ai/cli` to try it, `npm install -g @hos-ai/cli` to have `hos` everywhere, and `npm install --save-dev @hos-ai/cli` to pin a version in a project or a CI;
-- the differences between PowerShell, the Command Prompt and macOS or Linux shells, such as `npx.cmd` and `curl.exe`;
-- installing the SDK with `npm install @hos-ai/sdk`;
-- company networks, proxies and internal npm registries;
-- updating and uninstalling.
+</InShort>
 
-Meanwhile, the [npm page of the hos command](https://www.npmjs.com/package/@hos-ai/cli) covers installation, with a section for Windows.
+<FactSheet
+  audience="Anyone who can open a terminal"
+  time="5 minutes, or 15 if Node.js must be installed"
+  needs={["Windows, macOS or Linux", "An internet connection for the first run"]}
+/>
 
-</PageInProgress>
+## Open a terminal
+
+The tools have no window of their own: you type commands in a terminal and read what they print.
+
+<OsTabs>
+<Os name="powershell">
+
+Press the Windows key, type **PowerShell**, and open **Windows PowerShell**, or **Terminal** on Windows 11. You type each command after the prompt, which ends with `>`, and run it with Enter.
+
+</Os>
+<Os name="cmd">
+
+Press the Windows key, type **cmd**, and open **Command Prompt**. You type each command after the prompt, which ends with `>`, and run it with Enter.
+
+</Os>
+<Os name="bash">
+
+On macOS, open **Terminal**, in Applications, then Utilities. On Linux, open your distribution's terminal, often with Ctrl+Alt+T. You type each command after the prompt, which ends with `$` or `%`, and run it with Enter.
+
+</Os>
+</OsTabs>
+
+These tabs choose your shell for the whole documentation: every command below, and on the other pages, follows your choice.
+
+## Check Node.js
+
+Node.js runs the tools. Check its version:
+
+```sh
+node --version
+```
+
+It prints a version such as `v22.20.0` or `v24.12.0`. The first number must be 22 or more.
+
+If the terminal answers that `node` is not recognised, or `command not found`, Node.js is not installed. If the first number is below 22, it is too old. In both cases, install the current version.
+
+### Install or update Node.js
+
+- **From nodejs.org**: download the installer marked LTS, for long-term support, from [nodejs.org](https://nodejs.org/en/download). Run it with its default options, then close the terminal and open a new one, so that it finds `node`.
+- **With a package manager**, if you already use one: winget on Windows, Homebrew on macOS.
+
+<Command powershell="winget install OpenJS.NodeJS.LTS" cmd="winget install OpenJS.NodeJS.LTS" bash="brew install node" />
+
+On Linux, the `nodejs` package of your distribution may be older than 22: follow the instructions for your distribution on [nodejs.org](https://nodejs.org/en/download) instead.
+
+If you need several versions of Node.js side by side, use a version manager: [nvm](https://github.com/nvm-sh/nvm) on macOS and Linux, [nvm-windows](https://github.com/coreybutler/nvm-windows) on Windows.
+
+<Checkpoint>
+
+`node --version` prints `v22` or a higher number. Installing Node.js also installs npm, which downloads the tools.
+
+</Checkpoint>
+
+## Choose how to run hos
+
+The hos command is the npm package `@hos-ai/cli`. There are three ways to run it:
+
+| You want to                         | Install it with                      | Then type             |
+| :---------------------------------- | :----------------------------------- | :-------------------- |
+| try it, without installing anything | nothing                              | `npx @hos-ai/cli ...` |
+| have a `hos` command everywhere     | `npm install --global @hos-ai/cli`   | `hos ...`             |
+| pin a version in a project or a CI  | `npm install --save-dev @hos-ai/cli` | `npx hos ...`         |
+
+- **npx** downloads the package the first time, keeps it in npm's cache and runs it. There is nothing to install or remove: it is the best way to try the tools, and the one the [Quickstart](/docs/tools/quickstart) uses.
+- **A global install** puts `hos` on your computer, in every folder. You update it yourself.
+- **A project install** writes the version in the project's `package.json` and `package-lock.json`, so every developer and the CI run the same one. Run it from the project's folder.
+
+The first time npx runs the package, it asks before downloading it:
+
+<NpxPrompt />
+
+Press Enter to accept. It does not ask again for this version.
+
+## Check the install
+
+```sh
+npx @hos-ai/cli --version
+```
+
+<VersionOutput />
+
+With a global install, type `hos --version`; with a project install, `npx hos --version`. The first number is the version of the command, the second the draft of the HOS specification it checks.
+
+`--help` lists the commands:
+
+```sh
+npx @hos-ai/cli --help
+```
+
+<Checkpoint>
+
+`--version` prints the version, and `--help` lists the commands, starting with `validate`. You are ready for the [Quickstart](/docs/tools/quickstart).
+
+</Checkpoint>
+
+## PowerShell and Windows
+
+Three things behave differently on Windows. The Command Prompt is not affected by the first two.
+
+### Running scripts is disabled
+
+PowerShell may refuse to run `npx`, `npm` or `hos` with a message that contains:
+
+```output from="powershell"
+cannot be loaded because running scripts is disabled on this system.
+```
+
+Windows ships with PowerShell scripts disabled, and `npx`, `npm` and `hos` are started by small scripts. There are two ways around it:
+
+- Type `npx.cmd`, `npm.cmd` or `hos.cmd` instead. They do the same, without a script.
+- Or allow scripts written on your computer, and signed ones from elsewhere, for your account only. Your organisation may forbid it: then use the first way.
+
+```powershell
+Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
+```
+
+### curl is another command
+
+In Windows PowerShell 5.1, the version that comes with Windows, `curl` is another name for `Invoke-WebRequest`, which takes other options: it asks for a `Uri` instead of downloading. Press Ctrl+C, and type `curl.exe`, the real curl, which comes with Windows 10 and 11. The commands on these pages do it for you when PowerShell is your shell.
+
+### Quotes in --impl
+
+`hos conformance run --impl` starts your program through the Command Prompt, whatever your shell: quote paths with double quotes, not single quotes.
+
+## Install the SDK
+
+For developers who write TypeScript or JavaScript. In your project's folder:
+
+```sh
+npm install @hos-ai/sdk
+```
+
+The SDK runs in Node.js 22 or later, and in a browser through a bundler. It is an ES module. To check it, save these two lines as `check.mjs`:
+
+```js
+import { HOS_SPEC_VERSION } from "@hos-ai/sdk";
+console.log(HOS_SPEC_VERSION);
+```
+
+and run them:
+
+```sh
+node check.mjs
+```
+
+<SpecVersionOutput />
+
+The [SDK reference](/docs/tools/sdk) and [Build an adapter](/docs/tools/guides/build-an-adapter) will describe what it offers. Meanwhile, its [npm page](https://www.npmjs.com/package/@hos-ai/sdk) has an example of each part.
+
+## Behind a company network
+
+If npm cannot reach the internet, it fails with codes such as `ETIMEDOUT`, `ECONNREFUSED`, `ENOTFOUND` or `SELF_SIGNED_CERT_IN_CHAIN`. Ask your IT team for the address of the company proxy or npm registry, then give it to npm:
+
+```sh
+npm config set proxy http://proxy.example.com:8080
+npm config set https-proxy http://proxy.example.com:8080
+```
+
+or, with an internal registry that mirrors npm:
+
+```sh
+npm config set registry https://npm.example.com/
+```
+
+`npm config get registry` shows the registry npm uses now. An internal registry must carry `@hos-ai/cli` and `@hos-ai/sdk`, and the packages they depend on.
+
+## Update or remove
+
+| Way     | Update                                       | Remove                               |
+| :------ | :------------------------------------------- | :----------------------------------- |
+| npx     | `npx @hos-ai/cli@latest ...` runs the newest | nothing to remove                    |
+| global  | `npm install --global @hos-ai/cli@latest`    | `npm uninstall --global @hos-ai/cli` |
+| project | `npm install --save-dev @hos-ai/cli@latest`  | `npm uninstall @hos-ai/cli`          |
+| SDK     | `npm install @hos-ai/sdk@latest`             | `npm uninstall @hos-ai/sdk`          |
+
+npx may reuse the version it downloaded before: add `@latest` to be sure you run the newest. The tools are alphas, and their [changelog](https://github.com/francoisnoel62/HOS-AI/blob/master/packages/cli/CHANGELOG.md) lists what changes between versions.
+
+<IfItFails>
+
+- `node` is not recognised, or `command not found`: [install Node.js](#install-or-update-node-js), then open a new terminal.
+- npm prints a warning with `EBADENGINE`: your Node.js is older than 22. [Update it](#install-or-update-node-js).
+- PowerShell says running scripts is disabled: type [`npx.cmd`](#running-scripts-is-disabled).
+- `hos` is not recognised after a global install: open a new terminal. If it still fails, use `npx @hos-ai/cli`, and [ask for help](/docs/tools/help).
+- npm fails with `ETIMEDOUT` or `ENOTFOUND`: see [Behind a company network](#behind-a-company-network).
+
+</IfItFails>
+
+## Next steps
+
+- [Quickstart](/docs/tools/quickstart): a first result in ten minutes.
+- [Concepts](/docs/tools/concepts): the ideas behind what the tools print.

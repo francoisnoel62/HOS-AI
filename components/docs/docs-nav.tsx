@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, PencilLine } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useId, useState } from "react";
@@ -23,7 +23,7 @@ function PageLinks({ pathname, onNavigate }: { pathname: string; onNavigate?: ()
                   <Link
                     aria-current={current ? "page" : undefined}
                     className={cn(
-                      "-ml-px block border-l py-1.5 pl-3 text-sm transition-colors",
+                      "-ml-px flex items-center gap-1.5 border-l py-1.5 pl-3 text-sm transition-colors",
                       current
                         ? "border-[var(--accent)] font-medium text-[var(--foreground)]"
                         : "border-transparent text-[var(--muted-foreground)] hover:border-[var(--border-strong)] hover:text-[var(--foreground)]",
@@ -32,6 +32,12 @@ function PageLinks({ pathname, onNavigate }: { pathname: string; onNavigate?: ()
                     onClick={onNavigate}
                   >
                     {item.navTitle}
+                    {item.written ? null : (
+                      <>
+                        <PencilLine aria-hidden="true" className="shrink-0 text-[var(--muted-foreground)]" size={12} />
+                        <span className="sr-only">, being written</span>
+                      </>
+                    )}
                   </Link>
                 </li>
               );
@@ -39,6 +45,9 @@ function PageLinks({ pathname, onNavigate }: { pathname: string; onNavigate?: ()
           </ul>
         </div>
       ))}
+      <p aria-hidden="true" className="flex items-center gap-1.5 text-xs text-[var(--muted-foreground)]">
+        <PencilLine size={12} /> Being written
+      </p>
     </div>
   );
 }

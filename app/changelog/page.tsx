@@ -10,6 +10,16 @@ export const metadata: Metadata = { title: "Changelog", description: "Published 
 const entries = [
   {
     date: "26 September 2026",
+    title: "The hos command and the SDK have their own documentation.",
+    items: [
+      "A first set of pages takes a reader from nothing to a first result: what the two tools do and do not do, the ten ideas behind them in plain language, installing them on Windows, macOS or Linux, and a ten-minute quickstart that validates an event, reads an error and replays an early arrival.",
+      "Read a HOS report explains, for readers who do not write code, what a conformance or producer report says, what it does not prove, and what to ask a vendor.",
+      "Every command is shown for PowerShell, the Command Prompt and macOS or Linux, and every output shown is checked against what the hos command prints. The guides and references follow; their pages say what they will cover.",
+    ],
+    links: [["/docs/tools", "Tools documentation"]],
+  },
+  {
+    date: "26 September 2026",
     title: "The hos command and the SDK are on npm.",
     items: [
       "@hos-ai/cli 0.1.0-alpha.1 gives the hos command. It validates HOS files, replays recorded event streams, runs the three conformance scenarios through an implementation in any language, checks what a producer publishes against its manifest, and signs and verifies manifests. It carries the schemas and the scenarios, so it works offline.",
