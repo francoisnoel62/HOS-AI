@@ -2,7 +2,7 @@
 
 Every notable change to `@hos-ai/sdk`. The versions stay `0.1.0-alpha.N` until HOS 0.1 is final: until then, any release may change the API.
 
-## 0.1.0-alpha.1 (unreleased)
+## 0.1.0-alpha.1 (2026-09-26)
 
 The first release on npm. It implements HOS Core 0.1 and HOS Events 0.1, draft `0.1.0-draft.2`.
 

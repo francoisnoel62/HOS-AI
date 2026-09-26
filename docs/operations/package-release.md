@@ -36,7 +36,7 @@ On a machine without the repository, run what the plan asks of a release:
 npx @hos-ai/cli@<version> conformance run arrival-readiness --level normative --impl "python3 impl.py"
 ```
 
-with `impl.py` from `examples/python-dispositions`, and `py impl.py` on Windows. The package pages on npmjs.com show a provenance badge that links to the workflow run.
+with `impl.py` from `examples/python-dispositions`, and `py impl.py` on Windows. The workflow [Verify release](../../.github/workflows/verify-release.yml) does this on clean Linux and Windows machines: in the repository's Actions tab, run it with the version. The package pages on npmjs.com show a provenance badge that links to the workflow run.
 
 ## If something is wrong
 
