@@ -9,6 +9,30 @@ export const metadata: Metadata = { title: "Changelog", description: "Published 
 
 const entries = [
   {
+    date: "26 September 2026",
+    title: "The Apaleo mapping runs against a live account, and a Cloudbeds check is ready.",
+    items: [
+      "Read-only live checks now exist for Apaleo and Cloudbeds, as for Mews. Each fetches what an integration fetches before its first webhook, runs it through the adapter and reports facts by type, schema errors, what a second pass would publish, and today's arrivals as the reference projection sees them. Reports keep no PMS payloads, guest data or credentials.",
+      "Apaleo, against the five sample hotels of a developer account: 740 facts, every one valid HOS 0.1, and none published twice.",
+      "Three arrivals added to the Paris sample hotel read as set up: a clean room ready, a dirty room not ready, and a room under maintenance blocked, with a room-readiness risk raised.",
+      "A live account showed what the documentation did not: Apaleo refuses an OutOfOrder maintenance on a room already assigned to a reservation. The Cloudbeds check has not run on a real property yet.",
+    ],
+    links: [
+      ["/demo/apaleo", "Apaleo mapping"],
+      ["/demo/cloudbeds", "Cloudbeds mapping"],
+    ],
+  },
+  {
+    date: "25 September 2026",
+    title: "The Mews mapping runs against Mews's live demo.",
+    items: [
+      "A read-only live check runs the Mews adapter against a live Connector API environment. It calls only configuration and getAll operations.",
+      "Against Mews's two public demo enterprises: 689 reservations and 2,584 resources gave 3,485 facts, every one valid HOS 0.1, and none published twice. Every Mews field the adapter reads was present, and every state it met is documented.",
+      "The first runs changed the integration. Dorm stays are assigned to beds, so beds are now units. Accommodation is picked by resource category, because parking and meeting rooms are also sold by the day. And the shared demo tokens are rate-limited, so the check retries.",
+    ],
+    links: [["/demo/mews", "Mews mapping"]],
+  },
+  {
     date: "25 September 2026",
     title: "HOS, HTNG and OpenTravel: where HOS fits.",
     items: [

@@ -19,7 +19,7 @@ export default function DemoPage() {
         eyebrow="Real PMS formats · Experimental"
         id="pms-mappings"
         title="The same arrival, from three real PMS APIs."
-        description="Each replay swaps the synthetic PMS facts for the payloads a real PMS API would send, maps them through an unofficial reference adapter and reaches the same expected outcome. The payloads are synthetic, and no adapter has yet run against a live system."
+        description="Each replay swaps the synthetic PMS facts for the payloads a real PMS API would send, maps them through an unofficial reference adapter and reaches the same expected outcome. The payloads are synthetic. The Mews and Apaleo adapters have also run, read-only, against live demo data; Cloudbeds has not yet."
       >
         <div className="grid gap-3 md:grid-cols-3">
           {pmsMappings.map((pms) => (
