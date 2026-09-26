@@ -132,7 +132,8 @@ lib/legal.ts         Publisher, host, processor and retention facts behind the l
 lib/hos/mappings/    Experimental PMS mappings and their recordings
 lib/spec.ts          Where the site publishes the spec, and loaders for its conformance scenarios
 packages/sdk/        @hos-ai/sdk: HOS types, validation, processing rules and the reference projection
-packages/cli/        @hos-ai/cli: the hos command, starting with hos validate
+packages/cli/        @hos-ai/cli: the hos command: validate, conformance run and replay
+examples/            Implementations outside TypeScript, such as the HOS dispositions in Python
 database/migrations/ PostgreSQL schema migrations
 scripts/             Migration and seed utilities, and the read-only PMS live checks
 public/spec/0.1/     Draft HOS schemas, examples, conformance corpus and mapping recordings

@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 // What a command reads and writes. The tests replace it to run commands in process.
@@ -7,6 +7,7 @@ export type Io = {
   cwd: string;
   // A file, relative to cwd.
   readFile(file: string): Promise<string>;
+  writeFile(file: string, text: string): Promise<void>;
   readStdin(): Promise<string>;
   stdout(text: string): void;
   stderr(text: string): void;
@@ -17,6 +18,7 @@ export function nodeIo(): Io {
   return {
     cwd,
     readFile: (file) => readFile(path.resolve(cwd, file), "utf8"),
+    writeFile: (file, text) => writeFile(path.resolve(cwd, file), text),
     async readStdin() {
       const chunks: Buffer[] = [];
       for await (const chunk of process.stdin) chunks.push(chunk as Buffer);

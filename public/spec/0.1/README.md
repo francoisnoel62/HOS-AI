@@ -23,6 +23,8 @@ Status: draft for review. Names and fields may change before 0.1 is final. The s
   - `events.jsonl` — the deliveries, in delivery order, one CloudEvent per line;
   - `expected.json` — the dispositions, readiness and situations an implementation must reproduce.
 
+- `conformance/PROTOCOL.md` — the `hos-conformance/1` protocol, through which `hos conformance run` replays the scenarios in an implementation written in any language and compares its answers with `expected.json`.
+
 - `conformance/invalid/` — documents and streams a validator must reject, one case per file, and `conformance/valid/` — cases it must accept. Each case holds:
   - `description` — what the case shows;
   - `rule` — the rule it breaks or illustrates. Rules are named after the sections and principles of `/docs/core` and `/docs/events`, such as `events/minimal-data`, until the specification numbers them;
@@ -38,3 +40,9 @@ The schemas reference each other by `$id` (`urn:hos:schema:0.1:*`); load all of 
 2. Replay `events.jsonl` in file order, applying the HOS Events 0.1 rules: deduplicate on source + id, order by occurrence time, process only declared capabilities, and let only the declared authority change a value.
 3. For every delivery, compare the disposition and, for every known stay, its readiness and situation with `expected.json`.
 4. Compare emitted situations on every attribute except `id` and `hosrecordedat`, which are implementation-defined.
+
+`hos conformance run` does all of this for an implementation in any language, as `conformance/PROTOCOL.md` describes:
+
+```sh
+npx @hos-ai/cli conformance run --all --impl "python3 impl.py"
+```
