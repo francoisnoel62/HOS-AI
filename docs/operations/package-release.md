@@ -23,9 +23,9 @@ git tag packages-v0.1.0-alpha.2 <commit>
 git push origin packages-v0.1.0-alpha.2
 ```
 
-The workflow checks the versions again, runs the packages' tests and `packages:try`, then publishes.
+The run waits for a maintainer's approval, which the `npm` environment requires: open it in the Actions tab, then Review deployments. It then checks the versions again, runs the packages' tests and `packages:try`, and publishes.
 
-- **First release of a package.** npm only stages packages that already exist, so the first release publishes directly, with a short-lived token. On npmjs.com, create a granular access token with read and write access to the `@hos-ai` scope, which expires within 7 days. Store it as `NPM_TOKEN`, a secret of the repository's `npm` environment. Once both packages are published, set up the next point, then delete the token on npmjs.com and the secret on GitHub.
+- **First release of a package.** npm only stages packages that already exist, so the first release publishes directly, with a short-lived token. On npmjs.com, create a granular access token with read and write access to the `@hos-ai` scope, which expires within 7 days, and tick "Bypass two-factor authentication": without it, npm answers 403 to a publish from CI when the account requires 2FA. Store it as `NPM_TOKEN`, a secret of the repository's `npm` environment. Once both packages are published, set up the next point, then delete the token on npmjs.com and the secret on GitHub. If npm no longer offers tokens that bypass 2FA, publish the first version from a maintainer's machine with `npm publish --workspace <package> --access public --otp <code>`, SDK first: that version then has no provenance.
 - **Every later release.** On npmjs.com, each package has a trusted publisher: this repository, the workflow `release.yml` and the environment `npm`, allowed to stage only. Under publishing access, it requires two-factor authentication and disallows tokens. Without `NPM_TOKEN`, the workflow stages both packages through OIDC. A maintainer then approves each one in the Staged Packages tab on npmjs.com, or with `npm stage approve <stage-id>`, SDK first, and confirms with two-factor authentication.
 
 ## Check
