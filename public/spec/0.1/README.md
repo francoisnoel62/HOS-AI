@@ -49,6 +49,8 @@ The schemas reference each other by `$id` (`urn:hos:schema:0.1:*`); load all of 
 npx @hos-ai/cli conformance run --all --impl "python3 impl.py"
 ```
 
+On Windows, where `python3` often does not exist, write `--impl "py impl.py"`.
+
 A producer is checked on what it publishes: `hos conformance producer --manifest manifest.json --stream recording.jsonl --redelivery redelivery.jsonl` checks that its manifest is valid and states its limitations, that each fact is valid, published under the manifest's producer and declared for its property, that no source and id name two facts, and that a redelivery of the same data brings back the same facts with the same ids.
 
 ## Signing a manifest

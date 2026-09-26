@@ -1,5 +1,5 @@
 import { execFileSync, execSync } from "node:child_process";
-import { copyFileSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -38,6 +38,10 @@ try {
       .filter((file) => file.endsWith(".tgz"))
       .join(" ")}`,
   );
+  // npm always ships README.md and LICENSE; the files field must add the changelog.
+  for (const name of ["sdk", "cli"])
+    for (const file of ["README.md", "LICENSE", "CHANGELOG.md"])
+      if (!existsSync(path.join(project, "node_modules/@hos-ai", name, file))) throw new Error(`@hos-ai/${name} does not ship ${file}.`);
   run("npx --no -- hos --version");
   run('npx --no -- hos conformance run --all --impl "hos reference-impl"');
   if (python) {

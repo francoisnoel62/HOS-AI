@@ -2,8 +2,26 @@
   "name": "@hos-ai/cli",
   "version": "0.1.0-alpha.0",
   "private": true,
-  "description": "The hos command: validate HOS 0.1 documents and streams.",
+  "description": "The hos command: validate HOS 0.1 files, replay event streams, run the conformance scenarios and sign producer manifests.",
   "license": "Apache-2.0",
+  "keywords": [
+    "hos",
+    "hospitality",
+    "hotel",
+    "pms",
+    "conformance",
+    "validator",
+    "cli"
+  ],
+  "homepage": "https://hos-ai.vercel.app/docs",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/francoisnoel62/HOS-AI.git",
+    "directory": "packages/cli"
+  },
+  "bugs": {
+    "url": "https://github.com/francoisnoel62/HOS-AI/issues"
+  },
   "type": "module",
   "engines": {
     "node": ">=22"
@@ -12,7 +30,8 @@
     "hos": "./dist/bin.js"
   },
   "files": [
-    "dist"
+    "dist",
+    "CHANGELOG.md"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
@@ -28,5 +47,9 @@
     "@types/node": "^22.10.7",
     "typescript": "^5.7.3",
     "vitest": "^3.0.5"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
   }
 }

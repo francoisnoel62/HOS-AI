@@ -1,0 +1,67 @@
+name: Problem with the CLI or the SDK
+description: The hos command or @hos-ai/sdk does not do what its documentation says, or you are stuck using it.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This repository is public. Use synthetic data only: never real guest data, credentials, API keys or private keys.
+  - type: dropdown
+    id: package
+    attributes:
+      label: Package
+      options:
+        - "@hos-ai/cli (the hos command)"
+        - "@hos-ai/sdk"
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: The output of `hos --version`, or the version of @hos-ai/sdk in your package.json.
+      placeholder: "@hos-ai/cli 0.1.0-alpha.1 (HOS 0.1.0-draft.2)"
+    validations:
+      required: true
+  - type: input
+    id: node
+    attributes:
+      label: Node.js version
+      description: The output of `node --version`.
+      placeholder: v22.20.0
+    validations:
+      required: true
+  - type: input
+    id: system
+    attributes:
+      label: System
+      placeholder: Windows 11 with PowerShell, macOS 15, Ubuntu 24.04…
+    validations:
+      required: true
+  - type: textarea
+    id: command
+    attributes:
+      label: What you ran
+      description: The exact command, or a short piece of code that shows the problem.
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: output
+    attributes:
+      label: What it printed
+      description: The whole output, with --json when the command has it.
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+  - type: textarea
+    id: files
+    attributes:
+      label: Files
+      description: A synthetic file that shows the problem, if there is one. You can also attach it.
