@@ -113,6 +113,21 @@ The first runs changed the integration in three ways:
 
 The summary line now counts readiness only among the stays still expected. Stays that arrived today and are already in house, or gone, read not ready in the room they used.
 
+### Producer check, 26 September 2026
+
+Each run now also writes the adapter's manifest, the facts it published and a redelivery to `data/live-checks/mews/`, then runs the producer check on them, as `hos conformance producer` does. The redelivery is the same data sent through a restarted adapter: a fresh memory with the same identities, as an integration restarts with its persisted crosswalk. Every fact must come back with the same id and content, so that a consumer discards it as a duplicate.
+
+The check ran again against both demo enterprises, with a one-day window, and passed on each:
+
+| Enterprise                     | Fetched                                              | HOS facts | Schema errors | Redelivered with the same id and content | Producer check |
+| :----------------------------- | :--------------------------------------------------- | --------: | ------------: | ---------------------------------------: | :------------- |
+| Gross pricing, Europe/Budapest | 417 reservations, 1,532 resources, 8 resource blocks |     2,084 |             0 |                                    2,084 | passed         |
+| Net pricing, America/New_York  | 47 reservations, 1,052 resources                     |     1,148 |             0 |                                    1,148 | passed         |
+
+The manifest states two limitations: Mews dates assignments and room states by the entity's last update, and each run starts from an empty crosswalk. As on the first runs, the only entities not mapped were reservations cancelled before HOS knew them.
+
+Two services of the Gross enterprise named after parking, Hoteligy Parking and Car Park, now count as accommodation, because each has a resource category of a place to stay. The selection is only as good as the property's categories; `MEWS_SERVICE_IDS` overrides it.
+
 ## Not covered yet
 
 - Occupancy from Get resources' occupancy state.

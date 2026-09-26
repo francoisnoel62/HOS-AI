@@ -77,6 +77,8 @@ Each scenario's files are in [`public/spec/0.1/conformance/`](public/spec/0.1/co
 
 The runs changed the integrations. Mews assigns dorm stays to beds, so beds are now units, and accommodation is picked by resource category rather than by how a service is sold. Apaleo refuses an out-of-order maintenance on a room already assigned to a reservation. See the [Mews](public/spec/0.1/mappings/mews/README.md#live-check), [Apaleo](public/spec/0.1/mappings/apaleo/README.md#live-check) and [Cloudbeds](public/spec/0.1/mappings/cloudbeds/README.md#live-check) notes.
 
+Each live check also records what the adapter publishes, with its manifest, and runs the producer check on it: the manifest states its limitations, every fact is valid and declared, and a restarted adapter publishes the same facts with the same ids. On 26 September 2026 it passed on both Mews demo enterprises, 3,232 facts, and on the five Apaleo sample hotels, 769 facts.
+
 A validator CLI, SDKs, a production event processor and live PMS connectors are future work.
 
 ## Project status
