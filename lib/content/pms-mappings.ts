@@ -56,6 +56,7 @@ export const pmsMappingCopy: Record<PmsMapping, PmsMappingCopy> = {
     title: "The same early arrival, with the PMS speaking Apaleo.",
     description: "Webhooks that name what happened and when, then the reservation or unit the integration fetches.",
     eventLabel: (webhook: { topic: string; type: string }) => `${webhook.topic}/${webhook.type}`,
+    liveCheck: "The adapter has also run, read-only, against the five sample hotels of an Apaleo developer account on 26 September 2026: 740 facts, every one valid HOS 0.1, and none published twice. Three arrivals added to the Paris hotel read ready, not ready and blocked by maintenance, as set up.",
     mapping: [
       ["Reservation/created", "Confirmed", "reservation.created, stay.expected", "time is the reservation's created time. The reservation and booking ids become typed external references. No guest_id: Apaleo embeds guest details without a guest id."],
       ["Reservation/amended, changed", "Arrival or departure moved", "reservation.updated, stay.expected", "Only the changed fields travel, at the event's timestamp."],

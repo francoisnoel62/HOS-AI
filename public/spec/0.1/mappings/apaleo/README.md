@@ -1,6 +1,6 @@
 # Apaleo API → HOS Events 0.1 — experimental mapping
 
-Status: **experimental and unofficial**. HOS AI is not affiliated with Apaleo, and Apaleo has not reviewed or endorsed this mapping. Every payload is synthetic. The adapter has not yet run against a live Apaleo account; the [live check](#live-check) is ready for it.
+Status: **experimental and unofficial**. HOS AI is not affiliated with Apaleo, and Apaleo has not reviewed or endorsed this mapping. Every payload is synthetic. The adapter has also run, read-only, against the sample hotels of an Apaleo developer account; see the [live check](#live-check).
 
 The mapping covers the facts the arrival-readiness scenario needs from a PMS: reservations, stays, unit assignment, check-in and check-out, and unit status. It is written from these sources:
 
@@ -95,7 +95,29 @@ The run does what an integration does before its first webhook. Every fetched un
 
 The report keeps HOS ids, counts and room names. It never keeps Apaleo payloads or guest data. The logic is `lib/hos/mappings/apaleo-sync.ts`, tested offline in `tests/unit/apaleo-sync.test.ts`.
 
-The check has not run yet: the environment this mapping was built in could not reach Apaleo.
+### First runs, 26 September 2026
+
+The check ran against the five sample hotels of a free developer account, with a one-day window:
+
+| Hotel                 | Fetched                   | HOS facts | Schema errors | Second pass | Arrivals still expected      |
+| :-------------------- | :------------------------ | --------: | ------------: | ----------: | :--------------------------- |
+| Munich, Europe/Berlin | 2 reservations, 51 units  |       108 |             0 |           0 | 0                            |
+| Berlin, Europe/Berlin | 1 reservation, 105 units  |       206 |             0 |           0 | 1: unknown, no unit assigned |
+| London, Europe/London | 1 reservation, 51 units   |       105 |             0 |           0 | 0                            |
+| Paris, Europe/Paris   | 3 reservations, 51 units  |       111 |             0 |           0 | 0                            |
+| Vienna, Europe/Vienna | 2 reservations, 105 units |       210 |             0 |           0 | 0                            |
+
+Every call succeeded with the paths, parameters and token request the check was written with. Every unit gave two facts, occupancy and housekeeping. The only entities not mapped were the meeting rooms of Berlin and Vienna, which are not bedrooms. No sample hotel had a maintenance.
+
+The sample hotels had almost no arrivals, so one booking of three double rooms arriving the same day was then added to the Paris hotel through the Booking and Operations APIs. The check itself stays read-only. The rooms were set up as the arrival-readiness scenario needs them, and the check read them as expected:
+
+| Room  | Set up in Apaleo                                        | Readiness                         | Situation                        |
+| :---- | :------------------------------------------------------ | :-------------------------------- | :------------------------------- |
+| 1.001 | `Dirty`                                                 | not ready                         | none                             |
+| 1.002 | `Clean`                                                 | ready                             | none                             |
+| 1.004 | `Clean`, an `OutOfService` maintenance over the arrival | not ready, blocked by maintenance | `arrival.room_readiness_at_risk` |
+
+Apaleo refuses an `OutOfOrder` maintenance on a unit with a reservation in its range: `422`, "There are already reservations and/or maintenances for the specified unit in the specified range." Only `OutOfService` could be put on the assigned room.
 
 ## Not covered yet
 
