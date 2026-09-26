@@ -1,4 +1,4 @@
-import type { ProducerManifest } from "@/lib/hos/types";
+import type { ProducerManifest } from "@hos-ai/sdk";
 
 const roleLabels: Record<ProducerManifest["system_role"], string> = {
   pms: "PMS",

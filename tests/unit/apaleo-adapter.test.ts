@@ -1,12 +1,10 @@
+import { createIdentityRegistry, type HosFact, validateEvent } from "@hos-ai/sdk";
+import { replayArrivalReadiness } from "@hos-ai/sdk/reference";
 import { describe, expect, it } from "vitest";
 
-import { loadArrivalScenario } from "@/lib/hos/conformance";
 import { type ApaleoAdapterConfig, type ApaleoReservation, type ApaleoUnit, type ApaleoWebhook, createApaleoAdapter } from "@/lib/hos/mappings/apaleo";
-import { createIdentityRegistry } from "@/lib/hos/mappings/common";
 import { loadRecording } from "@/lib/hos/mappings/replay";
-import { replayArrivalReadiness } from "@/lib/hos/projection";
-import type { HosFact } from "@/lib/hos/types";
-import { errors, validateEvent } from "@/lib/hos/validation";
+import { loadArrivalScenario } from "@/lib/spec";
 
 const { scenario, manifests } = loadArrivalScenario();
 const recording = loadRecording("apaleo");
@@ -24,13 +22,13 @@ describe("Apaleo adapter", () => {
 
   function send(target: ReturnType<typeof adapter>, type: string, change: Partial<ApaleoReservation>, at = "2026-07-20T09:00:00Z", base = reservation) {
     const result = target.handle({ received_at: at, webhook: { ...webhook(0), type, timestamp: Date.parse(at) }, reservation: { ...base, ...change } });
-    for (const event of result.events) expect(validateEvent(event), errors(validateEvent)).toBe(true);
+    for (const event of result.events) expect(validateEvent(event), JSON.stringify(validateEvent.errors)).toBe(true);
     return result;
   }
 
   function sense(target: ReturnType<typeof adapter>, status: Partial<ApaleoUnit["status"]>, at: string) {
     const result = target.handle({ received_at: at, webhook: { ...webhook(2), timestamp: Date.parse(at) }, unit: { ...unit, status: { ...unit.status, ...status } } });
-    for (const event of result.events) expect(validateEvent(event), errors(validateEvent)).toBe(true);
+    for (const event of result.events) expect(validateEvent(event), JSON.stringify(validateEvent.errors)).toBe(true);
     return result;
   }
 
@@ -128,7 +126,7 @@ describe("Apaleo adapter", () => {
     const planned = { id: "HOSX-PAR-MNT-2", unit: { id: unit.id, name: "204" }, from: "2026-07-30T10:00:00+02:00", to: "2026-07-30T18:00:00+02:00", type: "OutOfOrder" as const, description: "Leaking shower" };
     const handle = (type: string, at: string, maintenance?: typeof planned | Omit<typeof planned, "type"> & { type: "OutOfService" | "OutOfOrder" | "OutOfInventory" }) => {
       const result = target.handle({ received_at: at, webhook: { ...webhook(0), topic: "Maintenance", type, timestamp: Date.parse(at), data: { entityId: planned.id } }, maintenance });
-      for (const event of result.events) expect(validateEvent(event), errors(validateEvent)).toBe(true);
+      for (const event of result.events) expect(validateEvent(event), JSON.stringify(validateEvent.errors)).toBe(true);
       return result;
     };
     const [scheduled] = handle("created", "2026-07-28T09:00:00Z", planned).events;

@@ -1,3 +1,4 @@
+import { replayArrivalReadiness } from "@hos-ai/sdk/reference";
 import type { Metadata } from "next";
 import { ArrowLeft, Download } from "lucide-react";
 import Link from "next/link";
@@ -13,7 +14,6 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { pmsMappingCopy } from "@/lib/content/pms-mappings";
 import { buildArrivalStream, mappingPath, type PmsMapping, pmsMappings } from "@/lib/hos/mappings/replay";
-import { replayArrivalReadiness } from "@/lib/hos/projection";
 
 type Props = { params: Promise<{ pms: string }> };
 

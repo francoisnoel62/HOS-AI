@@ -22,9 +22,16 @@
         "name": "next"
       }
     ],
+    "allowImportingTsExtensions": true,
     "paths": {
       "@/*": [
         "./*"
+      ],
+      "@hos-ai/sdk": [
+        "./packages/sdk/src/index.ts"
+      ],
+      "@hos-ai/sdk/*": [
+        "./packages/sdk/src/*/index.ts"
       ]
     }
   },
@@ -36,6 +43,7 @@
     ".next/dev/types/**/*.ts"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "packages/*/dist"
   ]
 }

@@ -1,7 +1,7 @@
-import { createIdentityRegistry } from "@/lib/hos/mappings/common";
+import { createIdentityRegistry, type ProducerManifest } from "@hos-ai/sdk";
+
 import { createMewsAdapter, type MewsReservation, type MewsResource, type MewsResourceBlock } from "@/lib/hos/mappings/mews";
 import { liveManifest, synchronise, type SyncOptions, type SyncReport } from "@/lib/hos/mappings/sync";
-import type { ProducerManifest } from "@/lib/hos/types";
 
 // A first synchronisation of the experimental Mews mapping with a live Mews enterprise: every fetched entity goes through
 // the adapter as if a General Webhook had named it. lib/hos/mappings/sync.ts runs it and builds the report.

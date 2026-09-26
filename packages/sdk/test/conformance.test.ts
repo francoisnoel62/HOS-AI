@@ -1,12 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { conformanceScenarios, examplesPath, listExamples, loadArrivalScenario, loadExpectedOutcome, loadScenario, toExpectedOutcome } from "@/lib/hos/conformance";
-import { replayArrivalReadiness } from "@/lib/hos/projection";
-import type { HosFact } from "@/lib/hos/types";
-import { errors, readJson, validateEvent, validateMaintenanceWindow, validateManifest, validateProperty, validateSituation, validateUnit } from "@/lib/hos/validation";
+import { type HosFact, toExpectedOutcome, validateEvent, validateMaintenanceWindow, validateManifest, validateProperty, validateSituation, validateUnit } from "../src/index.ts";
+import { replayArrivalReadiness } from "../src/reference/index.ts";
+import { conformanceScenarios, errors, listExamples, loadArrivalScenario, loadExpectedOutcome, loadScenario, readJson } from "./spec.ts";
 
 const { scenario, manifests, events } = loadArrivalScenario();
-const eventTypes: string[] = readJson("spec/0.1/schemas/events.schema.json").allOf[1].properties.type.enum;
+const eventTypes: string[] = readJson("schemas/events.schema.json").allOf[1].properties.type.enum;
 
 describe("HOS Core 0.1", () => {
   it("defines the four independent unit status dimensions, each with unknown", () => {
@@ -15,14 +14,14 @@ describe("HOS Core 0.1", () => {
   });
 
   it("defines a maintenance window as a plan of the statuses a unit will have", () => {
-    const window = readJson("spec/0.1/examples/entities/maintenance-window.json");
+    const window = readJson("examples/entities/maintenance-window.json");
     expect(validateMaintenanceWindow(window), errors(validateMaintenanceWindow)).toBe(true);
     expect(validateMaintenanceWindow({ ...window, statuses: { housekeeping: "dirty" } })).toBe(false);
     expect(validateMaintenanceWindow({ ...window, reason: "because" })).toBe(false);
   });
 
   it("lets a Property declare the standard times of stays planned in days", () => {
-    const property = readJson("spec/0.1/examples/entities/property.json");
+    const property = readJson("examples/entities/property.json");
     expect(validateProperty(property), errors(validateProperty)).toBe(true);
     expect(property).toMatchObject({ standard_check_in_time: "15:00", standard_check_out_time: "11:00" });
     expect(validateProperty({ ...property, standard_check_in_time: "3 PM" })).toBe(false);
@@ -35,7 +34,7 @@ describe("HOS Events 0.1 published artefacts", () => {
   });
 
   it.each(listExamples())("example %s is a valid HOS event", (file) => {
-    expect(validateEvent(readJson(`${examplesPath}/${file}`)), errors(validateEvent)).toBe(true);
+    expect(validateEvent(readJson(`examples/${file}`)), errors(validateEvent)).toBe(true);
   });
 
   it("publishes an example for every event type in the catalogue", () => {

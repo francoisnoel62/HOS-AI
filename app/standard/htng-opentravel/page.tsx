@@ -8,7 +8,7 @@ import { SectionFrame } from "@/components/content/section-frame";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { comparisonSources, contractAnswers, htngExpressQuotes, htngExpressRoom, layers, standardsCompared } from "@/lib/content/standards-comparison";
-import { loadScenario } from "@/lib/hos/conformance";
+import { loadScenario } from "@/lib/spec";
 import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = {

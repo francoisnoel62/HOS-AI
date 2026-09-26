@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { scenarioDemos } from "@/lib/content/scenarios";
-import { conformanceScenarios, examplesPath, loadArrivalScenario, loadScenario, scenarioPath, specVersionPath } from "@/lib/hos/conformance";
+import { conformanceScenarios, examplesPath, loadArrivalScenario, loadScenario, scenarioPath, specVersionPath } from "@/lib/spec";
 import envelopeSchema from "@/public/spec/0.1/schemas/event-envelope.schema.json";
 import eventsSchema from "@/public/spec/0.1/schemas/events.schema.json";
 

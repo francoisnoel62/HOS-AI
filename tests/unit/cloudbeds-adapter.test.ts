@@ -1,12 +1,10 @@
+import { createIdentityRegistry, type HosFact, type StayExpected, validateEvent } from "@hos-ai/sdk";
+import { replayArrivalReadiness } from "@hos-ai/sdk/reference";
 import { describe, expect, it } from "vitest";
 
-import { loadArrivalScenario } from "@/lib/hos/conformance";
 import { type CloudbedsAdapterConfig, type CloudbedsReservation, type CloudbedsRoomStatus, type CloudbedsWebhook, createCloudbedsAdapter } from "@/lib/hos/mappings/cloudbeds";
-import { createIdentityRegistry } from "@/lib/hos/mappings/common";
 import { loadRecording } from "@/lib/hos/mappings/replay";
-import { replayArrivalReadiness } from "@/lib/hos/projection";
-import type { HosFact, StayExpected } from "@/lib/hos/types";
-import { errors, validateEvent } from "@/lib/hos/validation";
+import { loadArrivalScenario } from "@/lib/spec";
 
 const { scenario, manifests } = loadArrivalScenario();
 const recording = loadRecording("cloudbeds");
@@ -25,13 +23,13 @@ describe("Cloudbeds adapter", () => {
 
   function send(target: ReturnType<typeof adapter>, hook: Partial<CloudbedsWebhook>, change: Partial<CloudbedsReservation>, at: string, base = reservation) {
     const result = target.handle({ received_at: at, webhook: { ...webhook(0), timestamp: seconds(at), ...hook }, reservation: { ...base, ...change } });
-    for (const event of result.events) expect(validateEvent(event), errors(validateEvent)).toBe(true);
+    for (const event of result.events) expect(validateEvent(event), JSON.stringify(validateEvent.errors)).toBe(true);
     return result;
   }
 
   function sense(target: ReturnType<typeof adapter>, change: Partial<CloudbedsRoomStatus>, at: string, hook: Partial<CloudbedsWebhook> = {}) {
     const result = target.handle({ received_at: at, webhook: { ...webhook(2), timestamp: seconds(at), ...hook }, rooms: [{ ...room, ...change }] });
-    for (const event of result.events) expect(validateEvent(event), errors(validateEvent)).toBe(true);
+    for (const event of result.events) expect(validateEvent(event), JSON.stringify(validateEvent.errors)).toBe(true);
     return result;
   }
 
@@ -124,7 +122,7 @@ describe("Cloudbeds adapter", () => {
     const block = { roomBlockID: "RB-311", roomBlockType: "out_of_service", roomBlockReason: "Leaking shower", startDate: "2026-07-30", endDate: "2026-07-30", rooms: [{ eventID: "EV-1", roomID: "418204-12" }, { eventID: "EV-2", roomID: "418204-15" }] };
     const handle = (event: string, at: string, roomBlocks: (typeof block)[] = []) => {
       const result = target.handle({ received_at: at, webhook: { version: "1.0", event, timestamp: seconds(at), propertyID: 418204, propertyID_str: "418204", roomBlockID: "RB-311" }, roomBlocks });
-      for (const item of result.events) expect(validateEvent(item), errors(validateEvent)).toBe(true);
+      for (const item of result.events) expect(validateEvent(item), JSON.stringify(validateEvent.errors)).toBe(true);
       return result;
     };
     const planned = handle("roomblock/created", "2026-07-28T09:00:00Z", [block]).events;

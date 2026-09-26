@@ -1,10 +1,10 @@
+import type { HosFact } from "@hos-ai/sdk";
+import { replayArrivalReadiness } from "@hos-ai/sdk/reference";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import { ArrivalReplay } from "@/components/demo/arrival-replay";
-import { loadArrivalScenario, loadScenario } from "@/lib/hos/conformance";
-import { replayArrivalReadiness } from "@/lib/hos/projection";
-import type { HosFact } from "@/lib/hos/types";
+import { loadArrivalScenario, loadScenario } from "@/lib/spec";
 
 describe("arrival replay", () => {
   it("shows the maintenance window that blocks the unit, and the risk it raises", () => {
