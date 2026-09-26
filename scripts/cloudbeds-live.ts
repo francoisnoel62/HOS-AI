@@ -1,9 +1,9 @@
+import { localDate } from "@hos-ai/sdk";
 import { setTimeout as sleep } from "node:timers/promises";
 import { parseArgs } from "node:util";
 
 import type { CloudbedsReservation, CloudbedsRoomBlock, CloudbedsRoomStatus } from "../lib/hos/mappings/cloudbeds";
 import { type CloudbedsSnapshot, syncCloudbeds } from "../lib/hos/mappings/cloudbeds-sync";
-import { localDate } from "../lib/hos/mappings/common";
 import { runLiveCheck, writeLiveReport } from "./live-report";
 
 // Runs the experimental Cloudbeds mapping against a live Cloudbeds property, read-only: it calls get operations only and

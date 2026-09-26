@@ -4,7 +4,7 @@ import Link from "next/link";
 import { SectionFrame } from "@/components/content/section-frame";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { type ConformanceScenarioId, loadScenario, scenarioPath, specVersionPath } from "@/lib/hos/conformance";
+import { type ConformanceScenarioId, loadScenario, scenarioPath, specVersionPath } from "@/lib/spec";
 
 // The published files of one conformance scenario, to replay through another implementation.
 export function ConformanceKit({ id }: { id: ConformanceScenarioId }) {

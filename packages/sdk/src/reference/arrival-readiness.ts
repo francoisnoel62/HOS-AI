@@ -1,3 +1,4 @@
+import { authority, byOccurrence, type Disposition, factKey, isLater, statusChanges } from "../processing.ts";
 import type {
   ConflictRef,
   EventRef,
@@ -23,16 +24,15 @@ import type {
   UnitMaintenanceCancelled,
   UnitMaintenanceScheduled,
   UnitStatusChanged,
-  UnitStatusDimension,
-} from "@/lib/hos/types";
+} from "../types.ts";
 
 // Reference implementation of the non-normative arrival-readiness projection over HOS Events 0.1. It applies the
-// normative processing rules (deduplication, occurrence order, declared capability and authority, snapshots) and is
-// deliberately small and dependency-free so the demo and the conformance tests exercise exactly the published rules.
+// normative processing rules of ../processing.ts (deduplication, occurrence order, declared capability and authority,
+// snapshots) and is deliberately small and dependency-free so the demo and the conformance tests exercise exactly the
+// published rules.
 
 export const projectionSource = "urn:hos:projection:arrival-readiness";
 
-export type Disposition = "applied" | "duplicate" | "superseded" | "non_authoritative" | "undeclared_capability";
 export type Readiness = "unknown" | "not_ready" | "ready";
 export type SituationStatus = "none" | "at_risk" | "resolved";
 export type StayStatus = "expected" | "in_house" | "departed" | "cancelled";
@@ -63,23 +63,8 @@ export type ReplayStep = {
   emitted: Situation[];
 };
 
-type Occurrence = Pick<HosFact, "time" | "source" | "id">;
 type Timed<T> = { value: T; event: HosFact };
 type ArrivalSignal = { expected_arrival_at: string; confidence?: number };
-
-// The later occurrence wins. Equal times fall back to source, then id, so every implementation agrees.
-function isLater(candidate: Occurrence, current: Occurrence | undefined) {
-  if (!current) return true;
-  const delta = Date.parse(candidate.time) - Date.parse(current.time);
-  if (delta !== 0) return delta > 0;
-  if (candidate.source !== current.source) return candidate.source > current.source;
-  return candidate.id > current.id;
-}
-
-function byOccurrence(a: Occurrence, b: Occurrence) {
-  if (isLater(a, b)) return 1;
-  return isLater(b, a) ? -1 : 0;
-}
 
 function factRef(event: HosFact, value: string): FactRef {
   return { value, source: event.source, event_id: event.id, time: event.time };
@@ -87,18 +72,6 @@ function factRef(event: HosFact, value: string): FactRef {
 
 function statusKey(unitId: string, dimension: string) {
   return `${unitId}|${dimension}`;
-}
-
-// A producer may only emit what its manifest declares for the property; anything undeclared is denied.
-function findDeclaration(manifests: ProducerManifest[], event: HosFact, dimension?: UnitStatusDimension) {
-  const manifest = manifests.find((candidate) => candidate.producer === event.source && candidate.property_ids.includes(event.hosproperty));
-  return manifest?.events.find((declared) => declared.type === event.type && (!dimension || !declared.dimensions || declared.dimensions.includes(dimension)));
-}
-
-function statusChanges(event: UnitStatusChanged): Array<[UnitStatusDimension, string]> {
-  const data = event.data;
-  if ("statuses" in data) return Object.entries(data.statuses) as Array<[UnitStatusDimension, string]>;
-  return [[data.dimension, data.current]];
 }
 
 export function replayArrivalReadiness(events: HosFact[], manifests: ProducerManifest[], config: ProjectionConfig): ReplayStep[] {
@@ -133,12 +106,11 @@ export function replayArrivalReadiness(events: HosFact[], manifests: ProducerMan
   }
 
   function ingestUnitStatus(event: UnitStatusChanged): Disposition {
-    const snapshot = event.hosdatamode === "snapshot";
     const outcomes = statusChanges(event).map(([dimension, value]) => {
-      const declaration = findDeclaration(manifests, event, dimension);
-      if (!declaration || (snapshot && !declaration.snapshot)) return "undeclared_capability";
+      const standing = authority(manifests, event, dimension);
+      if (standing === "undeclared_capability") return standing;
       const key = statusKey(event.data.unit_id, dimension);
-      return declaration.authoritative ? keepLatest(statuses, key, value, event) : observe(key, value, event);
+      return standing === "authoritative" ? keepLatest(statuses, key, value, event) : observe(key, value, event);
     });
     // A snapshot reports the strongest effect among its dimensions.
     for (const disposition of ["applied", "non_authoritative", "superseded"] as const) if (outcomes.includes(disposition)) return disposition;
@@ -152,14 +124,13 @@ export function replayArrivalReadiness(events: HosFact[], manifests: ProducerMan
   }
 
   function ingest(event: HosFact): Disposition {
-    const identity = `${event.source}\u0000${event.id}`;
-    if (seen.has(identity)) return "duplicate";
-    seen.add(identity);
+    const key = factKey(event);
+    if (seen.has(key)) return "duplicate";
+    seen.add(key);
 
     if (event.type === "unit.status_changed") return ingestUnitStatus(event);
-    const declaration = findDeclaration(manifests, event);
-    if (!declaration) return "undeclared_capability";
-    if (!declaration.authoritative) return "non_authoritative";
+    const standing = authority(manifests, event);
+    if (standing !== "authoritative") return standing;
 
     switch (event.type) {
       case "reservation.created":

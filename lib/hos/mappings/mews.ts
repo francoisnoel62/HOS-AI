@@ -1,30 +1,25 @@
 import {
   createFactWriter,
   createIdentityRegistry,
+  type ExternalRef,
   type IdentityRegistry,
   localDate,
-  type MappingRecording,
-  type MappingResult,
-  type RecordingAdapter,
-  responses,
-  type Unmapped,
+  type ReservationCancelled,
+  type ReservationCreated,
+  type ReservationUpdated,
+  type StayCheckedIn,
+  type StayCheckedOut,
+  type StayExpected,
+  type StayUnitAssigned,
+  type StayUnitUnassigned,
+  type UnitMaintenanceCancelled,
+  type UnitMaintenanceScheduled,
+  type UnitStatusChanged,
+  type UnitStatusDimension,
   utc,
-} from "@/lib/hos/mappings/common";
-import type {
-  ExternalRef,
-  ReservationCancelled,
-  ReservationCreated,
-  ReservationUpdated,
-  StayCheckedIn,
-  StayCheckedOut,
-  StayExpected,
-  StayUnitAssigned,
-  StayUnitUnassigned,
-  UnitMaintenanceCancelled,
-  UnitMaintenanceScheduled,
-  UnitStatusChanged,
-  UnitStatusDimension,
-} from "@/lib/hos/types";
+} from "@hos-ai/sdk";
+
+import { type MappingRecording, type MappingResult, type RecordingAdapter, responses, type Unmapped } from "@/lib/hos/mappings/common";
 
 // Experimental, unofficial mapping from the Mews Connector API to HOS Events 0.1, written against Mews's public
 // documentation: General Webhooks, Get all reservations (ver 2023-06-06) and Get all resources. It is not affiliated with,

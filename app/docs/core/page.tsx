@@ -10,7 +10,7 @@ import { SpecTable } from "@/components/content/spec-table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { examplesPath, specVersionPath } from "@/lib/hos/conformance";
+import { examplesPath, specVersionPath } from "@/lib/spec";
 import coreSchema from "@/public/spec/0.1/schemas/core.schema.json";
 import unitExample from "@/public/spec/0.1/examples/entities/unit.json";
 

@@ -1,11 +1,10 @@
+import { type HosFact, toExpectedOutcome, validateEvent } from "@hos-ai/sdk";
+import { replayArrivalReadiness } from "@hos-ai/sdk/reference";
 import { describe, expect, it } from "vitest";
 
-import { loadExpectedOutcome, toExpectedOutcome } from "@/lib/hos/conformance";
 import type { RecordedCall } from "@/lib/hos/mappings/common";
 import { buildArrivalStream, type PmsMapping, pmsMappings } from "@/lib/hos/mappings/replay";
-import { replayArrivalReadiness } from "@/lib/hos/projection";
-import type { HosFact } from "@/lib/hos/types";
-import { errors, validateEvent } from "@/lib/hos/validation";
+import { loadExpectedOutcome } from "@/lib/spec";
 
 // The payload shapes each recording must respect, taken from the sources it names: required properties for Mews and
 // Apaleo, and for Cloudbeds, whose SDK marks every property optional, the documented properties the adapter reads.
@@ -92,7 +91,7 @@ describe.each(pmsMappings)("%s mapping of the arrival scenario", (pms) => {
   });
 
   it.each(mapped.map((fact) => [fact.recorded!.delivery, fact.event.type, fact.event] as const))("maps delivery %s to a valid %s", (_delivery, _type, event) => {
-    expect(validateEvent(event), errors(validateEvent)).toBe(true);
+    expect(validateEvent(event), JSON.stringify(validateEvent.errors)).toBe(true);
   });
 
   it("maps each delivery to exactly the facts it reproduces or adds", () => {

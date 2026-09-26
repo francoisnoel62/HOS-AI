@@ -1,4 +1,4 @@
-import type { ConformanceScenarioId } from "@/lib/hos/conformance";
+import type { ConformanceScenarioId } from "@/lib/spec";
 
 // Demo copy for the conformance scenarios. The scenario files themselves stay free of presentation.
 

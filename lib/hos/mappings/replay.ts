@@ -1,12 +1,12 @@
+import type { HosFact } from "@hos-ai/sdk";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 
-import { loadArrivalScenario, specVersionPath } from "@/lib/hos/conformance";
 import { apaleoRecordingAdapter } from "@/lib/hos/mappings/apaleo";
 import { cloudbedsRecordingAdapter } from "@/lib/hos/mappings/cloudbeds";
 import type { MappingRecording, RecordedDelivery, RecordingAdapter, Unmapped } from "@/lib/hos/mappings/common";
 import { mewsRecordingAdapter } from "@/lib/hos/mappings/mews";
-import type { HosFact } from "@/lib/hos/types";
+import { loadArrivalScenario, specVersionPath } from "@/lib/spec";
 
 // Server-side loader for the PMS recordings of the arrival-readiness scenario: the PMS deliveries of the conformance
 // corpus, replaced by the payloads a real PMS API would send and mapped through that PMS's reference adapter.

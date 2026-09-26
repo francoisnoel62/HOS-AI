@@ -3,27 +3,23 @@ import {
   createIdentityRegistry,
   type FactOptions,
   type IdentityRegistry,
-  type MappingRecording,
-  type MappingResult,
-  type RecordingAdapter,
-  type Unmapped,
+  type ReservationCancelled,
+  type ReservationCreated,
+  type ReservationUpdated,
+  type StayCheckedIn,
+  type StayCheckedOut,
+  type StayExpected,
+  type StayUnitAssigned,
+  type StayUnitUnassigned,
+  type UnitMaintenanceCancelled,
+  type UnitMaintenanceScheduled,
+  type UnitStatusChanged,
+  type UnitStatusDimension,
   utc,
   zonedTimeToUtc,
-} from "@/lib/hos/mappings/common";
-import type {
-  ReservationCancelled,
-  ReservationCreated,
-  ReservationUpdated,
-  StayCheckedIn,
-  StayCheckedOut,
-  StayExpected,
-  StayUnitAssigned,
-  StayUnitUnassigned,
-  UnitMaintenanceCancelled,
-  UnitMaintenanceScheduled,
-  UnitStatusChanged,
-  UnitStatusDimension,
-} from "@/lib/hos/types";
+} from "@hos-ai/sdk";
+
+import type { MappingRecording, MappingResult, RecordingAdapter, Unmapped } from "@/lib/hos/mappings/common";
 
 // Experimental, unofficial mapping from the Cloudbeds API (v1.3) to HOS Events 0.1, written against Cloudbeds's official
 // SDK models and published webhook samples. It is not affiliated with, reviewed or endorsed by Cloudbeds. A webhook names

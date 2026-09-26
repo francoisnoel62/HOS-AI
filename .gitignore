@@ -1,5 +1,5 @@
 # dependencies
-/node_modules
+node_modules/
 /.pnp
 .pnp.*
 
@@ -26,3 +26,6 @@
 /docs/plans/
 /build_hos_prd.py
 /.tmp_hos_prd_render/
+
+# workspace package builds
+/packages/*/dist/

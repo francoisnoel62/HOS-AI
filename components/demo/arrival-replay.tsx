@@ -1,5 +1,7 @@
 "use client";
 
+import type { Disposition } from "@hos-ai/sdk";
+import type { ReplayStep, SituationStatus, StayView } from "@hos-ai/sdk/reference";
 import { ArrowLeft, ArrowRight, Pause, Play, RotateCcw } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
 
@@ -7,7 +9,6 @@ import { CodePanel } from "@/components/content/code-panel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import type { Disposition, ReplayStep, SituationStatus, StayView } from "@/lib/hos/projection";
 import { cn } from "@/lib/utils";
 
 type Note = { delivery: number; checks: string; note: string };

@@ -1,3 +1,4 @@
+import { replayArrivalReadiness } from "@hos-ai/sdk/reference";
 import type { Metadata } from "next";
 
 import { PageHero } from "@/components/content/page-hero";
@@ -6,8 +7,7 @@ import { ConformanceKit } from "@/components/demo/conformance-kit";
 import { producerLabels } from "@/components/demo/producer-labels";
 import { ScenarioNav } from "@/components/demo/scenario-nav";
 import { scenarioDemos } from "@/lib/content/scenarios";
-import { type ConformanceScenarioId, loadScenario } from "@/lib/hos/conformance";
-import { replayArrivalReadiness } from "@/lib/hos/projection";
+import { type ConformanceScenarioId, loadScenario } from "@/lib/spec";
 
 export const scenarioMetadata = (id: ConformanceScenarioId): Metadata => ({ title: scenarioDemos[id].metaTitle, description: scenarioDemos[id].metaDescription });
 

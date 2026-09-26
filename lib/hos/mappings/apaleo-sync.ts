@@ -1,7 +1,7 @@
+import { createIdentityRegistry, type ProducerManifest } from "@hos-ai/sdk";
+
 import { type ApaleoMaintenance, type ApaleoReservation, type ApaleoUnit, type ApaleoWebhook, createApaleoAdapter } from "@/lib/hos/mappings/apaleo";
-import { createIdentityRegistry } from "@/lib/hos/mappings/common";
 import { liveManifest, synchronise, type SyncOptions, type SyncReport } from "@/lib/hos/mappings/sync";
-import type { ProducerManifest } from "@/lib/hos/types";
 
 // A first synchronisation of the experimental Apaleo mapping with a live Apaleo property: every fetched unit, maintenance
 // and reservation goes through the adapter as if a webhook had named it. lib/hos/mappings/sync.ts runs it and builds the

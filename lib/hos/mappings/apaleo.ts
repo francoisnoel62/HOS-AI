@@ -3,27 +3,23 @@ import {
   createIdentityRegistry,
   type IdentityRegistry,
   localDate,
-  type MappingRecording,
-  type MappingResult,
-  type RecordingAdapter,
-  type Unmapped,
+  type ReservationCancelled,
+  type ReservationCreated,
+  type ReservationUpdated,
+  type StayCheckedIn,
+  type StayCheckedOut,
+  type StayCheckInReverted,
+  type StayExpected,
+  type StayUnitAssigned,
+  type StayUnitUnassigned,
+  type UnitMaintenanceCancelled,
+  type UnitMaintenanceScheduled,
+  type UnitStatusChanged,
+  type UnitStatusDimension,
   utc,
-} from "@/lib/hos/mappings/common";
-import type {
-  ReservationCancelled,
-  ReservationCreated,
-  ReservationUpdated,
-  StayCheckedIn,
-  StayCheckedOut,
-  StayCheckInReverted,
-  StayExpected,
-  StayUnitAssigned,
-  StayUnitUnassigned,
-  UnitMaintenanceCancelled,
-  UnitMaintenanceScheduled,
-  UnitStatusChanged,
-  UnitStatusDimension,
-} from "@/lib/hos/types";
+} from "@hos-ai/sdk";
+
+import type { MappingRecording, MappingResult, RecordingAdapter, Unmapped } from "@/lib/hos/mappings/common";
 
 // Experimental, unofficial mapping from the Apaleo API to HOS Events 0.1, written against Apaleo's published webhook
 // events and its Booking and Inventory API models. It is not affiliated with, reviewed or endorsed by Apaleo. A webhook

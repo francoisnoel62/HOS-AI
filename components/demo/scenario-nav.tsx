@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { scenarioDemos } from "@/lib/content/scenarios";
-import { type ConformanceScenarioId, conformanceScenarios } from "@/lib/hos/conformance";
+import { type ConformanceScenarioId, conformanceScenarios } from "@/lib/spec";
 import { cn } from "@/lib/utils";
 
 // Switches between the conformance scenarios, each a page of its own.

@@ -1,12 +1,11 @@
+import { createIdentityRegistry, type HosFact, validateEvent } from "@hos-ai/sdk";
+import { replayArrivalReadiness } from "@hos-ai/sdk/reference";
 import { describe, expect, it } from "vitest";
 
-import { loadArrivalScenario } from "@/lib/hos/conformance";
-import { createIdentityRegistry, type MappingRecording } from "@/lib/hos/mappings/common";
+import type { MappingRecording } from "@/lib/hos/mappings/common";
 import { createMewsAdapter, type MewsAdapterConfig, type MewsReservation, type MewsResource, type MewsResourceBlock } from "@/lib/hos/mappings/mews";
 import { loadRecording } from "@/lib/hos/mappings/replay";
-import { replayArrivalReadiness } from "@/lib/hos/projection";
-import type { HosFact } from "@/lib/hos/types";
-import { errors, validateEvent } from "@/lib/hos/validation";
+import { loadArrivalScenario } from "@/lib/spec";
 
 const { scenario, manifests } = loadArrivalScenario();
 const recording: MappingRecording = loadRecording("mews");
@@ -22,13 +21,13 @@ describe("Mews adapter", () => {
 
   function sync(target: ReturnType<typeof adapter>, change: Partial<MewsReservation>, received_at = change.UpdatedUtc ?? reservation.UpdatedUtc) {
     const result = target.handle({ received_at, webhook: webhook("ServiceOrderUpdated", reservation.Id), reservations: [{ ...reservation, ...change }] });
-    for (const event of result.events) expect(validateEvent(event), errors(validateEvent)).toBe(true);
+    for (const event of result.events) expect(validateEvent(event), JSON.stringify(validateEvent.errors)).toBe(true);
     return result;
   }
 
   function sense(target: ReturnType<typeof adapter>, change: Partial<MewsResource>) {
     const result = target.handle({ received_at: change.UpdatedUtc ?? room.UpdatedUtc, webhook: webhook("ResourceUpdated", room.Id), resources: [{ ...room, ...change }] });
-    for (const event of result.events) expect(validateEvent(event), errors(validateEvent)).toBe(true);
+    for (const event of result.events) expect(validateEvent(event), JSON.stringify(validateEvent.errors)).toBe(true);
     return result;
   }
 
@@ -126,7 +125,7 @@ describe("Mews adapter", () => {
     const base: MewsResourceBlock & { Name: string; Notes: string } = { Id: "7f8e9d0c-1b2a-3c4d-5e6f-7a8b9c0d1e2f", EnterpriseId: created.EnterpriseId, AssignedResourceId: room.Id, IsActive: true, Type: "OutOfOrder", StartUtc: "2026-07-30T08:00:00Z", EndUtc: "2026-07-30T16:00:00Z", CreatedUtc: "2026-07-28T09:00:00Z", UpdatedUtc: "2026-07-28T09:00:00Z", DeletedUtc: null, Name: "Air conditioning", Notes: "Guest complained about the noise" };
     const block = (change: Partial<MewsResourceBlock>) => {
       const result = target.handle({ received_at: change.UpdatedUtc ?? base.UpdatedUtc, webhook: webhook("ResourceBlockUpdated", base.Id), resourceBlocks: [{ ...base, ...change }] });
-      for (const event of result.events) expect(validateEvent(event), errors(validateEvent)).toBe(true);
+      for (const event of result.events) expect(validateEvent(event), JSON.stringify(validateEvent.errors)).toBe(true);
       return result;
     };
     const [planned] = block({}).events;

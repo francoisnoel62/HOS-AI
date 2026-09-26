@@ -8,8 +8,8 @@ import { SectionFrame } from "@/components/content/section-frame";
 import { RoadmapTrack } from "@/components/content/roadmap-track";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { loadArrivalScenario } from "@/lib/hos/conformance";
 import { siteConfig } from "@/lib/site";
+import { loadArrivalScenario } from "@/lib/spec";
 
 export const metadata: Metadata = { title: "The Standard", description: "Why HOS exists, how its operating contract works and what can be inspected today." };
 

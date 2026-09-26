@@ -1,7 +1,7 @@
-import { localDate, type MappingResult, type Unmapped } from "@/lib/hos/mappings/common";
-import { type Disposition, type Readiness, replayArrivalReadiness, type SituationStatus } from "@/lib/hos/projection";
-import type { HosFact, ProducerManifest } from "@/lib/hos/types";
-import { validateEvent, validateManifest } from "@/lib/hos/validation";
+import { type Disposition, type HosFact, localDate, type ProducerManifest, validateEvent, validateManifest } from "@hos-ai/sdk";
+import { type Readiness, replayArrivalReadiness, type SituationStatus } from "@hos-ai/sdk/reference";
+
+import type { MappingResult, Unmapped } from "@/lib/hos/mappings/common";
 
 // A first synchronisation of an experimental PMS mapping with a live PMS, as an integration runs it before its first
 // webhook: every fetched entity goes through the adapter as if a webhook had named it. The result says whether real PMS

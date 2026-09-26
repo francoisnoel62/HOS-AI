@@ -129,7 +129,9 @@ lib/content/         Audience messaging and documentation status
 lib/forms/           Validation, encryption, persistence and local outbox
 lib/analytics/       Allowlisted, payload-free browser event signals
 lib/legal.ts         Publisher, host, processor and retention facts behind the legal pages
-lib/hos/             Reference arrival-readiness projection, spec loaders and PMS mappings
+lib/hos/mappings/    Experimental PMS mappings and their recordings
+lib/spec.ts          Where the site publishes the spec, and loaders for its conformance scenarios
+packages/sdk/        @hos-ai/sdk: HOS types, validation, processing rules and the reference projection
 database/migrations/ PostgreSQL schema migrations
 scripts/             Migration and seed utilities, and the read-only PMS live checks
 public/spec/0.1/     Draft HOS schemas, examples, conformance corpus and mapping recordings
