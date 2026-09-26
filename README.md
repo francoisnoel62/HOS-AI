@@ -67,25 +67,33 @@ Each scenario's files are in [`public/spec/0.1/conformance/`](public/spec/0.1/co
 - rules for when `stay.expected` is due and for producers without a guest identity;
 - scheduled maintenance windows, which all three PMSs have: a ninth Core entity and the `unit.maintenance_scheduled` and `unit.maintenance_cancelled` events.
 
-`npm run mews:live`, `npm run apaleo:live` and `npm run cloudbeds:live` run each mapping, read-only, against a live environment: Mews's public demo, a free Apaleo developer account, or a Cloudbeds sandbox or property key. They report whether real data maps to valid HOS events. The Mews check has run against both Mews demo enterprises and the Apaleo check against the sample hotels of a developer account; the Cloudbeds check has not run yet. See the [Mews](public/spec/0.1/mappings/mews/README.md#live-check), [Apaleo](public/spec/0.1/mappings/apaleo/README.md#live-check) and [Cloudbeds](public/spec/0.1/mappings/cloudbeds/README.md#live-check) notes.
+`npm run mews:live`, `npm run apaleo:live` and `npm run cloudbeds:live` run each mapping, read-only, against a live environment: Mews's public demo, a free Apaleo developer account, or a Cloudbeds sandbox or property key. They report whether real data maps to valid HOS events, whether a second pass publishes anything again, and today's arrivals as the reference projection sees them.
+
+| PMS       | Live environment                                              | HOS facts | Schema errors | Published twice |
+| :-------- | :------------------------------------------------------------ | --------: | ------------: | --------------: |
+| Mews      | Both public demo enterprises, 25 September 2026               |     3,485 |             0 |               0 |
+| Apaleo    | Five sample hotels of a developer account, 26 September 2026  |       740 |             0 |               0 |
+| Cloudbeds | Not run yet: it needs a partner sandbox or a property API key |         — |             — |               — |
+
+The runs changed the integrations. Mews assigns dorm stays to beds, so beds are now units, and accommodation is picked by resource category rather than by how a service is sold. Apaleo refuses an out-of-order maintenance on a room already assigned to a reservation. See the [Mews](public/spec/0.1/mappings/mews/README.md#live-check), [Apaleo](public/spec/0.1/mappings/apaleo/README.md#live-check) and [Cloudbeds](public/spec/0.1/mappings/cloudbeds/README.md#live-check) notes.
 
 A validator CLI, SDKs, a production event processor and live PMS connectors are future work.
 
 ## Project status
 
-**Early-stage initiative · HOS Core 0.1 and HOS Events 0.1 drafts · Website under local development**
+**Early-stage initiative · HOS Core 0.1 and HOS Events 0.1 drafts · Website online at [hos-ai.vercel.app](https://hos-ai.vercel.app)**
 
-| Area                                       | Where it stands                                                                                                                                    |
-| :----------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Website                                    | Implemented locally: standard overview, manifesto, governance, roadmap, documentation status and participation pages.                              |
-| Participation forms                        | Local PostgreSQL persistence, encrypted payloads and filesystem notification records.                                                              |
-| HOS Core and event model                   | Draft JSON Schemas in [`public/spec/0.1`](public/spec/0.1), documented at `/docs/core` and `/docs/events`.                                         |
-| Producer manifests and arrival conformance | Draft manifest schema (signing in progress) and three synthetic arrival scenarios, checked by the unit tests.                                      |
-| Mappings and certification                 | Experimental, unofficial Mews, Apaleo and Cloudbeds mappings replay the arrival scenario. No partner-backed or certified integrations are claimed. |
-| Independent stewardship                    | An objective. HOS AI is working toward an independent HOS Foundation; no established foundation is claimed.                                        |
-| Data Cooperative                           | A future, optional programme, separate from HOS Core. Not active.                                                                                  |
+| Area                                       | Where it stands                                                                                                                                                                                                    |
+| :----------------------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Website                                    | Deployed from `master`: standard overview, HOS, HTNG and OpenTravel, manifesto, governance, roadmap, documentation status, changelog, live demos and participation pages.                                          |
+| Participation forms                        | Local PostgreSQL persistence, encrypted payloads and filesystem notification records.                                                                                                                              |
+| HOS Core and event model                   | Draft JSON Schemas in [`public/spec/0.1`](public/spec/0.1), documented at `/docs/core` and `/docs/events`.                                                                                                         |
+| Producer manifests and arrival conformance | Draft manifest schema (signing in progress) and three synthetic arrival scenarios, checked by the unit tests.                                                                                                      |
+| Mappings and certification                 | Experimental, unofficial Mews, Apaleo and Cloudbeds mappings replay the arrival scenario; Mews and Apaleo have also run read-only against live demo data. No partner-backed or certified integrations are claimed. |
+| Independent stewardship                    | An objective. HOS AI is working toward an independent HOS Foundation; no established foundation is claimed.                                                                                                        |
+| Data Cooperative                           | A future, optional programme, separate from HOS Core. Not active.                                                                                                                                                  |
 
-The repository is configured for local development. Production hosting, email delivery, analytics and anti-spam services still need configuration and review. Public release also requires founder decisions and completed legal and privacy pages.
+The website is deployed on Vercel from `master`. The participation forms still need a production database, and email delivery, analytics and anti-spam services still need configuration and review. Public release also requires founder decisions and completed legal and privacy pages.
 
 ## Principles worth building around
 
@@ -122,7 +130,7 @@ lib/forms/           Validation, encryption, persistence and local outbox
 lib/analytics/       Allowlisted, payload-free browser event signals
 lib/hos/             Reference arrival-readiness projection, spec loaders and PMS mappings
 database/migrations/ PostgreSQL schema migrations
-scripts/             Migration and seed utilities
+scripts/             Migration and seed utilities, and the read-only PMS live checks
 public/spec/0.1/     Draft HOS schemas, examples, conformance corpus and mapping recordings
 tests/               Vitest unit tests and Playwright browser/accessibility checks
 docs/operations/     Local operating procedures

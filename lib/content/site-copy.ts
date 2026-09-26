@@ -126,19 +126,19 @@ export const documentationItems: Array<{
   },
   {
     title: "Mews mapping",
-    description: "Mews Connector API webhooks and fetched reservations and resources, mapped to HOS Events 0.1 by an unofficial adapter. It replays the arrival scenario to the same expected outcome.",
+    description: "Mews Connector API webhooks and fetched reservations and resources, mapped to HOS Events 0.1 by an unofficial adapter. It replays the arrival scenario to the same expected outcome, and has run read-only against Mews's two public demo enterprises: 3,485 facts, every one valid.",
     status: "Experimental",
     href: "/demo/mews",
   },
   {
     title: "Apaleo mapping",
-    description: "Apaleo webhooks and fetched reservations and units, mapped to HOS Events 0.1 by an unofficial adapter. It replays the arrival scenario to the same expected outcome.",
+    description: "Apaleo webhooks and fetched reservations and units, mapped to HOS Events 0.1 by an unofficial adapter. It replays the arrival scenario to the same expected outcome, and has run read-only against the five sample hotels of an Apaleo developer account: 740 facts, every one valid.",
     status: "Experimental",
     href: "/demo/apaleo",
   },
   {
     title: "Cloudbeds mapping",
-    description: "Cloudbeds API v1.3 webhooks and fetched reservations and housekeeping status, mapped to HOS Events 0.1 by an unofficial adapter. It replays the arrival scenario to the same expected outcome; two webhook payloads are reconstructed.",
+    description: "Cloudbeds API v1.3 webhooks and fetched reservations and housekeeping status, mapped to HOS Events 0.1 by an unofficial adapter. It replays the arrival scenario to the same expected outcome; two webhook payloads are reconstructed. Its live check is ready but has not run on a real property yet.",
     status: "Experimental",
     href: "/demo/cloudbeds",
   },
