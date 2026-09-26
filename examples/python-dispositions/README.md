@@ -18,6 +18,8 @@ With Python 3.11 or later and Node 22 or later:
 npx @hos-ai/cli conformance run --all --level normative --impl "python3 impl.py"
 ```
 
+On Windows, where `python3` often does not exist, write `--impl "py impl.py"`.
+
 ```text
 ✓ arrival-readiness: normative 13/13
 ✓ late-checkout: normative 15/15
