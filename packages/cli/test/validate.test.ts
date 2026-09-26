@@ -53,6 +53,7 @@ describe("hos validate", () => {
   it("accepts every published example and the events of the three scenarios", async () => {
     const examples = readdirSync(path.join(specDirectory, "examples"))
       .filter((file) => file.endsWith(".json"))
+      .sort()
       .map((file) => `examples/${file}`);
     const streams = ["arrival-readiness", "room-out-of-order", "late-checkout"].map((id) => `conformance/${id}/events.jsonl`);
     const { code, stdout } = await hos(["validate", ...examples, ...streams]);
