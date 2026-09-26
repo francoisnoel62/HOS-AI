@@ -1,0 +1,35 @@
+{
+  "description": "An actor of a kind HOS does not define.",
+  "rule": "events/honest-time-and-actor",
+  "document": {
+    "specversion": "1.0",
+    "id": "pms-000312",
+    "source": "urn:hos:pms:demo",
+    "type": "reservation.created",
+    "time": "2026-07-12T14:03:00Z",
+    "datacontenttype": "application/json",
+    "hosschemaversion": "0.1",
+    "hosrecordedat": "2026-07-12T14:03:01Z",
+    "hostenant": "tenant_demo",
+    "hosproperty": "prop_demo",
+    "hospropertytimezone": "Europe/Paris",
+    "hosbusinessdate": "2026-07-12",
+    "hossubjects": "reservation:res_1042 guest:guest_7q2k",
+    "data": {
+      "reservation_id": "res_1042",
+      "status": "confirmed",
+      "planned_arrival_date": "2026-07-30",
+      "planned_departure_date": "2026-08-01",
+      "guest_id": "guest_7q2k",
+      "external_refs": [
+        {
+          "source_system": "urn:hos:pms:demo",
+          "id_type": "confirmation_number",
+          "source_id": "DEMO-1042",
+          "verification": "verified"
+        }
+      ]
+    },
+    "hosactor": "robot:r2"
+  }
+}

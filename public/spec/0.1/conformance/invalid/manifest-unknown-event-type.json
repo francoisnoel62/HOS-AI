@@ -1,0 +1,103 @@
+{
+  "description": "A manifest that declares an event type the catalogue does not define.",
+  "rule": "events/catalogue",
+  "document": {
+    "hosmanifestversion": "0.1",
+    "producer": "urn:hos:pms:demo",
+    "name": "Synthetic PMS",
+    "organization": {
+      "name": "HOS AI synthetic corpus"
+    },
+    "system_role": "pms",
+    "property_ids": [
+      "prop_demo"
+    ],
+    "entities": [
+      "Reservation",
+      "Stay",
+      "Unit",
+      "Guest"
+    ],
+    "events": [
+      {
+        "type": "reservation.confirmed",
+        "authoritative": true
+      },
+      {
+        "type": "reservation.updated",
+        "authoritative": true
+      },
+      {
+        "type": "reservation.cancelled",
+        "authoritative": true
+      },
+      {
+        "type": "stay.expected",
+        "authoritative": true
+      },
+      {
+        "type": "stay.unit_assigned",
+        "authoritative": true
+      },
+      {
+        "type": "stay.checked_in",
+        "authoritative": true
+      },
+      {
+        "type": "stay.check_in_reverted",
+        "authoritative": true
+      },
+      {
+        "type": "stay.checked_out",
+        "authoritative": true
+      },
+      {
+        "type": "stay.unit_unassigned",
+        "authoritative": true
+      },
+      {
+        "type": "unit.maintenance_scheduled",
+        "authoritative": true
+      },
+      {
+        "type": "unit.maintenance_cancelled",
+        "authoritative": true
+      },
+      {
+        "type": "unit.status_changed",
+        "dimensions": [
+          "occupancy",
+          "commercial"
+        ],
+        "authoritative": true
+      },
+      {
+        "type": "unit.status_changed",
+        "dimensions": [
+          "housekeeping"
+        ],
+        "authoritative": false,
+        "note": "The PMS mirrors housekeeping status; at this property the housekeeping system is the authority."
+      }
+    ],
+    "delivery": {
+      "mechanisms": [
+        "webhook"
+      ],
+      "guarantee": "at-least-once",
+      "ordering": "per-subject"
+    },
+    "replay": {
+      "supported": true,
+      "window_days": 30,
+      "format": "jsonl"
+    },
+    "retention": {
+      "event_days": 90
+    },
+    "limitations": [
+      "The PMS task module is not a declared source of housekeeping tasks at this property.",
+      "Guest messages are not exposed."
+    ]
+  }
+}

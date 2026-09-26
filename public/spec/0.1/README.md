@@ -23,6 +23,11 @@ Status: draft for review. Names and fields may change before 0.1 is final. The s
   - `events.jsonl` — the deliveries, in delivery order, one CloudEvent per line;
   - `expected.json` — the dispositions, readiness and situations an implementation must reproduce.
 
+- `conformance/invalid/` — documents and streams a validator must reject, one case per file, and `conformance/valid/` — cases it must accept. Each case holds:
+  - `description` — what the case shows;
+  - `rule` — the rule it breaks or illustrates. Rules are named after the sections and principles of `/docs/core` and `/docs/events`, such as `events/minimal-data`, until the specification numbers them;
+  - `document` — an event, a reference situation or a producer manifest; or `stream` — the lines of a JSON Lines stream, an object written as JSON and a string as it is, with the producers' `manifests` when the case needs them.
+
 - `mappings/` — experimental, unofficial PMS mappings for Mews, Apaleo and Cloudbeds. For each PMS, the arrival scenario's PMS deliveries are recorded in that PMS's format: webhooks and the entities an integration fetches for them. Mapping notes sit alongside. Replayed through each reference adapter, the deliveries reach `expected.json`.
 
 The schemas reference each other by `$id` (`urn:hos:schema:0.1:*`); load all of them into your validator.

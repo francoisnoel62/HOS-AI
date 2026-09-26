@@ -1,0 +1,28 @@
+{
+  "description": "A maintenance window that claims the unit stays operational.",
+  "rule": "events/plans-are-not-states",
+  "document": {
+    "specversion": "1.0",
+    "id": "pms-000312",
+    "source": "urn:hos:pms:demo",
+    "type": "unit.maintenance_scheduled",
+    "time": "2026-07-12T14:03:00Z",
+    "datacontenttype": "application/json",
+    "hosschemaversion": "0.1",
+    "hosrecordedat": "2026-07-12T14:03:01Z",
+    "hostenant": "tenant_demo",
+    "hosproperty": "prop_demo",
+    "hospropertytimezone": "Europe/Paris",
+    "hosbusinessdate": "2026-07-12",
+    "hossubjects": "reservation:res_1042 guest:guest_7q2k",
+    "data": {
+      "maintenance_id": "mnt_1",
+      "unit_id": "unit_204",
+      "starts_at": "2026-07-30T08:00:00Z",
+      "ends_at": "2026-07-30T12:00:00Z",
+      "statuses": {
+        "maintenance": "operational"
+      }
+    }
+  }
+}
