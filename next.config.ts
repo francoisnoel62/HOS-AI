@@ -1,3 +1,4 @@
+import createMDX from "@next/mdx";
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
@@ -16,4 +17,7 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+// The pages of /docs/tools are written in MDX, under content/docs/tools. Turbopack takes the plugins by name.
+const withMDX = createMDX({ options: { remarkPlugins: [["remark-gfm", {}]] } });
+
+export default withMDX(nextConfig);
