@@ -198,14 +198,23 @@ export function replayArrivalReadiness(events: HosFact[], manifests: ProducerMan
 
     const reservationActive = !reservation || reservation.value === "confirmed" || reservation.value === "tentative";
     // A reverted check-in makes the stay expected again.
-    const stayStatus: StayStatus = !reservationActive ? "cancelled" : lifecycle?.value.type === "stay.checked_out" ? "departed" : lifecycle?.value.type === "stay.checked_in" ? "in_house" : "expected";
+    const stayStatus: StayStatus = !reservationActive
+      ? "cancelled"
+      : lifecycle?.value.type === "stay.checked_out"
+        ? "departed"
+        : lifecycle?.value.type === "stay.checked_in"
+          ? "in_house"
+          : "expected";
     const early = Boolean(signal) && Date.parse(signal!.value.expected_arrival_at) < Date.parse(stay.data.planned_arrival_at);
     // A maintenance window on the assigned unit that covers the moment the guest is expected makes the unit unavailable.
     const expectedAt = Date.parse(signal?.value.expected_arrival_at ?? stay.data.planned_arrival_at);
     const window = unitId
       ? [...maintenance.values()]
           .flatMap(({ value, event }) => (value.type === "unit.maintenance_scheduled" ? [{ value, event }] : []))
-          .filter(({ value }) => value.data.unit_id === unitId && Date.parse(value.data.starts_at) <= expectedAt && expectedAt < Date.parse(value.data.ends_at))
+          .filter(
+            ({ value }) =>
+              value.data.unit_id === unitId && Date.parse(value.data.starts_at) <= expectedAt && expectedAt < Date.parse(value.data.ends_at),
+          )
           .sort((a, b) => byOccurrence(a.event, b.event))
           .at(-1)
       : undefined;
@@ -214,14 +223,36 @@ export function replayArrivalReadiness(events: HosFact[], manifests: ProducerMan
     const departure = occupant ? stays.get(occupant.stayId) : undefined;
     // The occupant is due to leave no earlier than this guest is expected.
     const overlap = Boolean(departure) && Date.parse(departure!.value.data.planned_departure_at) >= expectedAt;
-    const readiness: Readiness = window || occupant ? "not_ready" : !status || status.value === "unknown" ? "unknown" : config.ready_housekeeping_statuses.includes(status.value) ? "ready" : "not_ready";
+    const readiness: Readiness =
+      window || occupant
+        ? "not_ready"
+        : !status || status.value === "unknown"
+          ? "unknown"
+          : config.ready_housekeeping_statuses.includes(status.value)
+            ? "ready"
+            : "not_ready";
 
     // The stay that held this same unit at the last assessment and no longer does: its check-out, or its move, is evidence
     // of the change.
     const former = lastUnit.get(stay.data.stay_id) === unitId ? lastOccupant.get(stay.data.stay_id) : undefined;
-    const released = former && former !== occupant?.stayId ? (lifecycles.get(former)?.value.type === "stay.checked_in" ? assignments.get(former)?.event : lifecycles.get(former)?.event) : undefined;
+    const released =
+      former && former !== occupant?.stayId
+        ? lifecycles.get(former)?.value.type === "stay.checked_in"
+          ? assignments.get(former)?.event
+          : lifecycles.get(former)?.event
+        : undefined;
     const occupancyFacts = occupant ? [occupant.assignment, occupant.checkIn, departure?.event] : [released];
-    const facts = [reservation?.event, stay, assignment?.event, status?.event, ...conflicting.map((item) => item.event), task?.event, signal?.event, window?.event, ...occupancyFacts]
+    const facts = [
+      reservation?.event,
+      stay,
+      assignment?.event,
+      status?.event,
+      ...conflicting.map((item) => item.event),
+      task?.event,
+      signal?.event,
+      window?.event,
+      ...occupancyFacts,
+    ]
       .filter((fact): fact is HosFact => Boolean(fact))
       .filter((fact, index, all) => all.indexOf(fact) === index)
       .sort(byOccurrence);
@@ -246,17 +277,40 @@ export function replayArrivalReadiness(events: HosFact[], manifests: ProducerMan
           }
         : null,
       maintenance: window
-        ? { maintenance_id: window.value.data.maintenance_id, starts_at: window.value.data.starts_at, ends_at: window.value.data.ends_at, statuses: window.value.data.statuses, source: window.event.source, event_id: window.event.id, time: window.event.time }
+        ? {
+            maintenance_id: window.value.data.maintenance_id,
+            starts_at: window.value.data.starts_at,
+            ends_at: window.value.data.ends_at,
+            statuses: window.value.data.statuses,
+            source: window.event.source,
+            event_id: window.event.id,
+            time: window.event.time,
+          }
         : null,
       occupied_by: occupant
-        ? { stay_id: occupant.stayId, planned_departure_at: departure?.value.data.planned_departure_at ?? null, source: occupant.checkIn.source, event_id: occupant.checkIn.id, time: occupant.checkIn.time }
+        ? {
+            stay_id: occupant.stayId,
+            planned_departure_at: departure?.value.data.planned_departure_at ?? null,
+            source: occupant.checkIn.source,
+            event_id: occupant.checkIn.id,
+            time: occupant.checkIn.time,
+          }
         : null,
-      arrival: signal ? { ...factRef(signal.event, signal.value.expected_arrival_at), ...(signal.value.confidence === undefined ? {} : { confidence: signal.value.confidence }) } : null,
+      arrival: signal
+        ? {
+            ...factRef(signal.event, signal.value.expected_arrival_at),
+            ...(signal.value.confidence === undefined ? {} : { confidence: signal.value.confidence }),
+          }
+        : null,
       early,
       readiness,
       situation: situations.get(stay.data.stay_id) ?? "none",
     };
-    const previous = { unit: lastUnit.get(stay.data.stay_id), blocked: blocked.get(stay.data.stay_id), overlapped: overlapped.get(stay.data.stay_id) };
+    const previous = {
+      unit: lastUnit.get(stay.data.stay_id),
+      blocked: blocked.get(stay.data.stay_id),
+      overlapped: overlapped.get(stay.data.stay_id),
+    };
     const reason: ArrivalRoomReadinessResolved["data"]["reason"] = !reservationActive
       ? "reservation_inactive"
       : stayStatus !== "expected"
@@ -279,7 +333,14 @@ export function replayArrivalReadiness(events: HosFact[], manifests: ProducerMan
     return { view, facts, atRisk: stayStatus === "expected" && (Boolean(window) || overlap || (early && readiness !== "ready")), reason };
   }
 
-  function envelope<TType extends Situation["type"]>(type: TType, id: string, stay: StayExpected, view: StayView, facts: HosFact[], trigger: HosFact) {
+  function envelope<TType extends Situation["type"]>(
+    type: TType,
+    id: string,
+    stay: StayExpected,
+    view: StayView,
+    facts: HosFact[],
+    trigger: HosFact,
+  ) {
     const latest = facts[facts.length - 1] ?? trigger;
     const subjects = [`stay:${view.stay_id}`, `reservation:${view.reservation_id}`, ...(view.unit_id ? [`unit:${view.unit_id}`] : [])];
     return {

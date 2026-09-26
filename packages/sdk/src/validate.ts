@@ -47,7 +47,8 @@ const plural = (count: number, noun: string) => `${count === 1 ? "one" : count} 
 // --- Event documents: the envelope, then the data definition an if/then entry chooses for the type ---
 
 const typesOf = (document: Schema) => document.allOf!.find((part) => part.properties?.type?.enum)!.properties!.type.enum as string[];
-const entryFor = (document: Schema, type: unknown) => document.allOf!.find((part) => part.if?.properties?.type && (part.if.properties.type as { const?: unknown }).const === type);
+const entryFor = (document: Schema, type: unknown) =>
+  document.allOf!.find((part) => part.if?.properties?.type && (part.if.properties.type as { const?: unknown }).const === type);
 const snapshotTypes = typesOf(events).filter((type) => entryFor(events, type)?.then?.if?.properties?.hosdatamode);
 
 function dataDefinition(document: Schema, event: Record<string, unknown>) {
@@ -78,7 +79,10 @@ const rulesBySchema: Array<[RegExp, string]> = [
   [/core#\/\$defs\/extensions\//, "core/extensions"],
   [/core#\/\$defs\/sensitivityClass\//, "core/sensitivity-classes"],
   [/core#\/\$defs\/(ianaTimezone|localTime)\//, "core/time"],
-  [/core#\/\$defs\/(unitStatusDimension|unitStatuses|occupancyStatus|housekeepingStatus|maintenanceStatus|commercialStatus)\//, "core/unit-status-model"],
+  [
+    /core#\/\$defs\/(unitStatusDimension|unitStatuses|occupancyStatus|housekeepingStatus|maintenanceStatus|commercialStatus)\//,
+    "core/unit-status-model",
+  ],
   [/core#\/\$defs\/maintenanceWindowStatuses\//, "events/plans-are-not-states"],
 ];
 
@@ -99,11 +103,14 @@ const formats: Record<string, string> = {
   uri: "a URI such as urn:hos:pms:demo",
 };
 
-const closedData = "Data objects are closed so that personal or commercial data cannot travel unnoticed; vendor detail goes in data.extensions under an inverted domain namespace.";
+const closedData =
+  "Data objects are closed so that personal or commercial data cannot travel unnoticed; vendor detail goes in data.extensions under an inverted domain namespace.";
 
 // Branches of an anyOf or oneOf that are only required lists, such as a task for a unit or a stay.
 const requiredOnly = (branches: unknown) =>
-  Array.isArray(branches) && branches.every((branch) => isObject(branch) && Object.keys(branch).length === 1 && Array.isArray(branch.required)) ? branches.flatMap((branch) => branch.required as string[]) : undefined;
+  Array.isArray(branches) && branches.every((branch) => isObject(branch) && Object.keys(branch).length === 1 && Array.isArray(branch.required))
+    ? branches.flatMap((branch) => branch.required as string[])
+    : undefined;
 
 function describe(error: ErrorObject, context: Context): ValidationError {
   const params = error.params as Record<string, unknown>;
@@ -173,7 +180,9 @@ function describe(error: ErrorObject, context: Context): ValidationError {
     case "anyOf":
     case "oneOf": {
       const required = requiredOnly(error.schema);
-      message = required ? `${name()} needs ${required.join(" or ")}.${hint(parent?.description)}` : `${name()} matches none of its allowed forms.${hint(parent?.description)}`;
+      message = required
+        ? `${name()} needs ${required.join(" or ")}.${hint(parent?.description)}`
+        : `${name()} matches none of its allowed forms.${hint(parent?.description)}`;
       break;
     }
     case "not":
@@ -234,7 +243,16 @@ function checkEventDocument(document: Schema, event: Record<string, unknown>, da
   } else if (isObject(event.data)) {
     const definition = dataDefinition(document, event);
     const subject = String(event.type);
-    if (definition) errors.push(...check(definition.id, event.data, { schema: definition.schema, prefix: "/data", rule: dataRule, closed: dataRule === "events/catalogue" ? "events/minimal-data" : undefined, subject }));
+    if (definition)
+      errors.push(
+        ...check(definition.id, event.data, {
+          schema: definition.schema,
+          prefix: "/data",
+          rule: dataRule,
+          closed: dataRule === "events/catalogue" ? "events/minimal-data" : undefined,
+          subject,
+        }),
+      );
   }
   // The rules that span the envelope and the data, such as snapshot mode, show once both are valid.
   return errors.length ? errors : check(document.$id!, event, { schema: document, prefix: "", rule: "events/envelope", subject: String(event.type) });
@@ -245,12 +263,15 @@ function checkEventDocument(document: Schema, event: Record<string, unknown>, da
 export function validate(document: unknown): ValidationResult {
   const result = (kind: DocumentKind | null, errors: ValidationError[]) => ({ valid: errors.length === 0, kind, errors });
   if (!isObject(document)) return result(null, [{ path: "", message: "The document is not a JSON object." }]);
-  if ("hosmanifestversion" in document) return result("manifest", check(manifest.$id!, document, { schema: manifest, prefix: "", rule: "events/producers" }));
+  if ("hosmanifestversion" in document)
+    return result("manifest", check(manifest.$id!, document, { schema: manifest, prefix: "", rule: "events/producers" }));
   if ("specversion" in document) {
     if (typesOf(reference).includes(document.type as string)) return result("situation", checkEventDocument(reference, document, "events/reference"));
     return result("event", checkEventDocument(events, document, "events/catalogue"));
   }
-  return result(null, [{ path: "", message: "This is not a HOS document: an event or a situation has specversion, a manifest has hosmanifestversion." }]);
+  return result(null, [
+    { path: "", message: "This is not a HOS document: an event or a situation has specversion, a manifest has hosmanifestversion." },
+  ]);
 }
 
 // --- Streams ---
@@ -264,7 +285,11 @@ export function validateStream(text: string, { manifests = [] }: { manifests?: P
 
   manifests.forEach((candidate, index) => {
     const { errors } = validate(candidate);
-    for (const error of errors) report("error", null, { ...error, message: `Manifest ${isObject(candidate) ? (candidate.producer ?? index + 1) : index + 1}: ${error.message}` });
+    for (const error of errors)
+      report("error", null, {
+        ...error,
+        message: `Manifest ${isObject(candidate) ? (candidate.producer ?? index + 1) : index + 1}: ${error.message}`,
+      });
   });
   const authorities = new Map<string, string>();
   for (const { producer, property_ids, events: declared } of manifests.filter((candidate) => validate(candidate).valid)) {
@@ -295,7 +320,11 @@ export function validateStream(text: string, { manifests = [] }: { manifests?: P
     try {
       event = JSON.parse(raw);
     } catch (error) {
-      report("error", line, { path: "", message: `Not JSON: ${(error as Error).message.replace(/ \(line \d+ column \d+\)$/, "")}. A stream is JSON Lines: one event per line.`, rule: "events/replay" });
+      report("error", line, {
+        path: "",
+        message: `Not JSON: ${(error as Error).message.replace(/ \(line \d+ column \d+\)$/, "")}. A stream is JSON Lines: one event per line.`,
+        rule: "events/replay",
+      });
       return;
     }
     const { kind, errors } = validate(event);
@@ -319,7 +348,12 @@ export function validateStream(text: string, { manifests = [] }: { manifests?: P
             message: `Reuses the source and id of line ${first.line} with different content (${changed.join(", ")}). A source and id name one fact, which never changes: a correction is a new event.`,
             rule: "events/immutable-facts",
           });
-        else report("info", line, { path: "", message: `Repeats line ${first.line}: same source, id and content. A consumer discards it as a duplicate.`, rule: "events/at-least-once-delivery" });
+        else
+          report("info", line, {
+            path: "",
+            message: `Repeats line ${first.line}: same source, id and content. A consumer discards it as a duplicate.`,
+            rule: "events/at-least-once-delivery",
+          });
       }
     }
 
@@ -328,7 +362,11 @@ export function validateStream(text: string, { manifests = [] }: { manifests?: P
       if (!known) properties.set(fact.hosproperty, { line, tenant: fact.hostenant, timezone: fact.hospropertytimezone });
       else {
         if (known.tenant !== fact.hostenant)
-          report("error", line, { path: "/hostenant", message: `Puts ${fact.hosproperty} in tenant ${show(fact.hostenant)}, where line ${known.line} put it in ${show(known.tenant)}. A property belongs to one tenant.`, rule: "core/entities" });
+          report("error", line, {
+            path: "/hostenant",
+            message: `Puts ${fact.hosproperty} in tenant ${show(fact.hostenant)}, where line ${known.line} put it in ${show(known.tenant)}. A property belongs to one tenant.`,
+            rule: "core/entities",
+          });
         if (known.timezone !== fact.hospropertytimezone)
           report("error", line, {
             path: "/hospropertytimezone",
@@ -351,8 +389,16 @@ export function validateStream(text: string, { manifests = [] }: { manifests?: P
           severity,
           line,
           snapshot
-            ? { path: "/hosdatamode", message: `${hos.source} does not declare snapshots of ${hos.type}${which} at ${hos.hosproperty}: ${ignored}.`, rule: "events/explicit-snapshots" }
-            : { path: "/type", message: `${hos.source} does not declare ${hos.type}${which} at ${hos.hosproperty}: ${ignored} (undeclared_capability).`, rule: "events/declared-capability" },
+            ? {
+                path: "/hosdatamode",
+                message: `${hos.source} does not declare snapshots of ${hos.type}${which} at ${hos.hosproperty}: ${ignored}.`,
+                rule: "events/explicit-snapshots",
+              }
+            : {
+                path: "/type",
+                message: `${hos.source} does not declare ${hos.type}${which} at ${hos.hosproperty}: ${ignored} (undeclared_capability).`,
+                rule: "events/declared-capability",
+              },
         );
       }
     }

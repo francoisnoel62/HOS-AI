@@ -1,0 +1,3 @@
+# Text files are checked out with LF line endings on every system, whatever core.autocrlf says, so the JSONL corpus,
+# the files generated from it and Prettier see the same bytes on Windows as on Linux.
+* text=auto eol=lf

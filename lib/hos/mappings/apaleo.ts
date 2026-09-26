@@ -66,7 +66,11 @@ export type ApaleoUnit = {
   name: string;
   property: { id: string };
   unitGroup?: { id: string; type?: string };
-  status: { isOccupied: boolean; condition: ApaleoUnitCondition; maintenance?: { id: string; type: "OutOfService" | "OutOfOrder" | "OutOfInventory" } };
+  status: {
+    isOccupied: boolean;
+    condition: ApaleoUnitCondition;
+    maintenance?: { id: string; type: "OutOfService" | "OutOfOrder" | "OutOfInventory" };
+  };
 };
 
 export type ApaleoPropertyConfig = {
@@ -90,9 +94,22 @@ export type ApaleoAdapterConfig = {
 export type ApaleoMaintenanceType = "OutOfService" | "OutOfOrder" | "OutOfInventory";
 
 // A scheduled maintenance of one unit, from the Operations API.
-export type ApaleoMaintenance = { id: string; unit: { id: string; name?: string }; from: string; to: string; type: ApaleoMaintenanceType; description?: string };
+export type ApaleoMaintenance = {
+  id: string;
+  unit: { id: string; name?: string };
+  from: string;
+  to: string;
+  type: ApaleoMaintenanceType;
+  description?: string;
+};
 
-export type ApaleoDelivery = { received_at: string; webhook: ApaleoWebhook; reservation?: ApaleoReservation; unit?: ApaleoUnit; maintenance?: ApaleoMaintenance };
+export type ApaleoDelivery = {
+  received_at: string;
+  webhook: ApaleoWebhook;
+  reservation?: ApaleoReservation;
+  unit?: ApaleoUnit;
+  maintenance?: ApaleoMaintenance;
+};
 
 // What HOS has been told about a reservation and its stay.
 type PublishedStay = {
@@ -146,7 +163,14 @@ export function createApaleoAdapter(config: ApaleoAdapterConfig) {
       skip("The property is not configured as a HOS property.");
       return { events: [], unmapped };
     }
-    const { events, publish } = createFactWriter({ source: config.source, tenant: config.tenant, propertyId: property.propertyId, timezone: property.timezone, recordedAt: delivery.received_at, idPrefix: "apaleo" });
+    const { events, publish } = createFactWriter({
+      source: config.source,
+      tenant: config.tenant,
+      propertyId: property.propertyId,
+      timezone: property.timezone,
+      recordedAt: delivery.received_at,
+      idPrefix: "apaleo",
+    });
     // Apaleo stamps each event with the moment it happened.
     const occurred = utc(webhook.timestamp);
 
@@ -159,10 +183,22 @@ export function createApaleoAdapter(config: ApaleoAdapterConfig) {
       const stayId = resolve("stay", apaleo.id);
       const arrivalAt = utc(apaleo.arrival);
       const departureAt = utc(apaleo.departure);
-      const plan = { arrivalAt, departureAt, arrivalDate: localDate(arrivalAt, property!.timezone), departureDate: localDate(departureAt, property!.timezone) };
+      const plan = {
+        arrivalAt,
+        departureAt,
+        arrivalDate: localDate(arrivalAt, property!.timezone),
+        departureDate: localDate(departureAt, property!.timezone),
+      };
       // Apaleo embeds the guest's details in each reservation without a guest id, so there is no pseudonymous guest to link.
       const expected = (time: string) =>
-        publish<StayExpected>("stay.expected", apaleo.id, time, [`stay:${stayId}`, `reservation:${reservationId}`], { stay_id: stayId, reservation_id: reservationId, planned_arrival_at: arrivalAt, planned_departure_at: departureAt }, { businessDate: plan.arrivalDate });
+        publish<StayExpected>(
+          "stay.expected",
+          apaleo.id,
+          time,
+          [`stay:${stayId}`, `reservation:${reservationId}`],
+          { stay_id: stayId, reservation_id: reservationId, planned_arrival_at: arrivalAt, planned_departure_at: departureAt },
+          { businessDate: plan.arrivalDate },
+        );
 
       if (!stay) {
         if (apaleo.status === "Canceled" || apaleo.status === "NoShow") return skip("Closed before HOS knew the reservation.");
@@ -182,24 +218,34 @@ export function createApaleoAdapter(config: ApaleoAdapterConfig) {
         stays.set(apaleo.id, stay);
       } else {
         const update: ReservationUpdated["data"] = { reservation_id: reservationId, changed_fields: [] };
-        if (plan.arrivalDate !== stay.arrivalDate) Object.assign(update, { planned_arrival_date: plan.arrivalDate }).changed_fields.push("planned_arrival_date");
-        if (plan.departureDate !== stay.departureDate) Object.assign(update, { planned_departure_date: plan.departureDate }).changed_fields.push("planned_departure_date");
-        if (update.changed_fields.length) publish<ReservationUpdated>("reservation.updated", apaleo.id, occurred, [`reservation:${reservationId}`], update);
+        if (plan.arrivalDate !== stay.arrivalDate)
+          Object.assign(update, { planned_arrival_date: plan.arrivalDate }).changed_fields.push("planned_arrival_date");
+        if (plan.departureDate !== stay.departureDate)
+          Object.assign(update, { planned_departure_date: plan.departureDate }).changed_fields.push("planned_departure_date");
+        if (update.changed_fields.length)
+          publish<ReservationUpdated>("reservation.updated", apaleo.id, occurred, [`reservation:${reservationId}`], update);
         if (arrivalAt !== stay.arrivalAt || departureAt !== stay.departureAt) expected(occurred);
         Object.assign(stay, { modified: apaleo.modified, ...plan });
       }
 
       if (!stay.closed && apaleo.status === "Canceled") {
-        publish<ReservationCancelled>("reservation.cancelled", apaleo.id, apaleo.cancellationTime ?? occurred, [`reservation:${reservationId}`], { reservation_id: reservationId });
+        publish<ReservationCancelled>("reservation.cancelled", apaleo.id, apaleo.cancellationTime ?? occurred, [`reservation:${reservationId}`], {
+          reservation_id: reservationId,
+        });
         stay.closed = true;
       }
       if (!stay.closed && apaleo.status === "NoShow") {
-        publish<ReservationUpdated>("reservation.updated", apaleo.id, apaleo.noShowTime ?? occurred, [`reservation:${reservationId}`], { reservation_id: reservationId, changed_fields: ["status"], status: "no_show" });
+        publish<ReservationUpdated>("reservation.updated", apaleo.id, apaleo.noShowTime ?? occurred, [`reservation:${reservationId}`], {
+          reservation_id: reservationId,
+          changed_fields: ["status"],
+          status: "no_show",
+        });
         stay.closed = true;
       }
 
       // The event that names a change says when it happened; any other event only shows it by the last modification.
-      const when = (type: string) => (webhook.type === type ? { time: occurred, options: {} } : { time: apaleo.modified, options: { timeBasis: "modified" as const } });
+      const when = (type: string) =>
+        webhook.type === type ? { time: occurred, options: {} } : { time: apaleo.modified, options: { timeBasis: "modified" as const } };
       const unitId = apaleo.unit ? resolve("unit", apaleo.unit.id) : null;
       if (unitId && unitId !== stay.unitId) {
         const { time, options } = when("unit-assigned");
@@ -214,20 +260,40 @@ export function createApaleoAdapter(config: ApaleoAdapterConfig) {
         Object.assign(stay, { unitId, assignedBefore: true });
       } else if (!unitId && stay.unitId) {
         const { time, options } = when("unit-unassigned");
-        publish<StayUnitUnassigned>("stay.unit_unassigned", apaleo.id, time, [`stay:${stayId}`, `unit:${stay.unitId}`], { stay_id: stayId, unit_id: stay.unitId }, options);
+        publish<StayUnitUnassigned>(
+          "stay.unit_unassigned",
+          apaleo.id,
+          time,
+          [`stay:${stayId}`, `unit:${stay.unitId}`],
+          { stay_id: stayId, unit_id: stay.unitId },
+          options,
+        );
         stay.unitId = null;
       }
 
       if ((apaleo.status === "InHouse" || apaleo.status === "CheckedOut") && !stay.checkedIn && unitId) {
-        publish<StayCheckedIn>("stay.checked_in", apaleo.id, apaleo.checkInTime ?? occurred, [`stay:${stayId}`, `unit:${unitId}`], { stay_id: stayId, unit_id: unitId });
+        publish<StayCheckedIn>("stay.checked_in", apaleo.id, apaleo.checkInTime ?? occurred, [`stay:${stayId}`, `unit:${unitId}`], {
+          stay_id: stayId,
+          unit_id: unitId,
+        });
         stay.checkedIn = true;
       } else if (apaleo.status === "Confirmed" && stay.checkedIn) {
         const { time, options } = when("check-in-reverted");
-        publish<StayCheckInReverted>("stay.check_in_reverted", apaleo.id, time, [`stay:${stayId}`, ...(unitId ? [`unit:${unitId}`] : [])], { stay_id: stayId, ...(unitId ? { unit_id: unitId } : {}) }, options);
+        publish<StayCheckInReverted>(
+          "stay.check_in_reverted",
+          apaleo.id,
+          time,
+          [`stay:${stayId}`, ...(unitId ? [`unit:${unitId}`] : [])],
+          { stay_id: stayId, ...(unitId ? { unit_id: unitId } : {}) },
+          options,
+        );
         stay.checkedIn = false;
       }
       if (apaleo.status === "CheckedOut" && stay.checkedIn && !stay.checkedOut && unitId) {
-        publish<StayCheckedOut>("stay.checked_out", apaleo.id, apaleo.checkOutTime ?? occurred, [`stay:${stayId}`, `unit:${unitId}`], { stay_id: stayId, unit_id: unitId });
+        publish<StayCheckedOut>("stay.checked_out", apaleo.id, apaleo.checkOutTime ?? occurred, [`stay:${stayId}`, `unit:${unitId}`], {
+          stay_id: stayId,
+          unit_id: unitId,
+        });
         stay.checkedOut = true;
       }
     }
@@ -268,13 +334,22 @@ export function createApaleoAdapter(config: ApaleoAdapterConfig) {
       if (webhook.type === "deleted") {
         // A deleted maintenance can no longer be fetched: its unit is what this adapter published.
         if (!known || known.cancelled) return skip(known ? "Already cancelled." : "Deleted before HOS knew the maintenance.");
-        publish<UnitMaintenanceCancelled>("unit.maintenance_cancelled", entityId, occurred, [`unit:${known.unitId}`], { maintenance_id: maintenanceId, unit_id: known.unitId });
+        publish<UnitMaintenanceCancelled>("unit.maintenance_cancelled", entityId, occurred, [`unit:${known.unitId}`], {
+          maintenance_id: maintenanceId,
+          unit_id: known.unitId,
+        });
         known.cancelled = true;
         return;
       }
       if (!apaleo) return skip("Not returned by the Operations API.");
       const unitId = resolve("unit", apaleo.unit.id);
-      const window = { maintenance_id: maintenanceId, unit_id: unitId, starts_at: utc(apaleo.from), ends_at: utc(apaleo.to), ...maintenanceWindows[apaleo.type] };
+      const window = {
+        maintenance_id: maintenanceId,
+        unit_id: unitId,
+        starts_at: utc(apaleo.from),
+        ends_at: utc(apaleo.to),
+        ...maintenanceWindows[apaleo.type],
+      };
       const plan = JSON.stringify(window);
       if (known?.plan === plan && !known.cancelled) return skip("No change since the last fetch.");
       publish<UnitMaintenanceScheduled>("unit.maintenance_scheduled", entityId, occurred, [`unit:${unitId}`], window);
@@ -300,10 +375,17 @@ export function createApaleoAdapter(config: ApaleoAdapterConfig) {
 
 // Replays a recording's Apaleo deliveries: each webhook with the reservation or unit fetched for it.
 export function apaleoRecordingAdapter({ adapter }: MappingRecording): RecordingAdapter {
-  const apaleo = createApaleoAdapter({ ...(adapter as unknown as Omit<ApaleoAdapterConfig, "identities">), identities: createIdentityRegistry(adapter.crosswalk) });
+  const apaleo = createApaleoAdapter({
+    ...(adapter as unknown as Omit<ApaleoAdapterConfig, "identities">),
+    identities: createIdentityRegistry(adapter.crosswalk),
+  });
   return (delivery) => {
     const call = delivery.fetched[0];
-    const kind = call?.operation.startsWith("GET /inventory/") ? "unit" : call?.operation.startsWith("GET /operations/") ? "maintenance" : "reservation";
+    const kind = call?.operation.startsWith("GET /inventory/")
+      ? "unit"
+      : call?.operation.startsWith("GET /operations/")
+        ? "maintenance"
+        : "reservation";
     const fetched = call ? { [kind]: call.response } : {};
     return apaleo.handle({ received_at: delivery.received_at, webhook: delivery.webhook as ApaleoWebhook, ...fetched });
   };

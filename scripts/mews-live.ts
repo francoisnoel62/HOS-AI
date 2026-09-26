@@ -17,7 +17,14 @@ import { runLiveCheck, writeLiveReport } from "./live-report";
 // MEWS_PLATFORM_ADDRESS defaults to https://api.mews-demo.com. MEWS_SERVICE_IDS, comma-separated, overrides the
 // accommodation services. Behind an HTTP proxy, Node needs NODE_USE_ENV_PROXY=1 to route fetch through it.
 
-const { values: args } = parseArgs({ options: { days: { type: "string", default: "1" }, out: { type: "string" }, events: { type: "boolean", default: false }, record: { type: "string", default: "data/live-checks/mews" } } });
+const { values: args } = parseArgs({
+  options: {
+    days: { type: "string", default: "1" },
+    out: { type: "string" },
+    events: { type: "boolean", default: false },
+    record: { type: "string", default: "data/live-checks/mews" },
+  },
+});
 
 const platform = process.env.MEWS_PLATFORM_ADDRESS ?? "https://api.mews-demo.com";
 const clientToken = process.env.MEWS_CLIENT_TOKEN;
@@ -56,7 +63,10 @@ async function getAll<T>(operation: string, key: string, body: Record<string, un
   const items: T[] = [];
   let cursor: string | null | undefined;
   for (let page = 0; page < maxPages; page++) {
-    const response = await call<Page & Record<string, T[]>>(operation, { ...body, Limitation: { Count: pageSize, ...(cursor ? { Cursor: cursor } : {}) } });
+    const response = await call<Page & Record<string, T[]>>(operation, {
+      ...body,
+      Limitation: { Count: pageSize, ...(cursor ? { Cursor: cursor } : {}) },
+    });
     const batch = response[key] ?? [];
     items.push(...batch);
     cursor = response.Cursor;
@@ -68,7 +78,9 @@ async function getAll<T>(operation: string, key: string, body: Record<string, un
 
 async function main() {
   if (!clientToken || !accessToken) {
-    console.error("Set MEWS_CLIENT_TOKEN and MEWS_ACCESS_TOKEN. The Mews Connector API documentation publishes demo tokens under Getting started, Environments.");
+    console.error(
+      "Set MEWS_CLIENT_TOKEN and MEWS_ACCESS_TOKEN. The Mews Connector API documentation publishes demo tokens under Getting started, Environments.",
+    );
     process.exit(2);
   }
   const days = Number(args.days);
@@ -89,7 +101,11 @@ async function main() {
   const categories =
     override || !bookable.length
       ? []
-      : await getAll<MewsResourceCategory>("resourceCategories/getAll", "ResourceCategories", { ...scope, ServiceIds: bookable.map((service) => service.Id), ActivityStates: ["Active"] });
+      : await getAll<MewsResourceCategory>("resourceCategories/getAll", "ResourceCategories", {
+          ...scope,
+          ServiceIds: bookable.map((service) => service.Id),
+          ActivityStates: ["Active"],
+        });
   const accommodation = override ?? accommodationServices(bookable, categories);
   if (!accommodation.length) throw new Error("No accommodation service found; set MEWS_SERVICE_IDS.");
 
@@ -106,7 +122,8 @@ async function main() {
   const snapshot: MewsSnapshot = { fetchedAt, enterprise, accommodationServiceIds: accommodation, reservations, resources, resourceBlocks };
   const report = syncMews(snapshot, { source: "urn:hos:pms:mews-live", tenant: "tenant_mews_live", propertyId: "prop_mews_live" });
 
-  const serviceName = (service: MewsService) => service.Names?.["en-US"] ?? service.Names?.["en-GB"] ?? Object.values(service.Names ?? {})[0] ?? service.Name ?? service.Id;
+  const serviceName = (service: MewsService) =>
+    service.Names?.["en-US"] ?? service.Names?.["en-GB"] ?? Object.values(service.Names ?? {})[0] ?? service.Name ?? service.Id;
   const accommodationNames = accommodation.map((id) => {
     const service = services.find((candidate) => candidate.Id === id);
     return service ? serviceName(service) : id;

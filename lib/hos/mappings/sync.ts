@@ -45,7 +45,17 @@ export type SyncReport<Fetched> = {
 // On a property that runs the PMS alone, the PMS is the authority for everything its mapping publishes.
 export function liveManifest(
   { source, propertyId }: SyncOptions,
-  { name, types, dimensions, limitations }: { name: string; types: Array<HosFact["type"]>; dimensions: NonNullable<ProducerManifest["events"][number]["dimensions"]>; limitations: string[] },
+  {
+    name,
+    types,
+    dimensions,
+    limitations,
+  }: {
+    name: string;
+    types: Array<HosFact["type"]>;
+    dimensions: NonNullable<ProducerManifest["events"][number]["dimensions"]>;
+    limitations: string[];
+  },
 ): ProducerManifest {
   return {
     hosmanifestversion: "0.1",
@@ -63,7 +73,8 @@ export function liveManifest(
   };
 }
 
-const tally = <T>(items: T[], key: (item: T) => string) => items.reduce<Record<string, number>>((counts, item) => ({ ...counts, [key(item)]: (counts[key(item)] ?? 0) + 1 }), {});
+const tally = <T>(items: T[], key: (item: T) => string) =>
+  items.reduce<Record<string, number>>((counts, item) => ({ ...counts, [key(item)]: (counts[key(item)] ?? 0) + 1 }), {});
 
 // Delivers every entity twice through the same adapter, then once through a restarted one, and replays the first pass.
 // unitNames, called once the passes are done, maps HOS unit ids to the room names people read.

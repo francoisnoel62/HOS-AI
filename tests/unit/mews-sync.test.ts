@@ -7,7 +7,8 @@ import { accommodationServices, type MewsResourceCategory, type MewsService, typ
 import { loadRecording } from "@/lib/hos/mappings/replay";
 
 const recording: MappingRecording = loadRecording("mews");
-const fetched = (delivery: number) => recording.deliveries[delivery].fetched[0].response as { Reservations?: MewsReservation[]; Resources?: MewsResource[] };
+const fetched = (delivery: number) =>
+  recording.deliveries[delivery].fetched[0].response as { Reservations?: MewsReservation[]; Resources?: MewsResource[] };
 const [property] = recording.adapter.properties as Array<{ enterpriseId: string; timezone: string; accommodationServiceIds: string[] }>;
 
 describe("Mews live synchronisation", () => {
@@ -15,7 +16,17 @@ describe("Mews live synchronisation", () => {
   const room = fetched(2).Resources![0];
   const bed: MewsResource = { ...room, Id: "3c1f0a52-6d2b-4b8e-9a51-0e2d7c4f8b10", ParentResourceId: room.Id, Name: "204-A" };
   const parking: MewsReservation = { ...assigned, Id: "b2d4e6f8-0a1c-4e3a-8b5d-7f9e1a3c5b7d", ServiceId: "5a7c9e1b-3d5f-4a2c-8e6b-0d2f4a6c8e0a" };
-  const block: MewsResourceBlock = { Id: "7f8e9d0c-1b2a-3c4d-5e6f-7a8b9c0d1e2f", EnterpriseId: property.enterpriseId, AssignedResourceId: room.Id, IsActive: true, Type: "OutOfOrder", StartUtc: "2026-07-30T08:00:00Z", EndUtc: "2026-07-30T16:00:00Z", CreatedUtc: "2026-07-28T09:00:00Z", UpdatedUtc: "2026-07-28T09:00:00Z" };
+  const block: MewsResourceBlock = {
+    Id: "7f8e9d0c-1b2a-3c4d-5e6f-7a8b9c0d1e2f",
+    EnterpriseId: property.enterpriseId,
+    AssignedResourceId: room.Id,
+    IsActive: true,
+    Type: "OutOfOrder",
+    StartUtc: "2026-07-30T08:00:00Z",
+    EndUtc: "2026-07-30T16:00:00Z",
+    CreatedUtc: "2026-07-28T09:00:00Z",
+    UpdatedUtc: "2026-07-28T09:00:00Z",
+  };
   const snapshot = (resourceBlocks: MewsResourceBlock[]): MewsSnapshot => ({
     fetchedAt: "2026-07-30T08:30:00Z",
     enterprise: { id: property.enterpriseId, timezone: property.timezone },
@@ -34,8 +45,17 @@ describe("Mews live synchronisation", () => {
     // A restarted adapter publishes the same facts again, with the same ids, and the producer check passes.
     expect(report.redelivery).toEqual(report.events);
     const lines = (facts: typeof report.events) => facts.map((fact) => JSON.stringify(fact)).join("\n");
-    expect(checkProducer({ manifest: report.manifest, recording: lines(report.events), redelivery: lines(report.redelivery) })).toMatchObject({ valid: true, redelivery: { repeated: report.events.length } });
-    expect(report.events_by_type).toEqual({ "reservation.created": 1, "stay.expected": 1, "stay.unit_assigned": 1, "unit.status_changed": 2, "unit.maintenance_scheduled": 1 });
+    expect(checkProducer({ manifest: report.manifest, recording: lines(report.events), redelivery: lines(report.redelivery) })).toMatchObject({
+      valid: true,
+      redelivery: { repeated: report.events.length },
+    });
+    expect(report.events_by_type).toEqual({
+      "reservation.created": 1,
+      "stay.expected": 1,
+      "stay.unit_assigned": 1,
+      "unit.status_changed": 2,
+      "unit.maintenance_scheduled": 1,
+    });
     expect(report.unmapped).toEqual([{ event: "ServiceOrderUpdated", reason: "Not an accommodation service at this property.", count: 1 }]);
     expect(report.dispositions).toEqual({ applied: 6 });
     // HOS ids are minted, never the Mews GUIDs; only the room name comes back for people to read.
@@ -45,7 +65,15 @@ describe("Mews live synchronisation", () => {
   it("reports today's arrivals, with a maintenance window as a risk", () => {
     const blocked = syncMews(snapshot([block]), options);
     expect(blocked.arrivals.business_date).toBe("2026-07-30");
-    expect(blocked.arrivals.stays).toEqual([expect.objectContaining({ unit: "204", housekeeping: "clean", readiness: "not_ready", situation: "at_risk", maintenance: { starts_at: block.StartUtc, ends_at: block.EndUtc } })]);
+    expect(blocked.arrivals.stays).toEqual([
+      expect.objectContaining({
+        unit: "204",
+        housekeeping: "clean",
+        readiness: "not_ready",
+        situation: "at_risk",
+        maintenance: { starts_at: block.StartUtc, ends_at: block.EndUtc },
+      }),
+    ]);
     expect(blocked.situations).toEqual({ "arrival.room_readiness_at_risk": 1 });
 
     const clear = syncMews(snapshot([]), options);
@@ -63,8 +91,17 @@ describe("Mews live synchronisation", () => {
 
   it("takes as accommodation the bookable services with a place to stay, whatever their time unit", () => {
     // The shapes the Mews demo enterprise returned: parking and full-day meeting rooms are sold by the day, long stays by the month.
-    const service = (Id: string, TimeUnitPeriod: string, IsActive = true): MewsService => ({ Id, IsActive, Data: { Discriminator: "Bookable", Value: { TimeUnitPeriod } } });
-    const category = (ServiceId: string, Type: string, IsActive = true): MewsResourceCategory => ({ Id: `${ServiceId}-${Type}`, ServiceId, IsActive, Type });
+    const service = (Id: string, TimeUnitPeriod: string, IsActive = true): MewsService => ({
+      Id,
+      IsActive,
+      Data: { Discriminator: "Bookable", Value: { TimeUnitPeriod } },
+    });
+    const category = (ServiceId: string, Type: string, IsActive = true): MewsResourceCategory => ({
+      Id: `${ServiceId}-${Type}`,
+      ServiceId,
+      IsActive,
+      Type,
+    });
     const services = [
       service("stay", "Day"),
       service("long-stay", "Month"),
@@ -94,6 +131,10 @@ describe("Mews live synchronisation", () => {
   it("skips a resource state the mapping does not know instead of failing", () => {
     const report = syncMews({ ...snapshot([]), resources: [{ ...room, State: "Refurbishing" as MewsResource["State"] }] }, options);
     expect(report.failures).toEqual([]);
-    expect(report.unmapped).toContainEqual({ event: "ResourceUpdated", reason: "Resource state Refurbishing has no HOS counterpart in this mapping.", count: 1 });
+    expect(report.unmapped).toContainEqual({
+      event: "ResourceUpdated",
+      reason: "Resource state Refurbishing has no HOS counterpart in this mapping.",
+      count: 1,
+    });
   });
 });

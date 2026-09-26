@@ -25,15 +25,33 @@ export async function POST(request: Request, context: { params: Promise<{ kind: 
     const parsed = formSchemas[schemaKey].safeParse(values);
     if (!parsed.success) return redirect(request, `/${rawKind === "contact" ? "contact" : `participate/${rawKind}`}?error=invalid`);
 
-    const submission = await createSubmission({ kind: submissionKindByRoute[rawKind], payload: parsed.data, email: parsed.data.email, country: parsed.data.country });
+    const submission = await createSubmission({
+      kind: submissionKindByRoute[rawKind],
+      payload: parsed.data,
+      email: parsed.data.email,
+      country: parsed.data.country,
+    });
     const internalRecipient = process.env.HOS_INBOX_EMAIL ?? "local-hos-inbox@localhost";
     try {
       await Promise.all([
-        writeLocalOutboxMessage({ type: "internal-notification", recipient: internalRecipient, submissionId: submission.id, kind: submissionKindByRoute[rawKind] }),
-        writeLocalOutboxMessage({ type: "acknowledgement", recipient: parsed.data.email, submissionId: submission.id, kind: submissionKindByRoute[rawKind] }),
+        writeLocalOutboxMessage({
+          type: "internal-notification",
+          recipient: internalRecipient,
+          submissionId: submission.id,
+          kind: submissionKindByRoute[rawKind],
+        }),
+        writeLocalOutboxMessage({
+          type: "acknowledgement",
+          recipient: parsed.data.email,
+          submissionId: submission.id,
+          kind: submissionKindByRoute[rawKind],
+        }),
       ]);
     } catch (deliveryError) {
-      console.error("Local outbox delivery failed", { submissionId: submission.id, error: deliveryError instanceof Error ? deliveryError.message : "unknown" });
+      console.error("Local outbox delivery failed", {
+        submissionId: submission.id,
+        error: deliveryError instanceof Error ? deliveryError.message : "unknown",
+      });
     }
     return redirect(request, `/thanks/${rawKind}`);
   } catch (error) {

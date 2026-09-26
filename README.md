@@ -229,7 +229,9 @@ npm.cmd run test:e2e
 
 Playwright starts the production server on port `3100`, so **build before running browser tests**. The suite covers key navigation and participation flows, theme switching and automated accessibility checks in desktop and mobile browser profiles. Run `npm.cmd run test:a11y` for the accessibility subset.
 
-The current [Playwright configuration](playwright.config.ts) invokes `npm.cmd`; contributors on macOS or Linux need to change its `webServer.command` to `npm run start -- --port 3100` for those checks.
+To try the SDK and the CLI as a new user would, `npm.cmd run packages:try` packs them, installs them in an empty project and runs `hos` there against the reference implementation and the Python example.
+
+The [CI](.github/workflows/ci.yml) runs these checks on every pull request and on `master`: the site on Linux, the packages on Linux and Windows with Node 22 and 24.
 
 Available scripts are listed in [`package.json`](package.json). Automated accessibility checks are part of the verification process, not a claim of complete accessibility conformance.
 

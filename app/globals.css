@@ -42,9 +42,13 @@
   --danger: #ff6b77;
 }
 
-* { border-color: var(--border); }
+* {
+  border-color: var(--border);
+}
 
-html { scroll-behavior: smooth; }
+html {
+  scroll-behavior: smooth;
+}
 
 body {
   background: var(--background);
@@ -53,16 +57,51 @@ body {
   text-rendering: optimizeLegibility;
 }
 
-::selection { background: var(--accent); color: #fff; }
+::selection {
+  background: var(--accent);
+  color: #fff;
+}
 
-:focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; }
+:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 3px;
+}
 
-.skip-link { position: fixed; left: 1rem; top: -4rem; z-index: 100; border: 1px solid var(--accent); background: var(--background); padding: 0.75rem 1rem; }
-.skip-link:focus { top: 1rem; }
+.skip-link {
+  position: fixed;
+  left: 1rem;
+  top: -4rem;
+  z-index: 100;
+  border: 1px solid var(--accent);
+  background: var(--background);
+  padding: 0.75rem 1rem;
+}
+.skip-link:focus {
+  top: 1rem;
+}
 
-.eyebrow { color: var(--muted-foreground); font-family: var(--font-geist-mono), monospace; font-size: 0.7rem; font-weight: 500; letter-spacing: 0.11em; text-transform: uppercase; }
-.diagram-grid { background-image: linear-gradient(to right, color-mix(in srgb, var(--border) 60%, transparent) 1px, transparent 1px), linear-gradient(to bottom, color-mix(in srgb, var(--border) 60%, transparent) 1px, transparent 1px); background-size: 24px 24px; }
+.eyebrow {
+  color: var(--muted-foreground);
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+.diagram-grid {
+  background-image:
+    linear-gradient(to right, color-mix(in srgb, var(--border) 60%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in srgb, var(--border) 60%, transparent) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
 
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: 0.01ms !important; }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
 }

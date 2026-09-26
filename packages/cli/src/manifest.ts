@@ -72,7 +72,8 @@ function parseJson(text: string, what: string): unknown {
 async function keygen(values: Record<string, string | boolean | undefined>, io: Io) {
   const { key: keyFile, jwks: jwksFile, alg = "Ed25519", kid } = values as Record<string, string | undefined>;
   if (!keyFile || !jwksFile) throw new UsageError("keygen needs --key and --jwks.");
-  if (!manifestSignatureAlgorithms.includes(alg as ManifestSignatureAlgorithm)) throw new UsageError(`--alg is ${alg}; use ${manifestSignatureAlgorithms.join(" or ")}.`);
+  if (!manifestSignatureAlgorithms.includes(alg as ManifestSignatureAlgorithm))
+    throw new UsageError(`--alg is ${alg}; use ${manifestSignatureAlgorithms.join(" or ")}.`);
   let jwks: JSONWebKeySet = { keys: [] };
   // Only a missing key set starts a new one: any other read error must not lose the keys it holds.
   const existing = await io.readFile(jwksFile).catch((error: NodeJS.ErrnoException) => {
@@ -85,12 +86,14 @@ async function keygen(values: Record<string, string | boolean | undefined>, io: 
     jwks = parsed;
   }
   const { privateJwk, publicJwk } = await generateManifestKey({ alg: alg as ManifestSignatureAlgorithm, kid });
-  if (jwks.keys.some((key) => key.kid === publicJwk.kid)) throw new UsageError(`${jwksFile} already has a key with kid ${publicJwk.kid}. A kid names one key.`);
+  if (jwks.keys.some((key) => key.kid === publicJwk.kid))
+    throw new UsageError(`${jwksFile} already has a key with kid ${publicJwk.kid}. A kid names one key.`);
 
   try {
     await io.writeSecret(keyFile, `${JSON.stringify(privateJwk, null, 2)}\n`);
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "EEXIST") throw new UsageError(`${keyFile} already exists. A new key goes to a new file, so no key is lost.`);
+    if ((error as NodeJS.ErrnoException).code === "EEXIST")
+      throw new UsageError(`${keyFile} already exists. A new key goes to a new file, so no key is lost.`);
     throw error;
   }
   await io.writeFile(jwksFile, `${JSON.stringify({ ...jwks, keys: [...jwks.keys, publicJwk] }, null, 2)}\n`);
@@ -114,8 +117,17 @@ async function sign(manifestFile: string | undefined, values: Record<string, str
 
   const checked = validate(manifest);
   if (checked.kind !== "manifest" || !checked.valid) {
-    const errors = checked.kind === "manifest" ? checked.errors : [{ path: "", message: "This is not a producer manifest: a manifest has hosmanifestversion.", rule: "events/producers" }];
-    io.stdout([`✗ ${manifestFile}: not signed, because the manifest fails the checks (${plural(errors.length, "error")})`, ...errors.flatMap((error) => issueLines("error", error.message, error)), ""].join("\n"));
+    const errors =
+      checked.kind === "manifest"
+        ? checked.errors
+        : [{ path: "", message: "This is not a producer manifest: a manifest has hosmanifestversion.", rule: "events/producers" }];
+    io.stdout(
+      [
+        `✗ ${manifestFile}: not signed, because the manifest fails the checks (${plural(errors.length, "error")})`,
+        ...errors.flatMap((error) => issueLines("error", error.message, error)),
+        "",
+      ].join("\n"),
+    );
     return exit.invalid;
   }
   const issuedAt = new Date();
@@ -138,7 +150,12 @@ async function sign(manifestFile: string | undefined, values: Record<string, str
   return exit.ok;
 }
 
-type VerifyResult = { valid: boolean; producer: string | null; manifest: { valid: boolean; errors: ValidationError[] }; signature: ManifestVerification };
+type VerifyResult = {
+  valid: boolean;
+  producer: string | null;
+  manifest: { valid: boolean; errors: ValidationError[] };
+  signature: ManifestVerification;
+};
 
 function human(result: VerifyResult, { manifest, jws }: { manifest: string; jws: string }) {
   const { signature } = result;
@@ -150,9 +167,18 @@ function human(result: VerifyResult, { manifest, jws }: { manifest: string; jws:
     lines.push(`✗ ${jws}: ${signature.error.replaceAll("_", " ")}`, ...issueLines("error", signature.message, { rule: "events/signed-manifests" }));
   }
   if (result.manifest.valid) lines.push(`✓ ${manifest}: valid manifest${result.producer ? ` of ${result.producer}` : ""}`);
-  else lines.push(`✗ ${manifest}: manifest that fails the checks (${plural(result.manifest.errors.length, "error")})`, ...result.manifest.errors.flatMap((error) => issueLines("error", error.message, error)));
+  else
+    lines.push(
+      `✗ ${manifest}: manifest that fails the checks (${plural(result.manifest.errors.length, "error")})`,
+      ...result.manifest.errors.flatMap((error) => issueLines("error", error.message, error)),
+    );
   const who = result.producer ?? "this producer";
-  lines.push("", result.valid ? `✓ The manifest of ${who} is signed and valid.` : `✗ The manifest of ${who} fails verification. A consumer treats it as no manifest: nothing it declares is processed.`);
+  lines.push(
+    "",
+    result.valid
+      ? `✓ The manifest of ${who} is signed and valid.`
+      : `✗ The manifest of ${who} fails verification. A consumer treats it as no manifest: nothing it declares is processed.`,
+  );
   return `${lines.join("\n")}\n`;
 }
 
@@ -171,7 +197,11 @@ async function verify(location: string | undefined, values: Record<string, strin
 
   let texts: { manifest: string; jws: string; jwks: string };
   try {
-    texts = { manifest: await read(location), jws: await read(jwsLocation), jwks: jwksUrl ? await io.fetchText(jwksUrl) : await io.readFile(jwksFile!) };
+    texts = {
+      manifest: await read(location),
+      jws: await read(jwsLocation),
+      jwks: jwksUrl ? await io.fetchText(jwksUrl) : await io.readFile(jwksFile!),
+    };
   } catch (error) {
     throw new UsageError((error as Error).message);
   }
@@ -179,7 +209,10 @@ async function verify(location: string | undefined, values: Record<string, strin
   const jwks = parseJson(texts.jwks, `The key set ${jwksUrl ?? jwksFile}`) as JSONWebKeySet;
 
   const checked = validate(manifest);
-  const errors = checked.kind === "manifest" ? checked.errors : [{ path: "", message: "This is not a producer manifest: a manifest has hosmanifestversion.", rule: "events/producers" }];
+  const errors =
+    checked.kind === "manifest"
+      ? checked.errors
+      : [{ path: "", message: "This is not a producer manifest: a manifest has hosmanifestversion.", rule: "events/producers" }];
   const signature = await verifyManifest(manifest, texts.jws, jwks, { now });
   const producer = typeof (manifest as { producer?: unknown })?.producer === "string" ? (manifest as ProducerManifest).producer : null;
   const result: VerifyResult = { valid: signature.valid && !errors.length, producer, manifest: { valid: !errors.length, errors }, signature };

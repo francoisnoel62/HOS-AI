@@ -9,11 +9,17 @@ import { ScenarioNav } from "@/components/demo/scenario-nav";
 import { scenarioDemos } from "@/lib/content/scenarios";
 import { type ConformanceScenarioId, loadScenario } from "@/lib/spec";
 
-export const scenarioMetadata = (id: ConformanceScenarioId): Metadata => ({ title: scenarioDemos[id].metaTitle, description: scenarioDemos[id].metaDescription });
+export const scenarioMetadata = (id: ConformanceScenarioId): Metadata => ({
+  title: scenarioDemos[id].metaTitle,
+  description: scenarioDemos[id].metaDescription,
+});
 
 // What each part of the replay shows, for readers who do not know the event types.
 const readingGuide = [
-  ["The updates", "What each system sends, in the order HOS receives it. A badge says what HOS did with it: applied, ignored as a duplicate, refused, and so on."],
+  [
+    "The updates",
+    "What each system sends, in the order HOS receives it. A badge says what HOS did with it: applied, ignored as a duplicate, refused, and so on.",
+  ],
   ["The arrival", "What HOS knows about this guest's arrival after each update, and which system each piece of information comes from."],
   ["The alert", "When HOS raises or clears an alert, it appears in the standard's own format, ready for other systems to use."],
 ];
@@ -40,9 +46,17 @@ export function ScenarioDemo({ id }: { id: ConformanceScenarioId }) {
             ))}
           </ul>
         </div>
-        <ArrivalReplay notes={scenario.deliveries} producerLabels={producerLabels(manifests)} stayId={demo.stayId} steps={steps} timezone={scenario.property.timezone} />
+        <ArrivalReplay
+          notes={scenario.deliveries}
+          producerLabels={producerLabels(manifests)}
+          stayId={demo.stayId}
+          steps={steps}
+          timezone={scenario.property.timezone}
+        />
         <p className="mt-6 max-w-3xl text-sm leading-6 text-[var(--muted-foreground)]">
-          Times are local to the hotel ({scenario.property.timezone}). HOS 0.1 only raises alerts: it does not move the guest, message them or change the booking. For technical readers: the projection on this page is the non-normative reference implementation, run against the published files below.
+          Times are local to the hotel ({scenario.property.timezone}). HOS 0.1 only raises alerts: it does not move the guest, message them or change
+          the booking. For technical readers: the projection on this page is the non-normative reference implementation, run against the published
+          files below.
         </p>
       </section>
       <ConformanceKit id={id} />

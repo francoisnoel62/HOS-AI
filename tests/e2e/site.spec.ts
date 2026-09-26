@@ -18,7 +18,10 @@ test("theme can be changed with an accessible control", async ({ page }) => {
   await page.goto("/");
   const html = page.locator("html");
   const wasDark = await html.evaluate((element) => element.classList.contains("dark"));
-  await page.getByRole("button", { name: /Switch to (light|dark) theme/i }).first().click();
+  await page
+    .getByRole("button", { name: /Switch to (light|dark) theme/i })
+    .first()
+    .click();
   await expect(html).toHaveClass(wasDark ? /light/ : /dark/);
 });
 
@@ -109,7 +112,10 @@ test("live demo raises, then resolves, the arrival-readiness risk", async ({ pag
 
 test("room-out-of-order demo resolves the risk when the guest is moved", async ({ page }) => {
   await page.goto("/demo");
-  await page.getByRole("navigation", { name: "Conformance scenarios" }).getByRole("link", { name: /Room out of order/ }).click();
+  await page
+    .getByRole("navigation", { name: "Conformance scenarios" })
+    .getByRole("link", { name: /Room out of order/ })
+    .click();
   await expect(page).toHaveURL(/\/demo\/room-out-of-order$/);
   const next = page.getByRole("button", { name: "Deliver next event" });
   const projection = page.getByRole("region", { name: "Arrival-readiness projection" });
@@ -131,7 +137,10 @@ test("room-out-of-order demo resolves the risk when the guest is moved", async (
 
 test("late-checkout demo holds the unit until the departing guest checks out", async ({ page }) => {
   await page.goto("/demo/late-checkout");
-  await expect(page.getByRole("navigation", { name: "Conformance scenarios" }).getByRole("link", { name: /Late check-out/ })).toHaveAttribute("aria-current", "page");
+  await expect(page.getByRole("navigation", { name: "Conformance scenarios" }).getByRole("link", { name: /Late check-out/ })).toHaveAttribute(
+    "aria-current",
+    "page",
+  );
   const next = page.getByRole("button", { name: "Deliver next event" });
   const projection = page.getByRole("region", { name: "Arrival-readiness projection" });
   for (let delivery = 1; delivery <= 6; delivery += 1) await next.click();

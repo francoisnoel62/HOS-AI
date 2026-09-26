@@ -14,11 +14,43 @@ const shapes: Record<PmsMapping, { webhook: string[]; entities: Record<string, {
     entities: {
       "reservations/getAll/2023-06-06": {
         of: (response: { Reservations: unknown[] }) => response.Reservations,
-        properties: ["Id", "ServiceId", "AccountId", "AccountType", "CreatorProfileId", "UpdaterProfileId", "Number", "State", "Origin", "CreatedUtc", "UpdatedUtc", "Options", "RateId", "GroupId", "RequestedResourceCategoryId", "AssignedResourceLocked", "ScheduledStartUtc", "ScheduledEndUtc", "PersonCounts"],
+        properties: [
+          "Id",
+          "ServiceId",
+          "AccountId",
+          "AccountType",
+          "CreatorProfileId",
+          "UpdaterProfileId",
+          "Number",
+          "State",
+          "Origin",
+          "CreatedUtc",
+          "UpdatedUtc",
+          "Options",
+          "RateId",
+          "GroupId",
+          "RequestedResourceCategoryId",
+          "AssignedResourceLocked",
+          "ScheduledStartUtc",
+          "ScheduledEndUtc",
+          "PersonCounts",
+        ],
       },
       "resources/getAll": {
         of: (response: { Resources: unknown[] }) => response.Resources,
-        properties: ["Id", "EnterpriseId", "IsActive", "Name", "State", "Descriptions", "CreatedUtc", "UpdatedUtc", "Data", "ExternalNames", "Directions"],
+        properties: [
+          "Id",
+          "EnterpriseId",
+          "IsActive",
+          "Name",
+          "State",
+          "Descriptions",
+          "CreatedUtc",
+          "UpdatedUtc",
+          "Data",
+          "ExternalNames",
+          "Directions",
+        ],
       },
     },
   },
@@ -27,7 +59,29 @@ const shapes: Record<PmsMapping, { webhook: string[]; entities: Record<string, {
     entities: {
       "GET /booking/v1/reservations/{id}": {
         of: (response: unknown) => [response],
-        properties: ["id", "bookingId", "status", "property", "ratePlan", "unitGroup", "totalGrossAmount", "arrival", "departure", "created", "modified", "adults", "channelCode", "guaranteeType", "cancellationFee", "noShowFee", "balance", "taxDetails", "hasCityTax", "payableAmount", "isOpenForCharges"],
+        properties: [
+          "id",
+          "bookingId",
+          "status",
+          "property",
+          "ratePlan",
+          "unitGroup",
+          "totalGrossAmount",
+          "arrival",
+          "departure",
+          "created",
+          "modified",
+          "adults",
+          "channelCode",
+          "guaranteeType",
+          "cancellationFee",
+          "noShowFee",
+          "balance",
+          "taxDetails",
+          "hasCityTax",
+          "payableAmount",
+          "isOpenForCharges",
+        ],
       },
       "GET /inventory/v1/units/{id}": {
         of: (response: unknown) => [response],
@@ -86,18 +140,26 @@ describe.each(pmsMappings)("%s mapping of the arrival scenario", (pms) => {
 
   it("accounts for every PMS delivery of the corpus", () => {
     const pmsDeliveries = corpus.flatMap((event, index) => (event.source === recording.adapter.source ? [index + 1] : []));
-    const covered = [...recording.deliveries.flatMap((item) => item.reproduces.filter((delivery) => delivery !== null)), ...recording.not_reproduced.map((item) => item.delivery)];
+    const covered = [
+      ...recording.deliveries.flatMap((item) => item.reproduces.filter((delivery) => delivery !== null)),
+      ...recording.not_reproduced.map((item) => item.delivery),
+    ];
     expect(covered.sort((a, b) => a - b)).toEqual(pmsDeliveries);
   });
 
-  it.each(mapped.map((fact) => [fact.recorded!.delivery, fact.event.type, fact.event] as const))("maps delivery %s to a valid %s", (_delivery, _type, event) => {
-    expect(validateEvent(event), JSON.stringify(validateEvent.errors)).toBe(true);
-  });
+  it.each(mapped.map((fact) => [fact.recorded!.delivery, fact.event.type, fact.event] as const))(
+    "maps delivery %s to a valid %s",
+    (_delivery, _type, event) => {
+      expect(validateEvent(event), JSON.stringify(validateEvent.errors)).toBe(true);
+    },
+  );
 
   it("maps each delivery to exactly the facts it reproduces or adds", () => {
     for (const delivery of recording.deliveries) {
       expect(mapped.filter((fact) => fact.recorded === delivery)).toHaveLength(delivery.reproduces.length);
-      expect(recording.additions.filter((item) => item.delivery === delivery.delivery)).toHaveLength(delivery.reproduces.filter((corpusDelivery) => corpusDelivery === null).length);
+      expect(recording.additions.filter((item) => item.delivery === delivery.delivery)).toHaveLength(
+        delivery.reproduces.filter((corpusDelivery) => corpusDelivery === null).length,
+      );
     }
   });
 
@@ -130,14 +192,21 @@ describe.each(pmsMappings)("%s mapping of the arrival scenario", (pms) => {
     // The mapped facts carry the adapter's ids; everything else must match the corpus outcome exactly.
     const ids = new Map(mapped.filter((fact) => fact.corpusDelivery !== null).map((fact) => [corpus[fact.corpusDelivery! - 1].id, fact.event.id]));
     const skipped = new Set(recording.not_reproduced.map((item) => item.delivery));
-    const published = JSON.parse(JSON.stringify(loadExpectedOutcome()), (_key, value) => (typeof value === "string" && ids.has(value) ? ids.get(value) : value)) as ReturnType<typeof loadExpectedOutcome>;
+    const published = JSON.parse(JSON.stringify(loadExpectedOutcome()), (_key, value) =>
+      typeof value === "string" && ids.has(value) ? ids.get(value) : value,
+    ) as ReturnType<typeof loadExpectedOutcome>;
     // Evidence follows occurrence order, and facts that tie on time and source follow their ids: with the adapter's
     // times and ids, the order is recomputed by the same rule.
     const times = new Map(stream.map(({ event }) => [`${event.source} ${event.id}`, Date.parse(event.time)]));
     const compare = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
-    for (const { event } of published.situations) event.data.evidence.sort((a, b) => times.get(`${a.source} ${a.id}`)! - times.get(`${b.source} ${b.id}`)! || compare(a.source, b.source) || compare(a.id, b.id));
+    for (const { event } of published.situations)
+      event.data.evidence.sort(
+        (a, b) => times.get(`${a.source} ${a.id}`)! - times.get(`${b.source} ${b.id}`)! || compare(a.source, b.source) || compare(a.id, b.id),
+      );
 
-    expect(actual.deliveries.map((item) => ({ ...item, delivery: corpusDelivery(item.delivery) }))).toEqual(published.deliveries.filter((item) => !skipped.has(item.delivery)));
+    expect(actual.deliveries.map((item) => ({ ...item, delivery: corpusDelivery(item.delivery) }))).toEqual(
+      published.deliveries.filter((item) => !skipped.has(item.delivery)),
+    );
     expect(actual.situations.map((item) => ({ ...item, delivery: corpusDelivery(item.delivery) }))).toEqual(published.situations);
   });
 });

@@ -22,7 +22,12 @@ const dispositionLabels: Record<Disposition, { label: string; tone: BadgeTone }>
   undeclared_capability: { label: "Undeclared · denied", tone: "warning" },
 };
 
-const stayLabels: Record<StayView["stay_status"], string> = { expected: "Expected", in_house: "In house", departed: "Departed", cancelled: "Cancelled" };
+const stayLabels: Record<StayView["stay_status"], string> = {
+  expected: "Expected",
+  in_house: "In house",
+  departed: "Departed",
+  cancelled: "Cancelled",
+};
 
 const situationLabels: Record<SituationStatus, { label: string; tone: BadgeTone }> = {
   none: { label: "No situation", tone: "default" },
@@ -83,7 +88,9 @@ export function ArrivalReplay({
       <Card className="self-start">
         <div className="flex items-center justify-between gap-3 border-b border-[var(--border)] px-5 py-4">
           <p className="eyebrow">Delivered to HOS, in this order</p>
-          <p className="font-mono text-xs text-[var(--muted-foreground)]">{position} / {steps.length}</p>
+          <p className="font-mono text-xs text-[var(--muted-foreground)]">
+            {position} / {steps.length}
+          </p>
         </div>
         <ol aria-label="Synthetic event stream">
           {steps.map((item) => {
@@ -115,7 +122,13 @@ export function ArrivalReplay({
                       {producer(item.event.source)} · occurred {occurred(item.event.time)}
                     </span>
                   </span>
-                  <span className="min-h-5">{delivered ? <Badge variant={disposition.tone}>{disposition.label}</Badge> : <span className="font-mono text-[0.68rem] uppercase tracking-[0.08em] text-[var(--muted-foreground)]">Pending</span>}</span>
+                  <span className="min-h-5">
+                    {delivered ? (
+                      <Badge variant={disposition.tone}>{disposition.label}</Badge>
+                    ) : (
+                      <span className="font-mono text-[0.68rem] uppercase tracking-[0.08em] text-[var(--muted-foreground)]">Pending</span>
+                    )}
+                  </span>
                 </button>
               </li>
             );
@@ -198,7 +211,9 @@ export function ArrivalReplay({
               <Row label="Housekeeping status (authority)">
                 {stay.housekeeping ? (
                   <>
-                    <span className={cn("font-mono", stay.readiness === "ready" ? "text-[var(--success)]" : "text-[var(--warning)]")}>{stay.housekeeping.value}</span>
+                    <span className={cn("font-mono", stay.readiness === "ready" ? "text-[var(--success)]" : "text-[var(--warning)]")}>
+                      {stay.housekeeping.value}
+                    </span>
                     <Source>
                       {producer(stay.housekeeping.source)} · {localTime(stay.housekeeping.time)}
                     </Source>
@@ -241,7 +256,8 @@ export function ArrivalReplay({
                     {occurred(stay.maintenance.starts_at)} – {occurred(stay.maintenance.ends_at)}
                   </span>
                   <Source>
-                    {[stay.maintenance.statuses.maintenance, stay.maintenance.statuses.commercial].filter(Boolean).join(" · ")} · {producer(stay.maintenance.source)}
+                    {[stay.maintenance.statuses.maintenance, stay.maintenance.statuses.commercial].filter(Boolean).join(" · ")} ·{" "}
+                    {producer(stay.maintenance.source)}
                   </Source>
                 </Row>
               ) : null}
@@ -249,7 +265,10 @@ export function ArrivalReplay({
                 <Row label="Unit still held by">
                   <span className="font-mono font-semibold text-[var(--warning)]">{stay.occupied_by.stay_id}</span>
                   <Source>
-                    {stay.occupied_by.planned_departure_at ? `due to leave ${occurred(stay.occupied_by.planned_departure_at)}` : "departure not known"} · checked in {occurred(stay.occupied_by.time)} · {producer(stay.occupied_by.source)}
+                    {stay.occupied_by.planned_departure_at
+                      ? `due to leave ${occurred(stay.occupied_by.planned_departure_at)}`
+                      : "departure not known"}{" "}
+                    · checked in {occurred(stay.occupied_by.time)} · {producer(stay.occupied_by.source)}
                   </Source>
                 </Row>
               ) : null}

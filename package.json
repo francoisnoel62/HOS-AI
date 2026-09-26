@@ -5,7 +5,8 @@
   "description": "Website for HOS AI.",
   "license": "Apache-2.0",
   "workspaces": [
-    "packages/*"
+    "packages/sdk",
+    "packages/cli"
   ],
   "scripts": {
     "dev": "next dev",
@@ -23,6 +24,7 @@
     "db:seed": "tsx --env-file-if-exists=.env.local scripts/seed.ts",
     "db:purge": "tsx --env-file-if-exists=.env.local scripts/purge.ts",
     "legal:check": "tsx scripts/legal-check.ts",
+    "packages:try": "node scripts/try-packages.ts",
     "mews:live": "tsx --env-file-if-exists=.env.local scripts/mews-live.ts",
     "apaleo:live": "tsx --env-file-if-exists=.env.local scripts/apaleo-live.ts",
     "cloudbeds:live": "tsx --env-file-if-exists=.env.local scripts/cloudbeds-live.ts"

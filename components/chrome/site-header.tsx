@@ -15,7 +15,11 @@ export function SiteHeader() {
         </Link>
         <nav aria-label="Primary navigation" className="hidden items-center gap-5 lg:flex">
           {navigation.map((item) => (
-            <Link className="text-sm text-[var(--muted-foreground)] transition-colors hover:text-[var(--foreground)]" href={item.href} key={item.href}>
+            <Link
+              className="text-sm text-[var(--muted-foreground)] transition-colors hover:text-[var(--foreground)]"
+              href={item.href}
+              key={item.href}
+            >
               {item.label}
             </Link>
           ))}

@@ -32,7 +32,14 @@ export const conformanceScenarios = readdirSync(path.join(specDirectory, "confor
   .sort();
 
 // A case of conformance/invalid or conformance/valid: a document, or the lines of a stream with the producers' manifests.
-export type ConformanceCase = { file: string; description: string; rule: string; document?: unknown; stream?: unknown[]; manifests?: ProducerManifest[] };
+export type ConformanceCase = {
+  file: string;
+  description: string;
+  rule: string;
+  document?: unknown;
+  stream?: unknown[];
+  manifests?: ProducerManifest[];
+};
 
 export const loadCases = (folder: "invalid" | "valid"): ConformanceCase[] =>
   readdirSync(path.join(specDirectory, "conformance", folder))

@@ -1,0 +1,6 @@
+# Generated from public/spec/0.1, and compared byte for byte with what npm run generate writes.
+*.generated.ts
+
+# The published HOS artefacts keep the bytes they were published with. Scripts write some of them, such as the signing
+# vectors.
+public/spec/

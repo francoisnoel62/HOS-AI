@@ -25,7 +25,9 @@ function asFiles(file: string, { document, stream, manifests = [] }: Case) {
     args.push("--manifest", `manifest-${index + 1}.json`);
   });
   const name = stream ? file.replace(/\.json$/, ".jsonl") : file;
-  files[name] = stream ? stream.map((line) => (typeof line === "string" ? line : JSON.stringify(line))).join("\n") : JSON.stringify(document, null, 2);
+  files[name] = stream
+    ? stream.map((line) => (typeof line === "string" ? line : JSON.stringify(line))).join("\n")
+    : JSON.stringify(document, null, 2);
   return { files, args: [...args, name] };
 }
 
@@ -53,6 +55,7 @@ describe("hos validate", () => {
   it("accepts every published example and the events of the three scenarios", async () => {
     const examples = readdirSync(path.join(specDirectory, "examples"))
       .filter((file) => file.endsWith(".json"))
+      .sort()
       .map((file) => `examples/${file}`);
     const streams = ["arrival-readiness", "room-out-of-order", "late-checkout"].map((id) => `conformance/${id}/events.jsonl`);
     const { code, stdout } = await hos(["validate", ...examples, ...streams]);
@@ -62,7 +65,10 @@ describe("hos validate", () => {
   });
 
   it("checks a stream against its producers' manifests", async () => {
-    const producers = ["pms", "housekeeping", "messaging"].flatMap((producer) => ["--manifest", `conformance/arrival-readiness/producers/${producer}.json`]);
+    const producers = ["pms", "housekeeping", "messaging"].flatMap((producer) => [
+      "--manifest",
+      `conformance/arrival-readiness/producers/${producer}.json`,
+    ]);
     const { code, stdout } = await hos(["validate", ...producers, "conformance/arrival-readiness/events.jsonl"]);
     expect(code).toBe(1);
     expect(stdout).toContain("line 7: urn:hos:pms:demo does not declare housekeeping.task.created at prop_demo");
@@ -79,7 +85,10 @@ describe("hos validate", () => {
   it("prints JSON for a CI", async () => {
     const { code, stdout } = await hos(["validate", "--json", "examples/stay.expected.json"]);
     expect(code).toBe(0);
-    expect(JSON.parse(stdout)).toEqual({ valid: true, results: [{ file: "examples/stay.expected.json", name: "stay.expected", valid: true, kind: "event", errors: [] }] });
+    expect(JSON.parse(stdout)).toEqual({
+      valid: true,
+      results: [{ file: "examples/stay.expected.json", name: "stay.expected", valid: true, kind: "event", errors: [] }],
+    });
   });
 
   it("says what is wrong with a file that is not JSON", async () => {
@@ -108,8 +117,14 @@ describe("hos validate", () => {
   });
 
   it("runs as a command, with its exit codes", async () => {
-    expect(await spawnHos(["validate", "examples/stay.expected.json"])).toMatchObject({ code: 0, stdout: "✓ examples/stay.expected.json: valid event stay.expected\n" });
-    expect(await spawnHos(["validate", "-"], '{"specversion":"1.0"}')).toMatchObject({ code: 1, stdout: expect.stringContaining("✗ <stdin>: invalid event") });
+    expect(await spawnHos(["validate", "examples/stay.expected.json"])).toMatchObject({
+      code: 0,
+      stdout: "✓ examples/stay.expected.json: valid event stay.expected\n",
+    });
+    expect(await spawnHos(["validate", "-"], '{"specversion":"1.0"}')).toMatchObject({
+      code: 1,
+      stdout: expect.stringContaining("✗ <stdin>: invalid event"),
+    });
     expect(await spawnHos(["validate", "missing.json"])).toMatchObject({ code: 2 });
   }, 30_000);
 });

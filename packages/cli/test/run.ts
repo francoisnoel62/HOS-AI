@@ -12,7 +12,12 @@ export const specDirectory = fileURLToPath(new URL("../../../public/spec/0.1/", 
 
 export async function hos(
   args: string[],
-  { files = {}, urls = {}, stdin = "", cwd = specDirectory }: { files?: Record<string, string>; urls?: Record<string, string>; stdin?: string; cwd?: string } = {},
+  {
+    files = {},
+    urls = {},
+    stdin = "",
+    cwd = specDirectory,
+  }: { files?: Record<string, string>; urls?: Record<string, string>; stdin?: string; cwd?: string } = {},
 ) {
   const written: Record<string, string> = {};
   let stdout = "";
@@ -24,7 +29,8 @@ export async function hos(
       written[file] = text;
     },
     writeSecret: async (file, text) => {
-      if (Object.hasOwn(files, file) || Object.hasOwn(written, file)) throw Object.assign(new Error(`EEXIST: file already exists, open '${file}'`), { code: "EEXIST" });
+      if (Object.hasOwn(files, file) || Object.hasOwn(written, file))
+        throw Object.assign(new Error(`EEXIST: file already exists, open '${file}'`), { code: "EEXIST" });
       written[file] = text;
     },
     readStdin: async () => stdin,

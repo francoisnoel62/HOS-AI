@@ -13,7 +13,8 @@ export const standardsCompared = [
     name: "HTNG",
     question: "How does this system plug into the PMS?",
     since: "Since 2002 · now part of AHLA",
-    builtFor: "Interfaces between hotel systems: check-in notices to locks, phones and TVs, folio postings, payments, event subscriptions, and HTNG Express for light PMS integrations.",
+    builtFor:
+      "Interfaces between hotel systems: check-in notices to locks, phones and TVs, folio postings, payments, event subscriptions, and HTNG Express for light PMS integrations.",
     shape: "Web-service interfaces built on OpenTravel's message conventions, WS-Eventing subscriptions, and JSON APIs for HTNG Express.",
   },
   {
@@ -79,18 +80,50 @@ export const contractAnswers: ContractAnswer[] = [
 ];
 
 export const layers = [
-  { verb: "Sell and book", standard: "OpenTravel", text: "Channels, GDS, CRS and booking engines exchange availability, rates and reservations with the PMS." },
+  {
+    verb: "Sell and book",
+    standard: "OpenTravel",
+    text: "Channels, GDS, CRS and booking engines exchange availability, rates and reservations with the PMS.",
+  },
   { verb: "Plug in", standard: "HTNG", text: "The PMS feeds locks, phones, TVs, POS, payments and guest apps through agreed interfaces." },
-  { verb: "Observe and trust", standard: "HOS", text: "Every system publishes what happened, with its source and authority. Staff and agents read one traceable picture." },
+  {
+    verb: "Observe and trust",
+    standard: "HOS",
+    text: "Every system publishes what happened, with its source and authority. Staff and agents read one traceable picture.",
+  },
 ] as const;
 
 export const comparisonSources = [
   { label: "OpenTravel Alliance", href: "https://opentravel.org/", note: "Founded in 1999; the OTA XML message suite, published since 2001." },
-  { label: "About the OpenTravel 2.0 Object Model", href: "https://opentravel.org/about-2-0-object-model/", note: "XML, JSON Schema and Swagger contracts; the 2018A hospitality publication." },
-  { label: "OTA_HotelResNotifRQ schema, OTA 2010A", href: "https://github.com/ExM/XsdCoverage/blob/master/Ota/XsdShemas/OTA_HotelResNotifRQ.xsd", note: "Reservation notification: guests, profiles, room stays and guarantee." },
-  { label: "AHLA to integrate HTNG", href: "https://www.ahla.com/news/ahla-integrate-htng-strengthening-technology-expertise-advocacy-focus", note: "HTNG becomes part of the American Hotel & Lodging Association." },
+  {
+    label: "About the OpenTravel 2.0 Object Model",
+    href: "https://opentravel.org/about-2-0-object-model/",
+    note: "XML, JSON Schema and Swagger contracts; the 2018A hospitality publication.",
+  },
+  {
+    label: "OTA_HotelResNotifRQ schema, OTA 2010A",
+    href: "https://github.com/ExM/XsdCoverage/blob/master/Ota/XsdShemas/OTA_HotelResNotifRQ.xsd",
+    note: "Reservation notification: guests, profiles, room stays and guarantee.",
+  },
+  {
+    label: "AHLA to integrate HTNG",
+    href: "https://www.ahla.com/news/ahla-integrate-htng-strengthening-technology-expertise-advocacy-focus",
+    note: "HTNG becomes part of the American Hotel & Lodging Association.",
+  },
   { label: "HTNG workgroups", href: "https://www.ahla.com/htng/workgroups", note: "Current workgroups and membership." },
-  { label: "HTNG web-services interface specifications", href: "https://hospitalitytech.com/htng-beefs-web-services-based-interface-specifications", note: "Event notification with WS-Eventing: check-ins, folio postings, room assignment changes." },
-  { label: "HTNG_HotelCheckInNotifRQ", href: "https://confluence.protel.net/pages/viewpage.action?pageId=117826535", note: "A PMS notifies guest-room systems of check-ins and check-outs." },
-  { label: "HTNG Express, official repository", href: "https://github.com/HTNG/htng-express", note: "README and example messages, revision 2d17a11 (September 2022)." },
+  {
+    label: "HTNG web-services interface specifications",
+    href: "https://hospitalitytech.com/htng-beefs-web-services-based-interface-specifications",
+    note: "Event notification with WS-Eventing: check-ins, folio postings, room assignment changes.",
+  },
+  {
+    label: "HTNG_HotelCheckInNotifRQ",
+    href: "https://confluence.protel.net/pages/viewpage.action?pageId=117826535",
+    note: "A PMS notifies guest-room systems of check-ins and check-outs.",
+  },
+  {
+    label: "HTNG Express, official repository",
+    href: "https://github.com/HTNG/htng-express",
+    note: "README and example messages, revision 2d17a11 (September 2022).",
+  },
 ] as const;

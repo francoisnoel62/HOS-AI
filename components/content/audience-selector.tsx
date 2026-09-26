@@ -57,7 +57,11 @@ export function AudienceSelector() {
               type="button"
             >
               <span className="font-medium">{audience.label}</span>
-              <ArrowRight aria-hidden="true" className={cn("self-end", active ? "text-[var(--accent)]" : "text-[var(--muted-foreground)]")} size={16} />
+              <ArrowRight
+                aria-hidden="true"
+                className={cn("self-end", active ? "text-[var(--accent)]" : "text-[var(--muted-foreground)]")}
+                size={16}
+              />
             </button>
           );
         })}

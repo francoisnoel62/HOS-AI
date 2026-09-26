@@ -14,7 +14,7 @@ export default defineConfig({
     trace: "on-first-retry",
   },
   webServer: {
-    command: "npm.cmd run start -- --port 3100",
+    command: "npm run start -- --port 3100",
     url: baseURL,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,

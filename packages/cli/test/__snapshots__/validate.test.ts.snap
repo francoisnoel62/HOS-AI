@@ -7,9 +7,9 @@ exports[`hos validate > accepts every published example and the events of the th
 ✓ examples/reservation.cancelled.json: valid event reservation.cancelled
 ✓ examples/reservation.created.json: valid event reservation.created
 ✓ examples/reservation.updated.json: valid event reservation.updated
+✓ examples/stay.check_in_reverted.json: valid event stay.check_in_reverted
 ✓ examples/stay.checked_in.json: valid event stay.checked_in
 ✓ examples/stay.checked_out.json: valid event stay.checked_out
-✓ examples/stay.check_in_reverted.json: valid event stay.check_in_reverted
 ✓ examples/stay.expected.json: valid event stay.expected
 ✓ examples/stay.unit_assigned.json: valid event stay.unit_assigned
 ✓ examples/stay.unit_unassigned.json: valid event stay.unit_unassigned

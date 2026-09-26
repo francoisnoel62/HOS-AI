@@ -4,7 +4,16 @@ import { compare, type Difference, type Level, protocol, readAnswers, type Scena
 
 // The verdict on one scenario, and the reports: readable, JSON and JUnit.
 
-export type Verdict = { scenario: string; level: Level; passed: boolean; scores: Scores; differences: Difference[]; problem?: string; stderr?: string; hint?: string };
+export type Verdict = {
+  scenario: string;
+  level: Level;
+  passed: boolean;
+  scores: Scores;
+  differences: Difference[];
+  problem?: string;
+  stderr?: string;
+  hint?: string;
+};
 
 const tail = (text: string, count = 20) => text.trimEnd().split(/\r?\n/).slice(-count).join("\n");
 const show = (value: unknown) => {
@@ -28,13 +37,32 @@ export function verdictOf(scenario: Scenario, run: Run, level: Level, timeoutSec
             ? "the implementation answered no delivery"
             : undefined;
   // An implementation of the normative level only answers dispositions.
-  const dispositionsOnly = level === "reference" && answers.size > 0 && [...answers.values()].every((answer) => answer.stays === undefined && answer.situations === undefined);
-  const hint = dispositionsOnly ? "no answer has stays or situations: an implementation of the normative level runs with --level normative" : undefined;
-  return { scenario: scenario.id, level, passed: passed && !problem, scores, differences, ...(problem ? { problem, stderr: tail(run.stderr) } : {}), ...(hint ? { hint } : {}) };
+  const dispositionsOnly =
+    level === "reference" &&
+    answers.size > 0 &&
+    [...answers.values()].every((answer) => answer.stays === undefined && answer.situations === undefined);
+  const hint = dispositionsOnly
+    ? "no answer has stays or situations: an implementation of the normative level runs with --level normative"
+    : undefined;
+  return {
+    scenario: scenario.id,
+    level,
+    passed: passed && !problem,
+    scores,
+    differences,
+    ...(problem ? { problem, stderr: tail(run.stderr) } : {}),
+    ...(hint ? { hint } : {}),
+  };
 }
 
 export const scoreText = ({ normative, reference, situations }: Scores) =>
-  [`normative ${normative.passed}/${normative.total}`, reference && `reference ${reference.passed}/${reference.total}`, situations && `situations ${situations.passed}/${situations.total}`].filter(Boolean).join(" · ");
+  [
+    `normative ${normative.passed}/${normative.total}`,
+    reference && `reference ${reference.passed}/${reference.total}`,
+    situations && `situations ${situations.passed}/${situations.total}`,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
 function deliveryLabel(scenario: Scenario, delivery: number) {
   const expected = scenario.expected.deliveries.find((item) => item.delivery === delivery);
@@ -64,7 +92,10 @@ export function humanReport(verdicts: Verdict[], scenarios: Map<string, Scenario
     }
   }
   const passed = verdicts.filter((verdict) => verdict.passed).length;
-  lines.push("", `${plural(verdicts.length, "scenario")}: ${passed} passed, ${verdicts.length - passed} failed · level ${level} · protocol ${protocol}`);
+  lines.push(
+    "",
+    `${plural(verdicts.length, "scenario")}: ${passed} passed, ${verdicts.length - passed} failed · level ${level} · protocol ${protocol}`,
+  );
   return `${lines.join("\n")}\n`;
 }
 

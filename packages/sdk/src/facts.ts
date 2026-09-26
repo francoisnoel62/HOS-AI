@@ -10,9 +10,13 @@ export type Crosswalk = Partial<Record<HosEntityKind, Record<string, string>>>;
 
 // HOS ids are opaque and must survive a migration of the source system, so they are never the source system's own ids.
 // An integration persists this crosswalk; an id it has not seen yet gets a fresh opaque id.
-export function createIdentityRegistry(crosswalk: Crosswalk = {}, mint = () => crypto.randomUUID().replaceAll("-", "").slice(0, 16)): IdentityRegistry {
+export function createIdentityRegistry(
+  crosswalk: Crosswalk = {},
+  mint = () => crypto.randomUUID().replaceAll("-", "").slice(0, 16),
+): IdentityRegistry {
   const known = new Map<string, string>();
-  for (const [kind, ids] of Object.entries(crosswalk)) for (const [sourceId, hosId] of Object.entries(ids ?? {})) known.set(`${kind}|${sourceId}`, hosId);
+  for (const [kind, ids] of Object.entries(crosswalk))
+    for (const [sourceId, hosId] of Object.entries(ids ?? {})) known.set(`${kind}|${sourceId}`, hosId);
   return {
     resolve(kind, sourceId) {
       const key = `${kind}|${sourceId}`;
@@ -34,7 +38,14 @@ export type FactOptions = { businessDate?: string; timeBasis?: "modified" | "rec
 // HOS discards the duplicate.
 export function createFactWriter(context: FactContext) {
   const events: HosFact[] = [];
-  function publish<T extends HosFact>(type: T["type"], key: string, time: string, subjects: string[], data: T["data"], { businessDate, timeBasis, actor }: FactOptions = {}) {
+  function publish<T extends HosFact>(
+    type: T["type"],
+    key: string,
+    time: string,
+    subjects: string[],
+    data: T["data"],
+    { businessDate, timeBasis, actor }: FactOptions = {},
+  ) {
     const occurred = utc(timeBasis === "recorded" ? context.recordedAt : time);
     events.push({
       specversion: "1.0",

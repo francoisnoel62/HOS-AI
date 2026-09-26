@@ -1,7 +1,17 @@
 import type { ReactNode } from "react";
 
 // Scrollable specification table; the first cell of each row is its header. Focusable so keyboard users can scroll it.
-export function SpecTable({ label, columns, rows, minWidth = "32rem" }: { label: string; columns: string[]; rows: Array<{ key: string; cells: ReactNode[] }>; minWidth?: string }) {
+export function SpecTable({
+  label,
+  columns,
+  rows,
+  minWidth = "32rem",
+}: {
+  label: string;
+  columns: string[];
+  rows: Array<{ key: string; cells: ReactNode[] }>;
+  minWidth?: string;
+}) {
   return (
     <div aria-label={label} className="overflow-x-auto border border-[var(--border)]" role="region" tabIndex={0}>
       <table className="w-full text-left text-sm" style={{ minWidth }}>

@@ -93,7 +93,12 @@ export async function replayCommand(args: string[], io: Io): Promise<number> {
       id: step.event.id,
       type: step.event.type,
       disposition: step.disposition,
-      stays: Object.fromEntries(Object.entries(step.stays).map(([id, view]) => [id, { stay_status: view.stay_status, unit_id: view.unit_id, readiness: view.readiness, situation: view.situation }])),
+      stays: Object.fromEntries(
+        Object.entries(step.stays).map(([id, view]) => [
+          id,
+          { stay_status: view.stay_status, unit_id: view.unit_id, readiness: view.readiness, situation: view.situation },
+        ]),
+      ),
       situations: step.emitted,
     }));
     io.stdout(`${JSON.stringify({ deliveries, skipped }, null, 2)}\n`);
@@ -105,7 +110,8 @@ export async function replayCommand(args: string[], io: Io): Promise<number> {
     let next = 0;
     for (const [index, step] of steps.entries()) {
       const line = replayed[index].line;
-      for (; next < skipped.length && skipped[next].line < line; next += 1) lines.push(`${String(skipped[next].line).padStart(width)}  skipped                ${skipped[next].reason}`);
+      for (; next < skipped.length && skipped[next].line < line; next += 1)
+        lines.push(`${String(skipped[next].line).padStart(width)}  skipped                ${skipped[next].reason}`);
       lines.push(`${String(line).padStart(width)}  ${step.disposition.padEnd(21)}  ${step.event.type} · ${step.event.id} · ${step.event.source}`);
       for (const view of Object.values(step.stays)) {
         const shown = stayLine(view);
@@ -121,7 +127,8 @@ export async function replayCommand(args: string[], io: Io): Promise<number> {
         );
       }
     }
-    for (; next < skipped.length; next += 1) lines.push(`${String(skipped[next].line).padStart(width)}  skipped                ${skipped[next].reason}`);
+    for (; next < skipped.length; next += 1)
+      lines.push(`${String(skipped[next].line).padStart(width)}  skipped                ${skipped[next].reason}`);
     const counts = new Map<Disposition, number>();
     for (const step of steps) counts.set(step.disposition, (counts.get(step.disposition) ?? 0) + 1);
     const situations = steps.reduce((total, step) => total + step.emitted.length, 0);

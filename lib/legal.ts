@@ -64,7 +64,8 @@ export const processors: Processor[] = [
     name: "Neon (Databricks, Inc.)",
     purpose: "Stores form submissions, encrypted, and short-lived rate-limit keys.",
     location: "European Union (Frankfurt, Germany)",
-    safeguard: "Data stored in the EU; any access from the United States is covered by the EU-U.S. Data Privacy Framework and standard contractual clauses",
+    safeguard:
+      "Data stored in the EU; any access from the United States is covered by the EU-U.S. Data Privacy Framework and standard contractual clauses",
   },
   {
     name: "Resend, Inc.",
