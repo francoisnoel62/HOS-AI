@@ -1,0 +1,54 @@
+name: Release
+
+# Publishes @hos-ai/sdk, then @hos-ai/cli, to npm when a tag packages-v<version> is pushed, such as
+# packages-v0.1.0-alpha.1. docs/operations/package-release.md describes the procedure.
+#
+# npm stages only packages that already exist. So the first release uses a short-lived npm token, the NPM_TOKEN secret
+# of the npm environment, and publishes directly, with provenance. Once the packages exist, each gets a stage-only
+# trusted publisher and NPM_TOKEN is deleted: the workflow then stages the packages through OIDC, and a maintainer
+# approves each on npm with two-factor authentication before it goes public.
+
+on:
+  push:
+    tags: ["packages-v*"]
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Publish to npm
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: npm
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      # Trusted publishing needs npm 11.5.1 or later, staged publishing 11.15.0.
+      - run: npm install --global npm@^11.15.0
+      - run: node scripts/check-release.ts "${GITHUB_REF_NAME#packages-v}"
+      - run: npm ci
+      - run: npx vitest run --project sdk --project cli
+      - run: npm run packages:try
+      - name: Publish, or stage for approval
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          for package in @hos-ai/sdk @hos-ai/cli; do
+            if [ -n "$NODE_AUTH_TOKEN" ]; then
+              npm publish --workspace "$package" --access public --provenance --tag latest
+            else
+              npm stage publish --workspace "$package" --access public --provenance --tag latest
+            fi
+          done

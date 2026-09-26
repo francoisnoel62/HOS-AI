@@ -120,6 +120,13 @@ export const documentationItems: Array<{
     href: "/demo",
   },
   {
+    title: "The hos command and the SDK",
+    description:
+      "@hos-ai/cli and @hos-ai/sdk on npm, both alphas: validation, replay, the conformance scenarios for an implementation in any language, the producer check and signed manifests.",
+    status: "Draft",
+    href: "/docs#tools",
+  },
+  {
     title: "HOS, HTNG and OpenTravel",
     description:
       "What OpenTravel, HTNG and HOS each answer, the six answers HOS writes into the contract, how the three fit together, and where HOS is still behind. Sourced from the public specifications.",
