@@ -1,0 +1,53 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`hos conformance > lists the embedded scenarios 1`] = `
+"arrival-readiness  Early arrival, unit not ready · 13 deliveries, 3 producers
+late-checkout      Late check-out on a same-day turnover · 15 deliveries, 2 producers
+room-out-of-order  Assigned unit out of order · 14 deliveries, 3 producers
+"
+`;
+
+exports[`hos conformance > names the delivery, the path, the expected value and the one received 1`] = `
+"✗ arrival-readiness: normative 12/13 · reference 13/13 · situations 2/2
+    delivery 5 (hk-002231 from urn:hos:housekeeping:demo)
+      disposition: expected "duplicate", got "applied"
+
+1 scenario: 0 passed, 1 failed · level reference · protocol hos-conformance/1
+"
+`;
+
+exports[`hos conformance > passes the reference implementation on every scenario 1`] = `
+"✓ arrival-readiness: normative 13/13 · reference 13/13 · situations 2/2
+✓ late-checkout: normative 15/15 · reference 15/15 · situations 2/2
+✓ room-out-of-order: normative 14/14 · reference 14/14 · situations 2/2
+
+3 scenarios: 3 passed, 0 failed · level reference · protocol hos-conformance/1
+"
+`;
+
+exports[`hos replay > shows the timeline of a recorded stream 1`] = `
+" 1  applied                reservation.created · pms-000312 · urn:hos:pms:demo
+ 2  applied                stay.expected · pms-000421 · urn:hos:pms:demo
+    stay_1042: expected, unit none, readiness unknown, situation none
+ 3  applied                stay.unit_assigned · pms-000422 · urn:hos:pms:demo
+    stay_1042: expected, unit unit_204, readiness unknown, situation none
+ 4  applied                unit.status_changed · hk-002231 · urn:hos:housekeeping:demo
+    stay_1042: expected, unit unit_204, readiness not_ready, situation none
+ 5  duplicate              unit.status_changed · hk-002231 · urn:hos:housekeeping:demo
+ 6  applied                housekeeping.task.created · hk-002232 · urn:hos:housekeeping:demo
+ 7  undeclared_capability  housekeeping.task.created · pms-000430 · urn:hos:pms:demo
+ 8  applied                housekeeping.task.completed · hk-002260 · urn:hos:housekeeping:demo
+ 9  non_authoritative      unit.status_changed · pms-000455 · urn:hos:pms:demo
+10  applied                guest.message.received · msg-000977 · urn:hos:messaging:demo
+    stay_1042: expected, unit unit_204, readiness not_ready, situation at risk
+    ▲ at risk: stay_1042 in unit unit_204, expected 2026-07-30T10:30:00Z, planned 2026-07-30T13:00:00Z
+11  superseded             guest.message.received · msg-000971 · urn:hos:messaging:demo
+12  applied                unit.status_changed · hk-002301 · urn:hos:housekeeping:demo
+    stay_1042: expected, unit unit_204, readiness ready, situation resolved
+    ▼ resolved: stay_1042, unit_ready
+13  applied                stay.checked_in · pms-000470 · urn:hos:pms:demo
+    stay_1042: in_house, unit unit_204, readiness ready, situation resolved
+
+13 deliveries: 9 applied, 1 duplicate, 1 undeclared_capability, 1 non_authoritative, 1 superseded · 2 situations
+"
+`;

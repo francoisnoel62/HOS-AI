@@ -16,6 +16,7 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
+    "generate": "node scripts/generate.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
