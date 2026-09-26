@@ -1,13 +1,20 @@
-import { writeFile } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
+import path from "node:path";
+
+import { checkProducer, type HosFact } from "@hos-ai/sdk";
 
 import type { SyncReport } from "../lib/hos/mappings/sync";
 
 // Prints a live check's report and writes it to --out. context comes first in the file: the PMS environment, window and
 // configuration the run used. notes are printed under the heading. The file keeps HOS ids, counts and room names only,
 // and the facts themselves with --events.
+//
+// It also writes the producer's files to record, a local directory git ignores: manifest.json, recording.jsonl with the
+// facts, and redelivery.jsonl with the facts a restarted adapter published from the same data. Then it runs the
+// producer check on them, which hos conformance producer runs too.
 export async function writeLiveReport(
   report: SyncReport<Record<string, number>>,
-  { heading, notes = [], context, out, events }: { heading: string; notes?: string[]; context: Record<string, unknown>; out?: string; events: boolean },
+  { heading, notes = [], context, out, events, record }: { heading: string; notes?: string[]; context: Record<string, unknown>; out?: string; events: boolean; record: string },
 ) {
   const summary = {
     ...context,
@@ -46,6 +53,21 @@ export async function writeLiveReport(
     console.log(`Report written to ${out}.`);
   }
   if (report.schema_errors.length || report.failures.length || report.resync_events) process.exitCode = 1;
+
+  const lines = (facts: HosFact[]) => facts.map((fact) => `${JSON.stringify(fact)}\n`).join("");
+  const files = { manifest: path.join(record, "manifest.json"), stream: path.join(record, "recording.jsonl"), redelivery: path.join(record, "redelivery.jsonl") };
+  await mkdir(record, { recursive: true });
+  await writeFile(files.manifest, `${JSON.stringify(report.manifest, null, 2)}\n`);
+  await writeFile(files.stream, lines(report.events));
+  await writeFile(files.redelivery, lines(report.redelivery));
+  const check = checkProducer({ manifest: report.manifest, recording: lines(report.events), redelivery: lines(report.redelivery) });
+  console.log(
+    `Producer check: ${check.valid ? "passed" : "failed"}. ${report.redelivery.length} of ${report.events.length} facts published again by a restarted adapter, ${check.redelivery?.repeated ?? 0} with the same id and content.`,
+  );
+  const problems = [...check.manifest.errors, ...check.recording.issues, ...(check.redelivery?.issues ?? [])].filter((issue) => !("severity" in issue) || issue.severity === "error");
+  for (const problem of problems.slice(0, 10)) console.log(`  ${"line" in problem && problem.line ? `line ${problem.line}: ` : ""}${problem.message}`);
+  console.log(`Files in ${record}. Check them again with: hos conformance producer --manifest ${files.manifest} --stream ${files.stream} --redelivery ${files.redelivery}`);
+  if (!check.valid) process.exitCode = 1;
 }
 
 export function runLiveCheck(main: () => Promise<void>) {

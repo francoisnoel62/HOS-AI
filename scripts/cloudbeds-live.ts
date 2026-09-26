@@ -12,6 +12,9 @@ import { runLiveCheck, writeLiveReport } from "./live-report";
 //
 //   CLOUDBEDS_API_KEY=… npm run cloudbeds:live -- --days 1 --out cloudbeds-live.json
 //
+// It writes the facts, a restarted adapter's redelivery and the manifest to --record, data/live-checks/cloudbeds by
+// default, and runs the producer check on them.
+//
 // --property, or CLOUDBEDS_PROPERTY_ID, picks the property when the key reaches several. --check-in and --check-out
 // override the standard times getHotelDetails reports. CLOUDBEDS_API_ADDRESS defaults to Cloudbeds's API v1.3. Behind
 // an HTTP proxy, Node needs NODE_USE_ENV_PROXY=1 to route fetch through it.
@@ -24,6 +27,7 @@ const { values: args } = parseArgs({
     "check-out": { type: "string" },
     out: { type: "string" },
     events: { type: "boolean", default: false },
+    record: { type: "string", default: "data/live-checks/cloudbeds" },
   },
 });
 
@@ -140,6 +144,7 @@ async function main() {
     },
     out: args.out,
     events: args.events,
+    record: args.record,
   });
 }
 

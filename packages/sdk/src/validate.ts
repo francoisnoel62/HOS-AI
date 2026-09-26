@@ -1,4 +1,5 @@
 import { compiled, type ErrorObject, matches } from "./ajv.ts";
+import { differences } from "./compare.ts";
 import { authority, factKey, findDeclaration, statusChanges } from "./processing.ts";
 import { schemas } from "./schemas.generated.ts";
 import type { HosFact, ProducerManifest, UnitStatusChanged } from "./types.generated.ts";
@@ -253,27 +254,6 @@ export function validate(document: unknown): ValidationResult {
 }
 
 // --- Streams ---
-
-function canonical(value: unknown): string {
-  if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`;
-  if (isObject(value))
-    return `{${Object.keys(value)
-      .sort()
-      .map((key) => `${JSON.stringify(key)}:${canonical(value[key])}`)
-      .join(",")}}`;
-  return JSON.stringify(value);
-}
-
-// What differs between two deliveries of one source and id. hosrecordedat is left out: an adapter that records the
-// same fact again publishes the same event.
-function differences(first: Record<string, unknown>, second: Record<string, unknown>): string[] {
-  const keys = [...new Set([...Object.keys(first), ...Object.keys(second)])].filter((key) => key !== "hosrecordedat");
-  return keys.flatMap((key) => {
-    if (canonical(first[key]) === canonical(second[key])) return [];
-    if (key === "data" && isObject(first.data) && isObject(second.data)) return differences(first.data, second.data).map((member) => `data.${member}`);
-    return [key];
-  });
-}
 
 // Validates a JSON Lines stream of events: each line, and what only a stream shows. A source and id repeated with the
 // same content is a duplicate a consumer discards; with other content, an error. A property keeps one tenant and one

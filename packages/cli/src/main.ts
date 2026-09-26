@@ -20,6 +20,7 @@ Commands:
   validate <file...>        validate events, reference situations and manifests (.json), and event streams (.jsonl)
   conformance list          list the conformance scenarios
   conformance run <...>     run the conformance scenarios through an implementation, in any language
+  conformance producer      check a producer's recorded facts against its manifest
   replay <stream.jsonl>     replay a recorded stream through the reference projection, delivery by delivery
 
 Options:

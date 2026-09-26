@@ -101,7 +101,7 @@ describe("hos conformance", () => {
     ["an unknown scenario", ["run", "early-checkout", "--impl", "x"], "no scenario early-checkout. The scenarios are arrival-readiness, late-checkout, room-out-of-order."],
     ["an unknown level", ["run", "--all", "--level", "strict", "--impl", "x"], "--level is strict; use normative or reference."],
     ["no scenario", ["run", "--impl", "x"], "name the scenarios to run, or use --all."],
-    ["an unknown subcommand", ["check"], "unknown subcommand check"],
+    ["an unknown subcommand", ["check"], "unknown subcommand check: use list, run or producer."],
     ["a scenario directory without scenarios", ["list", "--scenario-dir", "examples"], "examples holds no scenario"],
   ])("exits with 2 on %s", async (_case, args, message) => {
     const { code, stderr } = await hos(["conformance", ...args]);
@@ -148,5 +148,34 @@ describe("hos replay", () => {
     const { stdout, stderr } = await hos(["replay", "conformance/arrival-readiness/events.jsonl"]);
     expect(stderr).toContain("no --manifest given");
     expect(stdout).toContain("12 undeclared_capability, 1 duplicate");
+  });
+});
+
+describe("hos conformance producer", () => {
+  const { manifests, events } = scenarios["arrival-readiness"];
+  const pms = manifests.find((manifest) => manifest.producer === "urn:hos:pms:demo")!;
+  const facts = events.filter((event) => event.source === pms.producer && event.type !== "housekeeping.task.created");
+  const lines = (list: unknown[]) => list.map((item) => JSON.stringify(item)).join("\n");
+  const files = { "manifest.json": JSON.stringify(pms), "recording.jsonl": lines(facts), "redelivery.jsonl": lines(facts) };
+
+  it("passes a producer and its redelivery", async () => {
+    const { code, stdout } = await hos(["conformance", "producer", "--manifest", "manifest.json", "--stream", "recording.jsonl", "--redelivery", "redelivery.jsonl"], { files });
+    expect(code).toBe(0);
+    expect(stdout).toMatchSnapshot();
+  });
+
+  it("names what fails, and prints JSON", async () => {
+    const failing = { ...files, "manifest.json": JSON.stringify({ ...pms, limitations: [] }), "redelivery.jsonl": lines([{ ...facts[0], id: "pms-new" }]) };
+    const args = ["conformance", "producer", "--manifest", "manifest.json", "--stream", "recording.jsonl", "--redelivery", "redelivery.jsonl"];
+    const { code, stdout } = await hos(args, { files: failing });
+    expect(code).toBe(1);
+    expect(stdout).toMatchSnapshot();
+    const json = JSON.parse((await hos([...args, "--json"], { files: failing })).stdout);
+    expect(json).toMatchObject({ valid: false, producer: "urn:hos:pms:demo", manifest: { valid: false }, recording: { valid: true }, redelivery: { valid: false, repeated: 0 } });
+  });
+
+  it("exits with 2 without its files", async () => {
+    expect(await hos(["conformance", "producer", "--manifest", "manifest.json"], { files })).toMatchObject({ code: 2, stderr: expect.stringContaining("producer needs --manifest and --stream") });
+    expect(await hos(["conformance", "producer", "--manifest", "missing.json", "--stream", "recording.jsonl"], { files })).toMatchObject({ code: 2 });
   });
 });

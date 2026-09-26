@@ -47,13 +47,14 @@ export function syncApaleo(snapshot: ApaleoSnapshot, options: SyncOptions): Apal
   let minted = 0;
   const identities = createIdentityRegistry({}, () => String(++minted).padStart(4, "0"));
   const { property } = snapshot;
-  const adapter = createApaleoAdapter({
-    source: options.source,
-    tenant: options.tenant,
-    accountId,
-    properties: [{ apaleoPropertyId: property.id, propertyId: options.propertyId, timezone: property.timezone, inspections: property.inspections }],
-    identities,
-  });
+  const adapter = () =>
+    createApaleoAdapter({
+      source: options.source,
+      tenant: options.tenant,
+      accountId,
+      properties: [{ apaleoPropertyId: property.id, propertyId: options.propertyId, timezone: property.timezone, inspections: property.inspections }],
+      identities,
+    });
 
   // The unit group embedded in a unit or reservation may omit its type, and the adapter only keeps bedrooms.
   const types = new Map(snapshot.unitGroups.map((group) => [group.id, group.type]));
@@ -64,17 +65,18 @@ export function syncApaleo(snapshot: ApaleoSnapshot, options: SyncOptions): Apal
   // A changed event names no particular change, so assignments are dated by the reservation's last modification.
   const webhook = (topic: string, entityId: string): ApaleoWebhook => ({ topic, type: "changed", id: "live-check", accountId, propertyId: property.id, timestamp: Date.parse(snapshot.fetchedAt), data: { entityId } });
   // Units first, then their maintenances, then the reservations that use them, as an integration would load a property.
-  const deliveries = [
-    ...units.map((unit) => ({ event: "unit/changed", id: unit.id, handle: () => adapter.handle({ received_at: snapshot.fetchedAt, webhook: webhook("Unit", unit.id), unit }) })),
-    ...snapshot.maintenances.map((maintenance) => ({ event: "maintenance/changed", id: maintenance.id, handle: () => adapter.handle({ received_at: snapshot.fetchedAt, webhook: webhook("Maintenance", maintenance.id), maintenance }) })),
-    ...reservations.map((reservation) => ({ event: "reservation/changed", id: reservation.id, handle: () => adapter.handle({ received_at: snapshot.fetchedAt, webhook: webhook("Reservation", reservation.id), reservation }) })),
+  const deliveries = (apaleo: ReturnType<typeof adapter>) => [
+    ...units.map((unit) => ({ event: "unit/changed", id: unit.id, handle: () => apaleo.handle({ received_at: snapshot.fetchedAt, webhook: webhook("Unit", unit.id), unit }) })),
+    ...snapshot.maintenances.map((maintenance) => ({ event: "maintenance/changed", id: maintenance.id, handle: () => apaleo.handle({ received_at: snapshot.fetchedAt, webhook: webhook("Maintenance", maintenance.id), maintenance }) })),
+    ...reservations.map((reservation) => ({ event: "reservation/changed", id: reservation.id, handle: () => apaleo.handle({ received_at: snapshot.fetchedAt, webhook: webhook("Reservation", reservation.id), reservation }) })),
   ];
 
   return synchronise({
     fetched: { reservations: snapshot.reservations.length, units: snapshot.units.length, maintenances: snapshot.maintenances.length },
     fetchedAt: snapshot.fetchedAt,
     timezone: property.timezone,
-    deliveries,
+    deliveries: deliveries(adapter()),
+    restarted: deliveries(adapter()),
     manifest: apaleoManifest(options),
     unitNames: () => new Map(units.map((unit) => [identities.resolve("unit", unit.id), unit.name])),
   });

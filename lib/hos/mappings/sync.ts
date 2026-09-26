@@ -33,6 +33,9 @@ export type SyncReport<Fetched> = {
   failures: Array<{ event: string; id: string; error: string }>;
   // Facts a second pass over the same snapshot publishes: an idempotent adapter publishes none.
   resync_events: number;
+  // The facts a restarted adapter publishes from the same snapshot: a new adapter with the same identities, as an
+  // integration restarts with its persisted crosswalk. Each must be a fact of events, with the same id and content.
+  redelivery: HosFact[];
   manifest: ProducerManifest;
   dispositions: Partial<Record<Disposition, number>>;
   situations: Record<string, number>;
@@ -62,13 +65,14 @@ export function liveManifest(
 
 const tally = <T>(items: T[], key: (item: T) => string) => items.reduce<Record<string, number>>((counts, item) => ({ ...counts, [key(item)]: (counts[key(item)] ?? 0) + 1 }), {});
 
-// Delivers every entity twice through the same adapter, then replays the first pass. unitNames, called once both passes
-// are done, maps HOS unit ids to the room names people read.
+// Delivers every entity twice through the same adapter, then once through a restarted one, and replays the first pass.
+// unitNames, called once the passes are done, maps HOS unit ids to the room names people read.
 export function synchronise<Fetched>({
   fetched,
   fetchedAt,
   timezone,
   deliveries,
+  restarted,
   manifest,
   unitNames,
 }: {
@@ -76,14 +80,16 @@ export function synchronise<Fetched>({
   fetchedAt: string;
   timezone: string;
   deliveries: SyncDelivery[];
+  // The same deliveries, through a new adapter that shares the first one's identities.
+  restarted: SyncDelivery[];
   manifest: ProducerManifest;
   unitNames: () => Map<string, string>;
 }): SyncReport<Fetched> {
-  const deliver = () => {
+  const deliver = (list = deliveries) => {
     const events: HosFact[] = [];
     const unmapped: Unmapped[] = [];
     const failures: SyncReport<Fetched>["failures"] = [];
-    for (const { event, id, handle } of deliveries) {
+    for (const { event, id, handle } of list) {
       // One delivery per entity, so a payload the adapter cannot read fails alone.
       try {
         const result = handle();
@@ -98,6 +104,7 @@ export function synchronise<Fetched>({
 
   const { events, unmapped, failures } = deliver();
   const resync = deliver();
+  const redelivery = deliver(restarted);
   if (!validateManifest(manifest)) throw new Error(`Invalid live-check manifest: ${JSON.stringify(validateManifest.errors)}`);
 
   const steps = replayArrivalReadiness(events, [manifest], { ready_housekeeping_statuses: ["clean", "inspected"] });
@@ -131,6 +138,7 @@ export function synchronise<Fetched>({
     unmapped: [...reasons.values()].sort((a, b) => b.count - a.count),
     failures,
     resync_events: resync.events.length,
+    redelivery: redelivery.events,
     manifest,
     dispositions: tally(steps, (step) => step.disposition),
     situations: tally(

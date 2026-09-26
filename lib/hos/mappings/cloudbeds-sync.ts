@@ -38,25 +38,26 @@ export function syncCloudbeds(snapshot: CloudbedsSnapshot, options: SyncOptions)
   let minted = 0;
   const identities = createIdentityRegistry({}, () => String(++minted).padStart(4, "0"));
   const { property } = snapshot;
-  const adapter = createCloudbedsAdapter({
-    source: options.source,
-    tenant: options.tenant,
-    properties: [{ cloudbedsPropertyId: property.id, propertyId: options.propertyId, timezone: property.timezone, checkInTime: property.checkInTime, checkOutTime: property.checkOutTime }],
-    identities,
-  });
+  const adapter = () =>
+    createCloudbedsAdapter({
+      source: options.source,
+      tenant: options.tenant,
+      properties: [{ cloudbedsPropertyId: property.id, propertyId: options.propertyId, timezone: property.timezone, checkInTime: property.checkInTime, checkOutTime: property.checkOutTime }],
+      identities,
+    });
 
   // No Cloudbeds event is named live-check, so the adapter reports nothing as happening at the webhook's time except
   // room blocks: what it only saw in a fetch is dated when it was recorded.
   const webhook = (object: string, ids: Partial<CloudbedsWebhook>): CloudbedsWebhook => ({ version: "1.0", event: `${object}/live-check`, timestamp: Date.parse(snapshot.fetchedAt) / 1000, propertyID: property.id, ...ids });
   const received_at = snapshot.fetchedAt;
   // Rooms first, then their blocks, then the reservations that use them, as an integration would load a property.
-  const deliveries = [
-    ...snapshot.rooms.map(({ roomID }) => ({ event: "housekeeping/live-check", id: roomID ?? "", handle: () => adapter.handle({ received_at, webhook: webhook("housekeeping", { roomID }), rooms: snapshot.rooms }) })),
-    ...snapshot.roomBlocks.map(({ roomBlockID }) => ({ event: "roomblock/live-check", id: roomBlockID, handle: () => adapter.handle({ received_at, webhook: webhook("roomblock", { roomBlockID }), roomBlocks: snapshot.roomBlocks }) })),
+  const deliveries = (cloudbeds: ReturnType<typeof adapter>) => [
+    ...snapshot.rooms.map(({ roomID }) => ({ event: "housekeeping/live-check", id: roomID ?? "", handle: () => cloudbeds.handle({ received_at, webhook: webhook("housekeeping", { roomID }), rooms: snapshot.rooms }) })),
+    ...snapshot.roomBlocks.map(({ roomBlockID }) => ({ event: "roomblock/live-check", id: roomBlockID, handle: () => cloudbeds.handle({ received_at, webhook: webhook("roomblock", { roomBlockID }), roomBlocks: snapshot.roomBlocks }) })),
     ...snapshot.reservations.map((reservation) => ({
       event: "reservation/live-check",
       id: reservation.reservationID,
-      handle: () => adapter.handle({ received_at, webhook: webhook("reservation", { reservationID: reservation.reservationID }), reservation }),
+      handle: () => cloudbeds.handle({ received_at, webhook: webhook("reservation", { reservationID: reservation.reservationID }), reservation }),
     })),
   ];
 
@@ -64,7 +65,8 @@ export function syncCloudbeds(snapshot: CloudbedsSnapshot, options: SyncOptions)
     fetched: { reservations: snapshot.reservations.length, rooms: snapshot.rooms.length, room_blocks: snapshot.roomBlocks.length },
     fetchedAt: snapshot.fetchedAt,
     timezone: property.timezone,
-    deliveries,
+    deliveries: deliveries(adapter()),
+    restarted: deliveries(adapter()),
     manifest: cloudbedsManifest(options),
     unitNames: () => new Map(snapshot.rooms.flatMap((room) => (room.roomID && room.roomName ? [[identities.resolve("unit", room.roomID), room.roomName] as const] : []))),
   });

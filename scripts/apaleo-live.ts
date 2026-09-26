@@ -11,12 +11,15 @@ import { runLiveCheck, writeLiveReport } from "./live-report";
 //
 //   APALEO_CLIENT_ID=… APALEO_CLIENT_SECRET=… npm run apaleo:live -- --property MUC --days 1 --out apaleo-live.json
 //
+// It writes the facts, a restarted adapter's redelivery and the manifest to --record, data/live-checks/apaleo by
+// default, and runs the producer check on them.
+//
 // --property, or APALEO_PROPERTY_ID, picks the property when the account has several. --inspections says the property
 // inspects rooms, so that Clean means inspected. APALEO_IDENTITY_ADDRESS and APALEO_API_ADDRESS default to Apaleo's
 // production hosts. Behind an HTTP proxy, Node needs NODE_USE_ENV_PROXY=1 to route fetch through it.
 
 const { values: args } = parseArgs({
-  options: { days: { type: "string", default: "1" }, property: { type: "string" }, inspections: { type: "boolean", default: false }, out: { type: "string" }, events: { type: "boolean", default: false } },
+  options: { days: { type: "string", default: "1" }, property: { type: "string" }, inspections: { type: "boolean", default: false }, out: { type: "string" }, events: { type: "boolean", default: false }, record: { type: "string", default: "data/live-checks/apaleo" } },
 });
 
 const identity = process.env.APALEO_IDENTITY_ADDRESS ?? "https://identity.apaleo.com";
@@ -121,6 +124,7 @@ async function main() {
     },
     out: args.out,
     events: args.events,
+    record: args.record,
   });
 }
 
