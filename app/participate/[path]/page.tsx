@@ -23,12 +23,12 @@ export default async function ParticipationPathPage({ params, searchParams }: Pr
   if (!pathData || !isFormRouteKind(path)) notFound();
 
   const bullets = path === "founding-member"
-    ? ["Tell us which hospitality perspective you bring.", "Indicate whether you can later designate business and technical representatives.", "No financial amount or binding commitment is requested here."]
+    ? ["Tell us what you bring: the view of a hotel, a software vendor, an integrator…", "Let us know whether you could later name one business and one technical contact.", "No amount of money and no commitment is asked for here."]
     : path === "pilot"
-      ? ["Describe the arrival scenario, not customer data.", "Name systems at a category level; do not share credentials.", "A pilot does not promise production integration or economic results."]
+      ? ["Describe the arrival situation you want to test. Never send guest data.", "You can name your systems, such as your PMS or housekeeping tool, but never share passwords or access keys.", "A pilot is a test: it does not promise a live integration or financial results."]
       : path === "technical-contributor"
-        ? ["Choose a contribution domain and a short description.", "GitHub profile details are optional; no account is linked.", "Any future CLA is reviewed separately, never accepted implicitly here."]
-        : ["Choose the kind of support you are considering.", "No amount, payment, donation or tax claim is requested here.", "Patronage does not create special rights over data, certification or the standard."];
+        ? ["Choose the area you want to work on and describe it in a few lines.", "Your GitHub handle is optional; no account is connected.", "Any future contributor agreement (CLA) will be reviewed separately. Sending this form accepts nothing."]
+        : ["Tell us what kind of support you are considering.", "No amount, payment or donation is asked for here, and no tax benefit is claimed.", "Patrons get no special rights over the standard, anyone's data or certification."];
 
   return <>
     <PageHero eyebrow={pathData.eyebrow} title={pathData.title} description={pathData.description} />

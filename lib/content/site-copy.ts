@@ -55,7 +55,7 @@ export const participationPaths = [
   {
     slug: "pilot",
     title: "Pilot partner",
-    eyebrow: "Test it on real arrivals",
+    eyebrow: "For hotels and PMS vendors",
     description:
       "Bring a hotel or a platform, authorised access to its systems, and the people who can tell whether HOS gets arrivals right.",
     cta: "Run a pilot",
@@ -63,7 +63,7 @@ export const participationPaths = [
   {
     slug: "founding-member",
     title: "Founding member",
-    eyebrow: "Shape the common work",
+    eyebrow: "For organisations shaping HOS",
     description:
       "Bring business and technical expertise, and financial support at levels that will be published openly.",
     cta: "Become a founding member",
@@ -71,7 +71,7 @@ export const participationPaths = [
   {
     slug: "technical-contributor",
     title: "Technical contributor",
-    eyebrow: "Build in public",
+    eyebrow: "For developers and integrators",
     description:
       "Help build the standard in the open: data formats, PMS mappings, tests or documentation.",
     cta: "Contribute technically",
@@ -79,7 +79,7 @@ export const participationPaths = [
   {
     slug: "financial-patron",
     title: "Financial patron",
-    eyebrow: "Support the commons",
+    eyebrow: "For funders",
     description:
       "Fund the shared work. Patrons get no special vote, data access or certification advantage.",
     cta: "Become a financial patron",
