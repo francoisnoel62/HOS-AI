@@ -14,6 +14,7 @@ node_modules/
 
 # local form mail and runtime data
 /data/outbox/
+/data/live-checks/
 
 # environment and editor state
 .env*

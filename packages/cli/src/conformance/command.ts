@@ -4,23 +4,30 @@ import { parseArgs } from "node:util";
 
 import { loadExpectedOutcome, loadScenario } from "@hos-ai/sdk/node";
 
+import { plural } from "../format.ts";
 import { exit, type Io } from "../io.ts";
 import { scenarios as embedded } from "../scenarios.generated.ts";
 import { runImplementation } from "./implementation.ts";
+import { producerCommand } from "./producer.ts";
 import { input, type Level, protocol, type Scenario } from "./protocol.ts";
 import { humanReport, junitReport, verdictOf } from "./report.ts";
 
-// hos conformance: list the scenarios, and run them through an implementation written in any language.
+// hos conformance: list the scenarios, run them through a consumer written in any language, and check a producer.
 
 export const conformanceUsage = `Usage: hos conformance list [--scenario-dir <dir>]
        hos conformance run <scenario...> --impl <command> [options]
        hos conformance run --all --impl <command> [options]
+       hos conformance producer --manifest <file> --stream <file.jsonl> [--redelivery <file.jsonl>]
 
-Replays the HOS 0.1 conformance scenarios through an implementation, in any language, and compares what it answers
-with expected.json. The implementation reads a scenario on standard input and answers on standard output, as the
+run replays the HOS 0.1 conformance scenarios through a consumer, in any language, and compares what it answers
+with expected.json. The consumer reads a scenario on standard input and answers on standard output, as the
 protocol ${protocol} describes: PROTOCOL.md, next to the published conformance scenarios.
 
-Options:
+producer checks what a producer publishes against its manifest: a valid manifest that states its limitations;
+valid facts, under the manifest's producer, declared for their property; no source and id naming two facts; and,
+given a redelivery of the same data, the same facts with the same ids.
+
+Options of run:
       --impl <command>      the implementation to test, run through the shell once per scenario
       --all                 run every scenario
       --level <level>       reference, the default: dispositions, readiness and situations;
@@ -29,12 +36,17 @@ Options:
       --scenario-dir <dir>  a scenario directory, or a directory of scenarios, instead of the embedded ones
       --json                print the results as JSON
       --junit <file>        also write a JUnit report, for a CI
+
+Options of producer:
+      --manifest <file>     the producer's manifest
+      --stream <file>       a recording of the facts it published, one per line
+      --redelivery <file>   the facts it published again from the same data, for example after a restart
+      --json                print the results as JSON
+
   -h, --help                show this help
 
-Exit codes: 0 when every scenario passes, 1 when one fails, 2 for a usage error.
+Exit codes: 0 when every check passes, 1 when one fails, 2 for a usage or read error.
 `;
-
-const plural = (count: number, noun: string) => `${count} ${count === 1 ? noun : noun.endsWith("y") ? `${noun.slice(0, -1)}ies` : `${noun}s`}`;
 
 // A scenario directory, or a directory of scenario directories, each with its scenario.json.
 function localScenarios(directory: string): Scenario[] {
@@ -67,6 +79,9 @@ export async function conformanceCommand(args: string[], io: Io): Promise<number
         "scenario-dir": { type: "string" },
         json: { type: "boolean" },
         junit: { type: "string" },
+        manifest: { type: "string" },
+        stream: { type: "string" },
+        redelivery: { type: "string" },
         help: { type: "boolean", short: "h" },
       },
     });
@@ -79,6 +94,7 @@ export async function conformanceCommand(args: string[], io: Io): Promise<number
     (values.help ? io.stdout : io.stderr)(conformanceUsage);
     return values.help ? exit.ok : exit.usage;
   }
+  if (subcommand === "producer") return producerCommand(values, io);
 
   let scenarios: Scenario[];
   try {
@@ -93,7 +109,7 @@ export async function conformanceCommand(args: string[], io: Io): Promise<number
     io.stdout(`${scenarios.map((item) => `${item.id.padEnd(width)}  ${item.scenario.title} · ${plural(item.events.length, "delivery")}, ${plural(item.manifests.length, "producer")}`).join("\n")}\n`);
     return exit.ok;
   }
-  if (subcommand !== "run") return usageError(`unknown subcommand ${subcommand}: use list or run.`);
+  if (subcommand !== "run") return usageError(`unknown subcommand ${subcommand}: use list, run or producer.`);
 
   const level = values.level as Level;
   if (level !== "normative" && level !== "reference") return usageError(`--level is ${level}; use normative or reference.`);

@@ -1,3 +1,4 @@
+import { plural } from "../format.ts";
 import type { Run } from "./implementation.ts";
 import { compare, type Difference, type Level, protocol, readAnswers, type Scenario, type Scores } from "./protocol.ts";
 
@@ -6,7 +7,6 @@ import { compare, type Difference, type Level, protocol, readAnswers, type Scena
 export type Verdict = { scenario: string; level: Level; passed: boolean; scores: Scores; differences: Difference[]; problem?: string; stderr?: string; hint?: string };
 
 const tail = (text: string, count = 20) => text.trimEnd().split(/\r?\n/).slice(-count).join("\n");
-const plural = (count: number, noun: string) => `${count} ${noun}${count === 1 ? "" : "s"}`;
 const show = (value: unknown) => {
   if (value === undefined) return "nothing";
   const text = JSON.stringify(value);

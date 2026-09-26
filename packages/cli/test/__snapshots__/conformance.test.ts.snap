@@ -25,6 +25,30 @@ exports[`hos conformance > passes the reference implementation on every scenario
 "
 `;
 
+exports[`hos conformance producer > names what fails, and prints JSON 1`] = `
+"Producer urn:hos:pms:demo
+✗ manifest.json: manifest that fails the checks (1 error)
+  error   limitations is empty. A producer states its known gaps, unsupported states and access constraints, which the Event Producer checks require.
+          rule events/producers · at /limitations
+✓ recording.jsonl: 5 facts, valid and declared
+✗ redelivery.jsonl: 1 fact, 0 already in the recording unchanged (1 error)
+  error   line 1: pms-new from urn:hos:pms:demo is not in the recording. Publishing the same data again, a producer publishes the same facts with the same ids, so consumers discard them as duplicates.
+          rule events/at-least-once-delivery · at /id
+
+✗ urn:hos:pms:demo fails the producer checks.
+"
+`;
+
+exports[`hos conformance producer > passes a producer and its redelivery 1`] = `
+"Producer urn:hos:pms:demo
+✓ manifest.json: valid manifest, with its limitations
+✓ recording.jsonl: 5 facts, valid and declared
+✓ redelivery.jsonl: 5 facts, each already in the recording with the same id and content
+
+✓ urn:hos:pms:demo passes the producer checks.
+"
+`;
+
 exports[`hos replay > shows the timeline of a recorded stream 1`] = `
 " 1  applied                reservation.created · pms-000312 · urn:hos:pms:demo
  2  applied                stay.expected · pms-000421 · urn:hos:pms:demo

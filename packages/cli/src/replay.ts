@@ -3,6 +3,7 @@ import { parseArgs } from "node:util";
 import { type Disposition, type HosFact, type ProducerManifest, validate } from "@hos-ai/sdk";
 import { replayArrivalReadiness, type StayView } from "@hos-ai/sdk/reference";
 
+import { plural } from "./format.ts";
 import { exit, type Io } from "./io.ts";
 
 // hos replay: a recorded stream through the reference projection, delivery by delivery, to debug an adapter. It shows
@@ -23,7 +24,6 @@ Exit codes: 0 when every line replayed, 1 when a line was not a valid event and 
 error.
 `;
 
-const plural = (count: number, noun: string) => `${count} ${count === 1 ? noun : noun.endsWith("y") ? `${noun.slice(0, -1)}ies` : `${noun}s`}`;
 const stayLine = (view: StayView) =>
   `${view.stay_id}: ${view.stay_status}, unit ${view.unit_id ?? "none"}, readiness ${view.readiness}, situation ${view.situation === "none" ? "none" : view.situation.replace("_", " ")}`;
 

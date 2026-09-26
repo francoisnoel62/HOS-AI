@@ -1,3 +1,4 @@
+import { checkProducer } from "@hos-ai/sdk";
 import { describe, expect, it } from "vitest";
 
 import type { CloudbedsReservation, CloudbedsRoomBlock, CloudbedsRoomStatus } from "@/lib/hos/mappings/cloudbeds";
@@ -29,6 +30,10 @@ describe("Cloudbeds live synchronisation", () => {
     expect(report.schema_errors).toEqual([]);
     expect(report.failures).toEqual([]);
     expect(report.resync_events).toBe(0);
+    // A restarted adapter publishes the same facts again, with the same ids, and the producer check passes.
+    expect(report.redelivery).toEqual(report.events);
+    const lines = (facts: typeof report.events) => facts.map((fact) => JSON.stringify(fact)).join("\n");
+    expect(checkProducer({ manifest: report.manifest, recording: lines(report.events), redelivery: lines(report.redelivery) })).toMatchObject({ valid: true, redelivery: { repeated: report.events.length } });
     expect(report.events_by_type).toEqual({ "reservation.created": 1, "stay.expected": 1, "stay.unit_assigned": 1, "unit.status_changed": 2, "unit.maintenance_scheduled": 1 });
     expect(report.unmapped).toEqual(
       expect.arrayContaining([

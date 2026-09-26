@@ -11,10 +11,13 @@ import { runLiveCheck, writeLiveReport } from "./live-report";
 //
 //   MEWS_CLIENT_TOKEN=… MEWS_ACCESS_TOKEN=… npm run mews:live -- --days 1 --out mews-live.json
 //
+// It writes the facts, a restarted adapter's redelivery and the manifest to --record, data/live-checks/mews by default,
+// and runs the producer check on them.
+//
 // MEWS_PLATFORM_ADDRESS defaults to https://api.mews-demo.com. MEWS_SERVICE_IDS, comma-separated, overrides the
 // accommodation services. Behind an HTTP proxy, Node needs NODE_USE_ENV_PROXY=1 to route fetch through it.
 
-const { values: args } = parseArgs({ options: { days: { type: "string", default: "1" }, out: { type: "string" }, events: { type: "boolean", default: false } } });
+const { values: args } = parseArgs({ options: { days: { type: "string", default: "1" }, out: { type: "string" }, events: { type: "boolean", default: false }, record: { type: "string", default: "data/live-checks/mews" } } });
 
 const platform = process.env.MEWS_PLATFORM_ADDRESS ?? "https://api.mews-demo.com";
 const clientToken = process.env.MEWS_CLIENT_TOKEN;
@@ -121,6 +124,7 @@ async function main() {
     },
     out: args.out,
     events: args.events,
+    record: args.record,
   });
 }
 

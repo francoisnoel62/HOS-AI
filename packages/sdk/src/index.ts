@@ -8,6 +8,7 @@ export const HOS_SPEC_VERSION = "0.1.0-draft.2";
 export type * from "./types.generated.ts";
 export * from "./validation.ts";
 export * from "./validate.ts";
+export * from "./producer.ts";
 export * from "./processing.ts";
 export * from "./facts.ts";
 export * from "./time.ts";

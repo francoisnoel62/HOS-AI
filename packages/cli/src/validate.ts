@@ -2,6 +2,7 @@ import { parseArgs } from "node:util";
 
 import { type ProducerManifest, type StreamIssue, validate, validateStream, type ValidationError } from "@hos-ai/sdk";
 
+import { issueLines, plural } from "./format.ts";
 import { exit, type Io } from "./io.ts";
 
 // hos validate: events, reference situations and producer manifests, one JSON document per file, and event streams,
@@ -39,12 +40,6 @@ function nameOf(document: unknown) {
   return typeof type === "string" ? type : typeof producer === "string" ? producer : undefined;
 }
 
-const plural = (count: number, noun: string) => `${count} ${noun}${count === 1 ? "" : "s"}`;
-
-function lines(label: string, message: string, { rule, path }: { rule?: string; path?: string }) {
-  const where = [rule && `rule ${rule}`, path && `at ${path}`].filter(Boolean).join(" · ");
-  return [`  ${label.padEnd(7)} ${message}`, ...(where ? [`          ${where}`] : [])];
-}
 
 function human(result: Result) {
   const mark = result.valid ? "✓" : "✗";
@@ -54,13 +49,13 @@ function human(result: Result) {
     const summary = [plural(count("error"), "error"), plural(count("warning"), "warning"), plural(count("info"), "note")].filter((part) => !part.startsWith("0 ")).join(", ");
     return [
       `${mark} ${result.file}: ${verdict} stream of ${plural(result.events, "event")}${summary ? ` (${summary})` : ""}`,
-      ...result.issues.flatMap((issue) => lines(issue.severity === "info" ? "note" : issue.severity, issue.line === null ? issue.message : `line ${issue.line}: ${issue.message}`, issue)),
+      ...result.issues.flatMap((issue) => issueLines(issue.severity === "info" ? "note" : issue.severity, issue.line === null ? issue.message : `line ${issue.line}: ${issue.message}`, issue)),
     ];
   }
   const what = result.kind ? `${result.kind}${result.name ? ` ${result.name}` : ""}` : "document";
   return [
     `${mark} ${result.file}: ${verdict} ${what}${result.errors.length ? ` (${plural(result.errors.length, "error")})` : ""}`,
-    ...result.errors.flatMap((error) => lines("error", error.message, error)),
+    ...result.errors.flatMap((error) => issueLines("error", error.message, error)),
   ];
 }
 
