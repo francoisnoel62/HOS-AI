@@ -35,7 +35,12 @@ const blocks: Array<CodeBlock & { page: string }> = mdxFiles().flatMap((file) =>
 function shown(page: string, id: string) {
   const found = blocks.filter((item) => item.page === page && item.meta.id === id);
   expect(found, `${page}.mdx has one block with id="${id}"`).toHaveLength(1);
-  return found[0];
+  const [item] = found;
+  if (item.language !== "cast") return item;
+  // A cast starts with the command, typed after "$ ", then shows what it prints.
+  const [command, ...output] = item.text.split("\n");
+  expect(command, `${page}#${id} starts with its command`).toMatch(/^\$ npx @hos-ai\/cli /);
+  return { ...item, text: output.join("\n") };
 }
 const block = (page: string, id: string) => shown(page, id).text;
 
@@ -181,6 +186,7 @@ const checks: Record<string, Check> = {
     expect(block("read-a-report", "producer-fail")).toBe(snapshot("conformance", "hos conformance producer > names what fails, and prints JSON")),
   "read-a-report#conformance-normative": () =>
     printed("read-a-report", "conformance-normative", ["conformance", "run", "--all", "--level", "normative", "--impl", referenceImpl]),
+  "authoring#conformance-list": () => printed("authoring", "conformance-list", ["conformance", "list"]),
   "authoring#producer-fail": () =>
     expect(block("authoring", "producer-fail")).toBe(snapshot("conformance", "hos conformance producer > names what fails, and prints JSON")),
 
@@ -510,7 +516,7 @@ const pythonChecks: Record<string, Check> = {
 
 describe("outputs shown in the tools documentation", () => {
   it("checks every output block, or names the program that prints it", () => {
-    const outputs = blocks.filter((item) => item.language === "output");
+    const outputs = blocks.filter((item) => item.language === "output" || item.language === "cast");
     for (const item of outputs) expect(item.meta.id || item.meta.from, `an output block of ${item.page}.mdx has no id`).toBeTruthy();
     const withId = blocks.filter((item) => item.meta.id).map((item) => `${item.page}#${item.meta.id}`);
     expect(new Set(withId).size, "ids are unique on each page").toBe(withId.length);

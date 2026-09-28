@@ -100,7 +100,8 @@ Give each manifest after `-m`, short for `--manifest`:
 npx @hos-ai/cli validate events.jsonl -m pms.json -m housekeeping.json -m messaging.json
 ```
 
-```output id="stream-manifests"
+```cast id="stream-manifests"
+$ npx @hos-ai/cli validate events.jsonl -m pms.json -m housekeeping.json -m messaging.json
 ✗ events.jsonl: invalid stream of 13 events (1 error, 1 note)
   note    line 5: Repeats line 4: same source, id and content. A consumer discards it as a duplicate.
           rule events/at-least-once-delivery
@@ -179,6 +180,8 @@ Every report of hos validate has the same parts:
   error   data.current is "cleaning", not one of: dirty, clean, inspected, unknown. Readiness as reported by the housekeeping authority.
           rule core/unit-status-model · at /data/current
 ```
+
+<OutputLineDiagram />
 
 - **The summary**: ✓ or ✗, the file, valid or invalid, what it is, and how many problems.
 - **The level** of each problem:

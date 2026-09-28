@@ -8,6 +8,7 @@ import * as sdkReference from "@hos-ai/sdk/reference";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { Command } from "@/components/docs/command";
+import { OutputLineDiagram } from "@/components/docs/diagrams";
 import { Os, OsTabs } from "@/components/docs/os-tabs";
 import { TerminalOutput } from "@/components/docs/terminal-output";
 import { buildSearchIndex, contentDirectory, sourceOf } from "@/lib/docs/content";
@@ -208,6 +209,21 @@ describe("documentation search", () => {
     expect(index.find((entry) => entry.href === "/docs/tools")?.text).toContain("which one you need");
     expect(index.some((entry) => entry.href === "/docs/tools/help#ask-on-github")).toBe(true);
     expect(index.some((entry) => entry.href.startsWith("/docs/tools/authoring"))).toBe(false);
+  });
+});
+
+describe("diagrams", () => {
+  it("annotate the very output that hos prints for the Quickstart's error", () => {
+    const { container } = render(<OutputLineDiagram />);
+    const pre = container.querySelector("pre")!.cloneNode(true) as HTMLElement;
+    for (const number of pre.querySelectorAll("sup")) number.remove();
+    const quickstart = sourceOf(findToolsPage("/docs/tools/quickstart")!);
+    // The block of the Quickstart, without its command line; the diagram keeps the first sentence of the message.
+    const printed = quickstart.split('```cast id="validate-error"\n')[1].split("\n```")[0].split("\n").slice(1);
+    const [summary, error, rule] = pre.textContent!.split("\n");
+    expect(summary).toBe(printed[0]);
+    expect(printed[1].startsWith(error.trimEnd())).toBe(true);
+    expect(rule).toBe(printed[2]);
   });
 });
 
