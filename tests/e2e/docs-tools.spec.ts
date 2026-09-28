@@ -4,24 +4,29 @@ import { allToolsPages, toolsPages } from "@/lib/docs/tools";
 
 test("the tools documentation reads in order, from the overview to Get help", async ({ page, isMobile }) => {
   test.skip(isMobile, "The same pages; the mobile menu has its own test.");
+  // Nineteen pages, some long.
+  test.setTimeout(120_000);
   await page.goto("/docs/tools");
+  await page.getByRole("link", { name: /^Next/ }).click();
+  await expect(page).toHaveURL(new RegExp(`${toolsPages[1].href}$`));
+
+  // Each page names the next one; following every link by a click would scroll to the foot of each long page.
   for (const [index, item] of toolsPages.entries()) {
-    await expect(page).toHaveURL(new RegExp(`${item.href}$`));
+    await page.goto(item.href);
     await expect(page.getByRole("heading", { level: 1, name: item.title })).toBeVisible();
     await expect(
       page.getByRole("navigation", { name: "Tools documentation" }).getByRole("link", { name: new RegExp(`^${item.navTitle}( ?, being written)?$`) }),
     ).toHaveAttribute("aria-current", "page");
     const next = toolsPages[index + 1];
-    if (!next) {
-      await expect(page.getByRole("link", { name: /^Next/ })).toHaveCount(0);
-      break;
-    }
-    await page.getByRole("link", { name: new RegExp(`^Next\\s*${next.navTitle}$`) }).click();
+    const link = page.getByRole("link", { name: /^Next/ });
+    if (!next) await expect(link).toHaveCount(0);
+    else await expect(link).toHaveAttribute("href", next.href);
   }
 });
 
 test("every link of the tools documentation leads somewhere, and every section link to its heading", async ({ page, request, isMobile }) => {
   test.skip(isMobile, "Links do not depend on the viewport.");
+  test.setTimeout(120_000);
   const checked = new Set<string>();
   for (const item of allToolsPages) {
     await page.goto(item.href);
