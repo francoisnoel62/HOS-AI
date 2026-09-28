@@ -158,7 +158,7 @@ export default function EventsSpecificationPage() {
         </div>
       </section>
 
-      <SectionFrame eyebrow="Principles" title="Facts before intentions.">
+      <SectionFrame id="principles" eyebrow="Principles" title="Facts before intentions.">
         <div className="grid gap-4 md:grid-cols-2">
           {principles.map(([title, text]) => (
             <Card className="p-6" key={title}>
@@ -310,6 +310,9 @@ export default function EventsSpecificationPage() {
               a verifier must reach: valid, expired, not yet valid, signed with another key, changed after signing, unknown kid, alg none, or a
               payload that is not detached.
             </p>
+            <Link className="mt-5 inline-block" href="/docs/tools/guides/sign-and-publish">
+              <Button variant="secondary">Sign and publish a manifest with hos</Button>
+            </Link>
           </Card>
         </div>
       </SectionFrame>
@@ -381,6 +384,9 @@ export default function EventsSpecificationPage() {
         <div className="mt-8 flex flex-wrap gap-3">
           <Link href="/demo">
             <Button>Open the live demos and downloads</Button>
+          </Link>
+          <Link href="/docs/tools/guides/test-a-consumer">
+            <Button variant="secondary">Run the scenarios with hos</Button>
           </Link>
           <Link href="/participate/pilot">
             <Button variant="secondary">Validate it on your own systems</Button>

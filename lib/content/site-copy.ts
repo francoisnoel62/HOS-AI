@@ -122,7 +122,7 @@ export const documentationItems: Array<{
   {
     title: "The hos command and the SDK",
     description:
-      "@hos-ai/cli and @hos-ai/sdk on npm, both alphas: validation, replay, the conformance scenarios for an implementation in any language, the producer check and signed manifests. Their documentation starts with install, a quickstart and how to read a report.",
+      "@hos-ai/cli and @hos-ai/sdk on npm, both alphas: validation, replay, the conformance scenarios for an implementation in any language, the producer check and signed manifests. Their documentation covers install, a ten-minute quickstart, seven guides, the references and troubleshooting.",
     status: "Draft",
     href: "/docs/tools",
   },

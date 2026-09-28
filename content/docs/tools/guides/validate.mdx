@@ -1,11 +1,238 @@
-<PageInProgress>
+<InShort>
 
-This guide will show how to check HOS documents and streams with `hos validate`:
+`hos validate` checks HOS files the way every system that receives them will: events, producer manifests and situations one by one, and streams of events as a whole. Each problem comes with the field, the value, what HOS allows and the rule it breaks.
 
-- how the command recognises an event, a situation or a manifest on its own;
-- single files (`.json`), streams (`.jsonl` or `.ndjson`), and reading from standard input with `-`;
-- `--manifest`, which only applies to streams, and `--json`;
-- how to read a line of output: the verdict, the level of each message (`error`, `warning` or `note`), the rule and the path;
-- what a stream reveals that a single document cannot: duplicates, the same id with different content, inconsistent tenants or time zones, undeclared facts and competing authorities.
+</InShort>
 
-</PageInProgress>
+<FactSheet
+  audience="Developers of a system that publishes or receives HOS facts, integrators"
+  time="15 minutes"
+  needs={["hos, see Install", "A terminal in a new folder"]}
+/>
+
+## Why this matters
+
+A PMS adapter may publish thousands of facts a day. If one carries a status that HOS does not define, or reuses an id with different content, the systems that receive it will each react in their own way, and the hotel will see different pictures of the same room. Validate before you publish, and validate what you receive when something looks wrong.
+
+## What hos validate recognises
+
+hos reads each file and decides what it is from its content, not from its name, except for streams:
+
+| The file                                | hos reads it as                                       | Checked against                        |
+| :-------------------------------------- | :---------------------------------------------------- | :------------------------------------- |
+| a JSON object with `specversion`        | an event, or a reference situation                    | the HOS Events 0.1 schemas and rules   |
+| a JSON object with `hosmanifestversion` | a producer <Term id="manifest">manifest</Term>        | the Event Producer manifest schema     |
+| a file ending in `.jsonl` or `.ndjson`  | a <Term id="stream">stream</Term>, one event per line | each event, then the stream as a whole |
+
+<Steps>
+<Step title="Validate several files at once">
+
+Download an event of each kind and a manifest:
+
+<Command
+  powershell={`curl.exe -O https://hos-ai.vercel.app/spec/0.1/examples/stay.expected.json
+curl.exe -O https://hos-ai.vercel.app/spec/0.1/examples/unit.status_changed.json
+curl.exe -O https://hos-ai.vercel.app/spec/0.1/conformance/arrival-readiness/producers/housekeeping.json`}
+  cmd={`curl -O https://hos-ai.vercel.app/spec/0.1/examples/stay.expected.json
+curl -O https://hos-ai.vercel.app/spec/0.1/examples/unit.status_changed.json
+curl -O https://hos-ai.vercel.app/spec/0.1/conformance/arrival-readiness/producers/housekeeping.json`}
+  bash={`curl -O https://hos-ai.vercel.app/spec/0.1/examples/stay.expected.json
+curl -O https://hos-ai.vercel.app/spec/0.1/examples/unit.status_changed.json
+curl -O https://hos-ai.vercel.app/spec/0.1/conformance/arrival-readiness/producers/housekeeping.json`}
+/>
+
+Name them all after `validate`:
+
+```sh
+npx @hos-ai/cli validate stay.expected.json unit.status_changed.json housekeeping.json
+```
+
+```output id="several-files"
+✓ stay.expected.json: valid event stay.expected
+✓ unit.status_changed.json: valid event unit.status_changed
+✓ housekeeping.json: valid manifest urn:hos:housekeeping:demo
+
+3 files: 3 valid, 0 invalid
+```
+
+**What just happened.** hos recognised two events, by their type, and a manifest, by the producer it declares. With more than one file, it ends with a count. The <Term id="exit-code">exit code</Term> is 0 only if every file is valid.
+
+</Step>
+<Step title="Validate a stream">
+
+Download the stream of the early-arrival scenario, 13 facts in the order they were delivered:
+
+<Command
+  powershell="curl.exe -O https://hos-ai.vercel.app/spec/0.1/conformance/arrival-readiness/events.jsonl"
+  cmd="curl -O https://hos-ai.vercel.app/spec/0.1/conformance/arrival-readiness/events.jsonl"
+  bash="curl -O https://hos-ai.vercel.app/spec/0.1/conformance/arrival-readiness/events.jsonl"
+/>
+
+```sh
+npx @hos-ai/cli validate events.jsonl
+```
+
+```output id="stream"
+✓ events.jsonl: valid stream of 13 events (1 note)
+  note    line 5: Repeats line 4: same source, id and content. A consumer discards it as a duplicate.
+          rule events/at-least-once-delivery
+```
+
+**What just happened.** Each line is a valid event. Across lines, hos found that line 5 repeats line 4. It is a note, not an error: HOS delivers facts at least once, so repeats are expected, and a consumer discards them. The stream stays valid.
+
+</Step>
+<Step title="Check the stream against its manifests">
+
+A stream says what the producers sent; their manifests say what they are allowed to send. Download the two other manifests of the scenario:
+
+<Command
+  powershell={`curl.exe -O https://hos-ai.vercel.app/spec/0.1/conformance/arrival-readiness/producers/pms.json
+curl.exe -O https://hos-ai.vercel.app/spec/0.1/conformance/arrival-readiness/producers/messaging.json`}
+  cmd={`curl -O https://hos-ai.vercel.app/spec/0.1/conformance/arrival-readiness/producers/pms.json
+curl -O https://hos-ai.vercel.app/spec/0.1/conformance/arrival-readiness/producers/messaging.json`}
+  bash={`curl -O https://hos-ai.vercel.app/spec/0.1/conformance/arrival-readiness/producers/pms.json
+curl -O https://hos-ai.vercel.app/spec/0.1/conformance/arrival-readiness/producers/messaging.json`}
+/>
+
+Give each manifest after `-m`, short for `--manifest`:
+
+```sh
+npx @hos-ai/cli validate events.jsonl -m pms.json -m housekeeping.json -m messaging.json
+```
+
+```cast id="stream-manifests"
+$ npx @hos-ai/cli validate events.jsonl -m pms.json -m housekeeping.json -m messaging.json
+✗ events.jsonl: invalid stream of 13 events (1 error, 1 note)
+  note    line 5: Repeats line 4: same source, id and content. A consumer discards it as a duplicate.
+          rule events/at-least-once-delivery
+  error   line 7: urn:hos:pms:demo does not declare housekeeping.task.created at prop_demo: a consumer ignores this event (undeclared_capability).
+          rule events/declared-capability · at /type
+```
+
+**What just happened.** The PMS published a housekeeping task that its manifest does not declare. A consumer ignores such a fact, so the scenario uses it on purpose, to check that consumers do. For a producer, publishing it is a mistake: fix the adapter, or declare the fact in the manifest if the system really is a source for it.
+
+<Callout type="tip">
+
+Validate your own streams with your manifest, and the manifests of the other producers that publish for the same hotel: hos also checks that no two producers claim to be the <Term id="authority">authority</Term> on the same thing.
+
+</Callout>
+
+</Step>
+<Step title="Validate what another program prints">
+
+`-` reads standard input, so hos can check the output of your adapter without a file. With a stream, the first line of the report names `<stdin>`:
+
+<Command
+  powershell='cmd /c "type events.jsonl | npx @hos-ai/cli validate -"'
+  cmd="type events.jsonl | npx @hos-ai/cli validate -"
+  bash="cat events.jsonl | npx @hos-ai/cli validate -"
+/>
+
+```output id="stdin"
+✓ <stdin>: valid stream of 13 events (1 note)
+  note    line 5: Repeats line 4: same source, id and content. A consumer discards it as a duplicate.
+          rule events/at-least-once-delivery
+```
+
+Replace `type events.jsonl` or `cat events.jsonl` with the command that runs your adapter.
+
+<Callout type="warning">
+
+In Windows PowerShell 5.1, a pipe to another program can change the text it carries, and add a mark that hos cannot read, depending on `$OutputEncoding`. The command above runs the pipe in the Command Prompt, which passes the text as it is. Or save the output to a file with your program, and name the file.
+
+</Callout>
+
+</Step>
+<Step title="Get the result as JSON">
+
+For a script or a CI, `--json` prints the same result as JSON:
+
+```sh
+npx @hos-ai/cli validate --json stay.expected.json
+```
+
+```json id="json"
+{
+  "valid": true,
+  "results": [
+    {
+      "file": "stay.expected.json",
+      "name": "stay.expected",
+      "valid": true,
+      "kind": "event",
+      "errors": []
+    }
+  ]
+}
+```
+
+`valid` is true when every file is. Each result has the file, what it is (`kind`: `event`, `situation`, `manifest` or `stream`), and its `errors`, or, for a stream, its `issues`, each with a `severity`, a `line`, a `message`, a `rule` and a `path`.
+
+</Step>
+</Steps>
+
+## Read a line of output
+
+Every report of hos validate has the same parts:
+
+```output id="read-a-line"
+✗ unit.status_changed.json: invalid event unit.status_changed (1 error)
+  error   data.current is "cleaning", not one of: dirty, clean, inspected, unknown. Readiness as reported by the housekeeping authority.
+          rule core/unit-status-model · at /data/current
+```
+
+<OutputLineDiagram />
+
+- **The summary**: ✓ or ✗, the file, valid or invalid, what it is, and how many problems.
+- **The level** of each problem:
+  - `error`: the file does not follow HOS 0.1, and is invalid.
+  - `warning`: the file is valid, but a consumer ignores part of it, such as the dimensions of a snapshot its producer does not declare.
+  - `note`: information only, such as a repeated fact.
+- **The message**: the field, the value found, what HOS allows, and what the field means.
+- **The rule** of the specification, such as `core/unit-status-model`, and **where** the field is, as a path from the top of the JSON: `/data/current` is `current` inside `data`. In a stream, the message starts with the line number.
+
+## What a stream reveals
+
+Some problems only show across the lines of a stream, or against manifests. hos reports:
+
+| Problem                                                        | Level            | Rule                            |
+| :------------------------------------------------------------- | :--------------- | :------------------------------ |
+| the same fact twice: same source, id and content               | note             | `events/at-least-once-delivery` |
+| the same source and id with different content                  | error            | `events/immutable-facts`        |
+| a hotel that changes tenant, or time zone                      | error            | `core/entities`, `core/time`    |
+| a line that is not JSON                                        | error            | `events/replay`                 |
+| with manifests: a fact its producer does not declare           | error            | `events/declared-capability`    |
+| with manifests: a snapshot its producer does not declare       | error or warning | `events/explicit-snapshots`     |
+| with manifests: two producers authoritative for the same thing | error            | `events/one-authority`          |
+
+The most serious is a changed fact. A source and an id name one fact forever; a correction is a new fact, with a new id:
+
+```output id="conflicting-id"
+✗ stream-conflicting-id.jsonl: invalid stream of 2 events (1 error)
+  error   line 2: Reuses the source and id of line 1 with different content (data.current). A source and id name one fact, which never changes: a correction is a new event.
+          rule events/immutable-facts
+```
+
+A consumer that already has the first fact discards the second as a repeat, and never sees the correction.
+
+<Checkpoint>
+
+`hos validate` ends with exit code 0 when every file is valid, 1 when one is not, and 2 when a file could not be read or the command is wrong. Print it with `$LASTEXITCODE` in PowerShell, `echo %ERRORLEVEL%` in the Command Prompt, or `echo $?` on macOS and Linux.
+
+</Checkpoint>
+
+<IfItFails>
+
+- `This is not a HOS document`: the file is JSON, but has neither `specversion` nor `hosmanifestversion`. Check that it is an event or a manifest, not, for example, a whole API response around it.
+- `Not JSON: Unexpected token`: the file is not UTF-8 JSON. It may have been saved as UTF-16, or with a byte order mark, as `>` does in Windows PowerShell 5.1. Save it as UTF-8.
+- A stream is read as one document: its name must end in `.jsonl` or `.ndjson`.
+- `--manifest applies to streams (.jsonl) only`: manifests only change the check of a stream. The other files are validated as usual.
+- `cannot read ... ENOENT`, exit code 2: the file is not in the folder you are in.
+
+</IfItFails>
+
+## Next steps
+
+- [Replay a stream](/docs/tools/guides/replay): see what a consumer does with each fact.
+- [Check what a producer publishes](/docs/tools/guides/check-a-producer): the checks a producer must pass before it publishes.
+- [Run the checks in CI](/docs/tools/guides/ci): validate on every change.

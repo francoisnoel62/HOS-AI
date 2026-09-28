@@ -1,13 +1,245 @@
-<PageInProgress>
+<InShort>
 
-This guide will show how to test a system that receives HOS facts, whatever its language, with `hos conformance run`:
+`hos conformance run` tests a system that receives HOS facts, whatever its language. It feeds your program the HOS conformance scenarios, reads what your program decides for each fact, and compares with the answers HOS expects. You start with a small program that only reads and writes; each difference in the report is the next rule to write.
 
-- how it works: hos starts your program, sends it the whole scenario on its standard input, then reads one answer per delivery on its standard output;
-- the input and output formats;
-- a suggested path: pass `--level normative` first with the Python example, then the reference level;
-- `--all`, scenario names, `--timeout`, `--scenario-dir` for your own scenarios, and `--junit`;
-- an exercise: remove deduplication from the Python example, and read the report.
+</InShort>
 
-Meanwhile, the [conformance protocol](/spec/0.1/conformance/PROTOCOL.md) describes the exchange, and the [Python example](https://github.com/francoisnoel62/HOS-AI/tree/master/examples/python-dispositions) implements the normative level.
+<FactSheet
+  audience="Developers of a system that receives HOS facts, in any language"
+  time="30 minutes"
+  needs={["hos, see Install", "Python 3.11 or later, or Node.js, for the examples"]}
+/>
 
-</PageInProgress>
+## Why this matters
+
+Two systems that receive the same facts must reach the same conclusions. If one counts a repeated fact twice, or trusts a system that is not in charge of cleaning, the front desk and the housekeeping app show different rooms, and a guest gets a key to a room nobody released. The rules of HOS Events 0.1 prevent it only if every <Term id="consumer">consumer</Term> applies them; the <Term id="conformance-scenario">conformance scenarios</Term> check that yours does.
+
+## How it works
+
+<ProtocolDiagram />
+
+For each scenario, hos:
+
+1. starts your program with the command you give after `--impl`, through the system's shell, in the folder you run hos from;
+2. writes the whole scenario to its standard input, as JSON Lines, and closes it;
+3. reads its standard output: one line of JSON per delivery, saying what your program decided;
+4. compares these answers with the scenario's `expected.json`, and reports every difference.
+
+Your program reads until the end of its input, answers, and exits with code 0. It can write anything to standard error: hos shows the last lines if something goes wrong. After 30 seconds, hos stops it.
+
+The input has three kinds of lines, in this order: one `scenario` line, then one `manifest` line per producer, then one `delivery` line per fact, in delivery order:
+
+```text
+{"kind": "scenario", "protocol": "hos-conformance/1", "level": "normative", "scenario": "arrival-readiness", ...}
+{"kind": "manifest", "manifest": {"hosmanifestversion": "0.1", "producer": "urn:hos:pms:demo", ...}}
+{"kind": "delivery", "delivery": 1, "event": {"specversion": "1.0", "id": "pms-000312", ...}}
+```
+
+Your program answers one line per delivery, in any order, with the <Term id="disposition">disposition</Term> it reached:
+
+```text
+{"delivery": 1, "disposition": "applied"}
+```
+
+The [conformance protocol](/spec/0.1/conformance/PROTOCOL.md) describes every field.
+
+<Steps>
+<Step title="Run the Python example">
+
+HOS publishes a consumer of about 130 lines of Python, with the standard library only. Download it into a new folder:
+
+<Command
+  powershell="curl.exe -O https://raw.githubusercontent.com/francoisnoel62/HOS-AI/master/examples/python-dispositions/impl.py"
+  cmd="curl -O https://raw.githubusercontent.com/francoisnoel62/HOS-AI/master/examples/python-dispositions/impl.py"
+  bash="curl -O https://raw.githubusercontent.com/francoisnoel62/HOS-AI/master/examples/python-dispositions/impl.py"
+/>
+
+It needs Python 3.11 or later. On Windows, Python installed from python.org comes with the launcher `py`; Python from the Microsoft Store is `python`. On macOS and Linux, it is `python3`. Check with `py --version`, `python --version` or `python3 --version`, and use the one that answers in the commands below.
+
+Run the three scenarios through it:
+
+<Command
+  powershell={`npx @hos-ai/cli conformance run --all --level normative --impl "py impl.py"`}
+  cmd={`npx @hos-ai/cli conformance run --all --level normative --impl "py impl.py"`}
+  bash={`npx @hos-ai/cli conformance run --all --level normative --impl "python3 impl.py"`}
+/>
+
+```output id="python-normative"
+✓ arrival-readiness: normative 13/13
+✓ late-checkout: normative 15/15
+✓ room-out-of-order: normative 14/14
+
+3 scenarios: 3 passed, 0 failed · level normative · protocol hos-conformance/1
+```
+
+**What just happened.** hos started the program three times, once per scenario, and the program reached the expected disposition for all 42 facts. `--level normative` compares the dispositions only: they are what HOS Events 0.1 requires of every consumer. The example does not assess arrivals, so it does not run at the reference level.
+
+</Step>
+<Step title="Break a rule on purpose">
+
+Open `impl.py` and find the two lines that recognise a repeated fact:
+
+```python id="dedup-lines"
+        if identity in self.seen:
+            return "duplicate"
+```
+
+Delete them, save, and run the same command again:
+
+```output id="python-no-dedup"
+✗ arrival-readiness: normative 12/13
+    delivery 5 (hk-002231 from urn:hos:housekeeping:demo)
+      disposition: expected "duplicate", got "superseded"
+✓ late-checkout: normative 15/15
+✓ room-out-of-order: normative 14/14
+
+3 scenarios: 2 passed, 1 failed · level normative · protocol hos-conformance/1
+```
+
+**Read the report.** Delivery 5 is the fact of delivery 4, sent again. Without its first rule, the program compared the two as two facts about the same room, and set the second aside because it is not later than the first: `superseded`. HOS expects `duplicate`. The report names the delivery, the fact's id and producer, the field, the expected value and the one received. Put the two lines back.
+
+</Step>
+<Step title="Start your own consumer">
+
+Your consumer can be written in any language that reads standard input and writes standard output. Here is the smallest one, in JavaScript for Node.js. It reads the scenario, and answers `applied` for every fact: the rules are yours to write. Save it as `consumer.mjs`:
+
+```js id="skeleton"
+// A consumer of the hos-conformance/1 protocol: it reads a scenario on standard input and answers one line per
+// delivery on standard output. The rules of HOS Events 0.1 are still to write: for now, it applies every fact.
+
+let input = "";
+for await (const chunk of process.stdin) input += chunk;
+const lines = input
+  .split("\n")
+  .filter((line) => line.trim())
+  .map((line) => JSON.parse(line));
+
+const scenario = lines.find((line) => line.kind === "scenario");
+if (scenario.protocol !== "hos-conformance/1") {
+  console.error(`This consumer speaks hos-conformance/1, not ${scenario.protocol}.`);
+  process.exit(2);
+}
+
+// Who declares what, and who is the authority for what: the rules need them.
+const manifests = lines.filter((line) => line.kind === "manifest").map((line) => line.manifest);
+
+for (const line of lines.filter((line) => line.kind === "delivery")) {
+  const disposition = decide(line.event, manifests);
+  console.log(JSON.stringify({ delivery: line.delivery, disposition }));
+}
+
+// To write: duplicate, undeclared_capability, non_authoritative, superseded, or applied.
+function decide(event, manifests) {
+  return "applied";
+}
+```
+
+Run it on the first scenario:
+
+```sh
+npx @hos-ai/cli conformance run arrival-readiness --level normative --impl "node consumer.mjs"
+```
+
+```output id="skeleton-run"
+✗ arrival-readiness: normative 9/13
+    delivery 5 (hk-002231 from urn:hos:housekeeping:demo)
+      disposition: expected "duplicate", got "applied"
+    delivery 7 (pms-000430 from urn:hos:pms:demo)
+      disposition: expected "undeclared_capability", got "applied"
+    delivery 9 (pms-000455 from urn:hos:pms:demo)
+      disposition: expected "non_authoritative", got "applied"
+    delivery 11 (msg-000971 from urn:hos:messaging:demo)
+      disposition: expected "superseded", got "applied"
+
+1 scenario: 0 passed, 1 failed · level normative · protocol hos-conformance/1
+```
+
+Each difference is a rule to write. [Concepts](/docs/tools/concepts#the-five-dispositions) describes each one, in the order HOS applies them, and `impl.py` implements all of them. Write one, run the scenario again, and watch the score rise. When `arrival-readiness` passes, run `--all`.
+
+</Step>
+<Step title="Go on to the reference level">
+
+The reference level also compares, after each delivery, how your consumer reads each arrival: whether the room is ready, and whether the arrival is at risk. It is the default level, without `--level`. Each answer then carries `stays` and `situations`, as the [protocol](/spec/0.1/conformance/PROTOCOL.md) describes.
+
+This level checks one way to read arrivals, the HOS <Term id="reference-projection">reference projection</Term>, which is not normative. Run it if your system assesses arrivals the same way. A consumer that answers dispositions only fails it, and hos says why on the second line:
+
+<Command
+  powershell={`npx @hos-ai/cli conformance run arrival-readiness --impl "py impl.py"`}
+  cmd={`npx @hos-ai/cli conformance run arrival-readiness --impl "py impl.py"`}
+  bash={`npx @hos-ai/cli conformance run arrival-readiness --impl "python3 impl.py"`}
+/>
+
+```output id="python-reference" excerpt="head"
+✗ arrival-readiness: normative 13/13 · reference 0/13 · situations 0/2
+    no answer has stays or situations: an implementation of the normative level runs with --level normative
+    delivery 1 (pms-000312 from urn:hos:pms:demo)
+      stays: expected {}, got nothing
+      situations: expected [], got nothing
+```
+
+</Step>
+</Steps>
+
+## Options
+
+| Option                 | What it does                                                                             |
+| :--------------------- | :--------------------------------------------------------------------------------------- |
+| `<scenario...>`        | the scenarios to run, by name: `arrival-readiness`, `late-checkout`, `room-out-of-order` |
+| `--all`                | every scenario                                                                           |
+| `--impl <command>`     | the command that starts your consumer, in quotes                                         |
+| `--level normative`    | compare the dispositions only. Without it, the reference level compares everything       |
+| `--timeout <seconds>`  | how long your program may take per scenario, 30 by default                               |
+| `--scenario-dir <dir>` | run your own scenarios instead of the ones hos carries                                   |
+| `--json`               | print the results as JSON, for a script                                                  |
+| `--junit <file>`       | also write a JUnit report, which most CI tools display                                   |
+
+`hos conformance list` lists the scenarios. The [CLI reference](/docs/tools/cli) will detail the JSON and JUnit reports, and [Run the checks in CI](/docs/tools/guides/ci) will use them.
+
+## Your own scenarios
+
+A scenario is a folder: a `scenario.json` that names its files, the stream `events.jsonl`, the manifests of its producers and the outcome `expected.json`. The published ones are the best starting point: copy one, change the facts and the expected outcome, and give the parent folder to `--scenario-dir`:
+
+```text
+scenarios/
+  arrival-readiness/
+    scenario.json
+    events.jsonl
+    expected.json
+    producers/
+      pms.json
+      housekeeping.json
+      messaging.json
+```
+
+```sh
+npx @hos-ai/cli conformance list --scenario-dir scenarios
+```
+
+```output id="scenario-dir"
+arrival-readiness  Early arrival, unit not ready · 13 deliveries, 3 producers
+```
+
+The demo page of each scenario lists its files to download, under "Conformance kit": the [early arrival](/demo), the [room out of order](/demo/room-out-of-order) and the [late check-out](/demo/late-checkout).
+
+<Checkpoint>
+
+`hos conformance run --all --level normative` ends with `3 scenarios: 3 passed, 0 failed`, and exit code 0. With a failure, the exit code is 1.
+
+</Checkpoint>
+
+<IfItFails>
+
+- `the implementation exited with code 1`, and standard error says the program is not recognised, or `command not found`: the command after `--impl` does not start. Run it on its own in the same folder. On Windows, try `py` for Python.
+- `the implementation did not finish within 30 s`: your program waits for more input. Read until the end of standard input, then answer. If it is just slow, raise `--timeout`.
+- `line 1 of the output is not JSON`: your program prints something else on standard output. Write logs to standard error.
+- `delivery 5 is answered twice`, or `answers delivery 14, which the scenario does not have`: answer each delivery once, with the number the input gave it.
+- `the implementation answered no delivery`: your program printed nothing. Check that it writes to standard output, and flushes before it exits.
+- Quotes: `--impl` runs through the Command Prompt on Windows. Put the command in double quotes, and paths with spaces in double quotes inside it.
+
+</IfItFails>
+
+## Next steps
+
+- [Read a HOS report](/docs/tools/read-a-report): what your report says to someone who does not write code.
+- [Run the checks in CI](/docs/tools/guides/ci): run the scenarios on every change.
+- [The conformance protocol](/spec/0.1/conformance/PROTOCOL.md): every field of the input and the output.

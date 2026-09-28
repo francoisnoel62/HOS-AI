@@ -1,5 +1,7 @@
 // @vitest-environment node
-import { readdirSync, readFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { copyFileSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -11,8 +13,9 @@ import { versionLine } from "@/lib/docs/versions";
 import { hos, specDirectory } from "@/packages/cli/test/run";
 
 // Every output the tools documentation shows, compared with what hos prints (docs/plans/PLAN-SDK-DOC.md, §8). A block
-// ```output id="…" is checked here, by its page and id; one printed by another program says so with from="…". A
-// change to a message of hos fails this test until the page shows the new message.
+// ```output id="…" is checked here, by its page and id; one printed by another program says so with from="…". A block
+// with excerpt="head" or excerpt="tail" shows the first or the last lines of the output. A change to a message of hos
+// fails this test until the page shows the new message.
 
 const mdxFiles = (directory = contentDirectory): string[] =>
   readdirSync(directory, { withFileTypes: true }).flatMap((entry) =>
@@ -29,100 +32,532 @@ const blocks: Array<CodeBlock & { page: string }> = mdxFiles().flatMap((file) =>
   })),
 );
 
-function block(page: string, id: string) {
+function shown(page: string, id: string) {
   const found = blocks.filter((item) => item.page === page && item.meta.id === id);
   expect(found, `${page}.mdx has one block with id="${id}"`).toHaveLength(1);
-  return found[0].text;
+  const [item] = found;
+  if (item.language !== "cast") return item;
+  // A cast starts with the command, typed after "$ ", then shows what it prints.
+  const [command, ...output] = item.text.split("\n");
+  expect(command, `${page}#${id} starts with its command`).toMatch(/^\$ npx @hos-ai\/cli /);
+  return { ...item, text: output.join("\n") };
+}
+const block = (page: string, id: string) => shown(page, id).text;
+
+// A block with varies="kid" or varies="kid time" shows one run's key ids and times: each reader gets others.
+const keyId = /(?<![A-Za-z0-9_-])[A-Za-z0-9_-]{43}(?![A-Za-z0-9_-])/g;
+const instant = /\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z/g;
+function steady(text: string, varies = "") {
+  let result = text;
+  if (varies.includes("kid")) result = result.replace(keyId, "<kid>");
+  if (varies.includes("time")) result = result.replace(instant, "<time>");
+  return result;
 }
 
+function expectShown(actual: string, { text: shownText, meta }: { text: string; meta: Record<string, string> }) {
+  const text = steady(shownText, meta.varies);
+  const lines = steady(actual.replace(/\r\n/g, "\n").trimEnd(), meta.varies).split("\n");
+  const expected = text.split("\n");
+  if (meta.excerpt === "head") expect(lines.slice(0, expected.length)).toEqual(expected);
+  else if (meta.excerpt === "tail") expect(lines.slice(-expected.length)).toEqual(expected);
+  else expect(lines.join("\n")).toBe(text);
+}
+
+// Runs hos as the page shows it, and compares its standard output with the block.
+async function printed(page: string, id: string, args: string[], { files = {}, cwd, stdin, code = 0 }: RunOptions = {}) {
+  const result = await hos(args, { files, stdin, ...(cwd ? { cwd } : {}) });
+  expect(result.code, result.stderr).toBe(code);
+  expectShown(result.stdout, shown(page, id));
+  return result;
+}
+type RunOptions = { files?: Record<string, string>; cwd?: string; stdin?: string; code?: number };
+
 const published = (file: string) => readFileSync(path.join(specDirectory, file), "utf8");
-const scenarioFiles = (names: string[]) =>
-  Object.fromEntries(names.map((name) => [path.basename(name), published(`conformance/arrival-readiness/${name}`)]));
+const scenario = "conformance/arrival-readiness";
+const arrivalFiles = (...names: string[]) => Object.fromEntries(names.map((name) => [path.basename(name), published(`${scenario}/${name}`)]));
+const withManifests = ["-m", "pms.json", "-m", "housekeeping.json", "-m", "messaging.json"];
+const streamAndManifests = () => arrivalFiles("events.jsonl", "producers/pms.json", "producers/housekeeping.json", "producers/messaging.json");
+const brokenStatus = () => published("examples/unit.status_changed.json").replace('"current": "dirty"', '"current": "cleaning"');
 
 // The CLI's own snapshots, which its tests keep equal to what it prints.
-const snapshotFile = fileURLToPath(new URL("../../packages/cli/test/__snapshots__/conformance.test.ts.snap", import.meta.url));
-function snapshot(name: string) {
-  const text = readFileSync(snapshotFile, "utf8").replace(/\r\n/g, "\n");
+function snapshot(suite: "conformance" | "validate", name: string) {
+  const file = fileURLToPath(new URL(`../../packages/cli/test/__snapshots__/${suite}.test.ts.snap`, import.meta.url));
+  const text = readFileSync(file, "utf8").replace(/\r\n/g, "\n");
   const found = [...text.matchAll(/exports\[`(.+?)`\] = `\n"([\s\S]*?)"\n`;/g)].find(([, key]) => key === `${name} 1`);
-  if (!found) throw new Error(`No snapshot "${name}" in ${snapshotFile}`);
+  if (!found) throw new Error(`No snapshot "${name}" in ${file}`);
   return found[2].replace(/\\`/g, "`").replace(/\\\\/g, "\\").trimEnd();
 }
 
-const referenceImpl = [
-  `"${process.execPath}"`,
-  "--conditions=@hos-ai/source",
-  `"${fileURLToPath(new URL("../../packages/cli/src/bin.ts", import.meta.url))}"`,
-  "reference-impl",
-].join(" ");
+const bin = fileURLToPath(new URL("../../packages/cli/src/bin.ts", import.meta.url));
+const referenceImpl = [`"${process.execPath}"`, "--conditions=@hos-ai/source", `"${bin}"`, "reference-impl"].join(" ");
 
-type Check = () => Promise<void> | void;
-const printed = async (args: string[], files: Record<string, string>, code: number, expected: string) => {
-  const result = await hos(args, { files });
-  expect(result.code).toBe(code);
-  expect(result.stdout.trimEnd()).toBe(expected);
+// A folder of the reader's, with the files a page has them create.
+function folder(files: Record<string, string> = {}) {
+  const directory = mkdtempSync(path.join(tmpdir(), "hos-docs-"));
+  for (const [name, text] of Object.entries(files)) writeFileSync(path.join(directory, name), text);
+  return directory;
+}
+
+// fs.cpSync is not used: in Node 24 on Windows, it ends the process on a path with a non-ASCII character.
+function copyFolder(from: string, to: string) {
+  mkdirSync(to, { recursive: true });
+  for (const entry of readdirSync(from, { withFileTypes: true })) {
+    if (entry.isDirectory()) copyFolder(path.join(from, entry.name), path.join(to, entry.name));
+    else copyFileSync(path.join(from, entry.name), path.join(to, entry.name));
+  }
+}
+
+// Python 3.11 or later, for the Python example; the checks that need it are skipped without it.
+const python = ["python3", "python", "py"].find((command) => {
+  try {
+    return /Python 3\.(1[1-9]|[2-9]\d)/.test(execFileSync(command, ["--version"], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }));
+  } catch {
+    return false;
+  }
+});
+const pythonExample = () => readFileSync(fileURLToPath(new URL("../../examples/python-dispositions/impl.py", import.meta.url)), "utf8");
+
+type Check = () => Promise<unknown> | unknown;
+
+// The invalid case that illustrates each rule on the rules page.
+const ruleExamples: Record<string, string> = {
+  "core-entities": "stream-property-tenant.json",
+  "core-opaque-identifiers": "event-identifier-with-space.json",
+  "core-unit-status-model": "event-housekeeping-value.json",
+  "core-time": "stream-property-timezone.json",
+  "core-extensions": "event-extension-namespace.json",
+  "events-envelope": "event-without-tenant.json",
+  "events-catalogue": "event-unknown-type.json",
+  "events-minimal-data": "event-personal-data.json",
+  "events-honest-time-and-actor": "event-actor-name.json",
+  "events-explicit-snapshots": "event-snapshot-without-sensitivity.json",
+  "events-plans-are-not-states": "event-maintenance-operational.json",
+  "events-immutable-facts": "stream-conflicting-id.json",
+  "events-at-least-once-delivery": "manifest-exactly-once.json",
+  "events-no-global-order": "manifest-global-order.json",
+  "events-declared-capability": "stream-undeclared-event.json",
+  "events-one-authority": "stream-two-authorities.json",
+  "events-replay": "stream-unreadable-line.json",
+  "events-producers": "manifest-without-limitations.json",
+  "events-reference": "situation-unknown-reason.json",
 };
 
 const checks: Record<string, Check> = {
+  // Quickstart
   "quickstart#validate-ok": () =>
-    printed(
-      ["validate", "stay.expected.json"],
-      { "stay.expected.json": published("examples/stay.expected.json") },
-      0,
-      block("quickstart", "validate-ok"),
-    ),
+    printed("quickstart", "validate-ok", ["validate", "stay.expected.json"], {
+      files: { "stay.expected.json": published("examples/stay.expected.json") },
+    }),
   "quickstart#validate-error": () => {
     // The reader's edit: dirty becomes cleaning.
-    const broken = published("examples/unit.status_changed.json").replace('"current": "dirty"', '"current": "cleaning"');
-    expect(broken).toContain('"current": "cleaning"');
-    return printed(["validate", "unit.status_changed.json"], { "unit.status_changed.json": broken }, 1, block("quickstart", "validate-error"));
+    expect(brokenStatus()).toContain('"current": "cleaning"');
+    return printed("quickstart", "validate-error", ["validate", "unit.status_changed.json"], {
+      files: { "unit.status_changed.json": brokenStatus() },
+      code: 1,
+    });
   },
-  "quickstart#conformance-list": () => printed(["conformance", "list"], {}, 0, block("quickstart", "conformance-list")),
-  "quickstart#replay": () =>
-    printed(
-      ["replay", "events.jsonl", "-m", "pms.json", "-m", "housekeeping.json", "-m", "messaging.json"],
-      scenarioFiles(["events.jsonl", "producers/pms.json", "producers/housekeeping.json", "producers/messaging.json"]),
-      0,
-      block("quickstart", "replay"),
-    ),
+  "quickstart#conformance-list": () => printed("quickstart", "conformance-list", ["conformance", "list"]),
+  "quickstart#replay": () => printed("quickstart", "replay", ["replay", "events.jsonl", ...withManifests], { files: streamAndManifests() }),
+
+  // Concepts
   "concepts#unit-status-changed": () => {
     expect(JSON.parse(block("concepts", "unit-status-changed"))).toEqual(JSON.parse(published("examples/unit.status_changed.json")));
   },
   "concepts#housekeeping-manifest": () => {
     // An excerpt: every member it shows is in the published manifest, with the same value.
-    const manifest = JSON.parse(published("conformance/arrival-readiness/producers/housekeeping.json"));
-    const excerpt = JSON.parse(block("concepts", "housekeeping-manifest"));
-    const { events, ...rest } = excerpt;
+    const manifest = JSON.parse(published(`${scenario}/producers/housekeeping.json`));
+    const { events, ...rest } = JSON.parse(block("concepts", "housekeeping-manifest"));
     expect(manifest).toMatchObject(rest);
     for (const declared of events) expect(manifest.events).toContainEqual(expect.objectContaining(declared));
   },
+
+  // Read a report
   "read-a-report#conformance-pass": () =>
-    expect(block("read-a-report", "conformance-pass")).toBe(snapshot("hos conformance > passes the reference implementation on every scenario")),
+    expect(block("read-a-report", "conformance-pass")).toBe(
+      snapshot("conformance", "hos conformance > passes the reference implementation on every scenario"),
+    ),
   "read-a-report#conformance-fail": () =>
     expect(block("read-a-report", "conformance-fail")).toBe(
-      snapshot("hos conformance > names the delivery, the path, the expected value and the one received"),
+      snapshot("conformance", "hos conformance > names the delivery, the path, the expected value and the one received"),
     ),
   "read-a-report#producer-pass": () =>
-    expect(block("read-a-report", "producer-pass")).toBe(snapshot("hos conformance producer > passes a producer and its redelivery")),
+    expect(block("read-a-report", "producer-pass")).toBe(snapshot("conformance", "hos conformance producer > passes a producer and its redelivery")),
   "read-a-report#producer-fail": () =>
-    expect(block("read-a-report", "producer-fail")).toBe(snapshot("hos conformance producer > names what fails, and prints JSON")),
-  "authoring#producer-fail": () =>
-    expect(block("authoring", "producer-fail")).toBe(snapshot("hos conformance producer > names what fails, and prints JSON")),
+    expect(block("read-a-report", "producer-fail")).toBe(snapshot("conformance", "hos conformance producer > names what fails, and prints JSON")),
   "read-a-report#conformance-normative": () =>
-    printed(["conformance", "run", "--all", "--level", "normative", "--impl", referenceImpl], {}, 0, block("read-a-report", "conformance-normative")),
+    printed("read-a-report", "conformance-normative", ["conformance", "run", "--all", "--level", "normative", "--impl", referenceImpl]),
+  "authoring#conformance-list": () => printed("authoring", "conformance-list", ["conformance", "list"]),
+  "authoring#producer-fail": () =>
+    expect(block("authoring", "producer-fail")).toBe(snapshot("conformance", "hos conformance producer > names what fails, and prints JSON")),
+
+  // Validate
+  "guides/validate#several-files": () =>
+    printed("guides/validate", "several-files", ["validate", "stay.expected.json", "unit.status_changed.json", "housekeeping.json"], {
+      files: {
+        "stay.expected.json": published("examples/stay.expected.json"),
+        "unit.status_changed.json": published("examples/unit.status_changed.json"),
+        ...arrivalFiles("producers/housekeeping.json"),
+      },
+    }),
+  "guides/validate#stream": () => printed("guides/validate", "stream", ["validate", "events.jsonl"], { files: arrivalFiles("events.jsonl") }),
+  "guides/validate#stream-manifests": () =>
+    printed("guides/validate", "stream-manifests", ["validate", "events.jsonl", ...withManifests], { files: streamAndManifests(), code: 1 }),
+  "guides/validate#stdin": () => printed("guides/validate", "stdin", ["validate", "-"], { stdin: published(`${scenario}/events.jsonl`) }),
+  "guides/validate#json": () =>
+    printed("guides/validate", "json", ["validate", "--json", "stay.expected.json"], {
+      files: { "stay.expected.json": published("examples/stay.expected.json") },
+    }),
+  "guides/validate#read-a-line": () =>
+    printed("guides/validate", "read-a-line", ["validate", "unit.status_changed.json"], {
+      files: { "unit.status_changed.json": brokenStatus() },
+      code: 1,
+    }),
+  "guides/validate#conflicting-id": () =>
+    expect(block("guides/validate", "conflicting-id")).toBe(
+      snapshot("validate", "hos validate > rejects conformance/invalid/stream-conflicting-id.json on its rule"),
+    ),
+
+  // Replay
+  "guides/replay#replay": () => printed("guides/replay", "replay", ["replay", "events.jsonl", ...withManifests], { files: streamAndManifests() }),
+  "guides/replay#ready-clean": () =>
+    printed("guides/replay", "ready-clean", ["replay", "events.jsonl", ...withManifests, "--ready", "clean"], { files: streamAndManifests() }),
+  "guides/replay#json": () =>
+    printed("guides/replay", "json", ["replay", "events.jsonl", ...withManifests, "--json"], { files: streamAndManifests() }),
+  "guides/replay#no-manifest": async () => {
+    const { stderr } = await printed("guides/replay", "no-manifest", ["replay", "events.jsonl"], { files: arrivalFiles("events.jsonl") });
+    expect(stderr).toContain("hos replay: no --manifest given, so every fact is undeclared and nothing is applied.");
+  },
+
+  // Test a consumer
+  "guides/test-a-consumer#skeleton": () => expect(block("guides/test-a-consumer", "skeleton")).toContain("hos-conformance/1"),
+  "guides/test-a-consumer#skeleton-run": () => {
+    const cwd = folder({ "consumer.mjs": block("guides/test-a-consumer", "skeleton") });
+    return printed(
+      "guides/test-a-consumer",
+      "skeleton-run",
+      ["conformance", "run", "arrival-readiness", "--level", "normative", "--impl", `"${process.execPath}" consumer.mjs`],
+      { cwd, code: 1 },
+    );
+  },
+  "guides/test-a-consumer#scenario-dir": () => {
+    const cwd = folder();
+    copyFolder(path.join(specDirectory, scenario), path.join(cwd, "scenarios", "arrival-readiness"));
+    return printed("guides/test-a-consumer", "scenario-dir", ["conformance", "list", "--scenario-dir", "scenarios"], { cwd });
+  },
+
+  // Check a producer, with the example kit and the reader's edits
+  "guides/check-a-producer#pass": () => printed("guides/check-a-producer", "pass", producerCheck, { files: producerKit() }),
+  "guides/check-a-producer#new-id": () =>
+    printed("guides/check-a-producer", "new-id", producerCheck, { files: producerKit({ redelivery: ["pms-000312", "pms-000999"] }), code: 1 }),
+  "guides/check-a-producer#changed-content": () =>
+    printed("guides/check-a-producer", "changed-content", producerCheck, {
+      files: producerKit({ redelivery: ["2026-07-12T14:03:00Z", "2026-07-30T12:00:00Z"] }),
+      code: 1,
+    }),
+  "guides/check-a-producer#no-redelivery": () =>
+    printed("guides/check-a-producer", "no-redelivery", producerCheck.slice(0, -2), { files: producerKit() }),
+  "guides/check-a-producer#json": () => printed("guides/check-a-producer", "json", [...producerCheck, "--json"], { files: producerKit() }),
+
+  // Sign and publish: the example producer, then a key and a signature of the reader's own
+  "guides/sign-and-publish#example-verify": () =>
+    printed("guides/sign-and-publish", "example-verify", ["manifest", "verify", "manifest.json", "--jwks", "jwks.json"], { files: signingExample() }),
+  "guides/sign-and-publish#example-tampered": () => {
+    const files = signingExample();
+    // The reader's edit: the producer now claims authority on occupancy.
+    const tampered = files["manifest.json"].replace('"authoritative": false', '"authoritative": true');
+    expect(tampered).not.toBe(files["manifest.json"]);
+    return printed("guides/sign-and-publish", "example-tampered", ["manifest", "verify", "manifest.json", "--jwks", "jwks.json"], {
+      files: { ...files, "manifest.json": tampered },
+      code: 1,
+    });
+  },
+  "guides/sign-and-publish#example-expired": () =>
+    printed(
+      "guides/sign-and-publish",
+      "example-expired",
+      ["manifest", "verify", "manifest.json", "--jwks", "jwks.json", "--at", "2027-10-01T00:00:00Z"],
+      {
+        files: signingExample(),
+        code: 1,
+      },
+    ),
+  "guides/sign-and-publish#verify-url": async () => {
+    const base = "https://hos-ai.vercel.app/spec/0.1/conformance/signing/well-known";
+    const files = signingExample();
+    const urls = Object.fromEntries(Object.entries(files).map(([name, text]) => [`${base}/${name}`, text]));
+    const result = await hos(["manifest", "verify", `${base}/manifest.json`, "--jws", `${base}/manifest.jws`, "--jwks-url", `${base}/jwks.json`], {
+      urls,
+    });
+    expect(result.code, result.stderr).toBe(0);
+    expectShown(result.stdout, shown("guides/sign-and-publish", "verify-url"));
+  },
+  "guides/sign-and-publish#keygen": () => ownKey(),
+  "guides/sign-and-publish#sign": () => ownSignature(),
+  "guides/sign-and-publish#verify": async () => {
+    const files = await ownSignature();
+    return printed("guides/sign-and-publish", "verify", ["manifest", "verify", "manifest.json", "--jwks", "jwks.json"], { files });
+  },
+  "guides/sign-and-publish#rotate": async () => {
+    const { written } = await ownKey();
+    return printed("guides/sign-and-publish", "rotate", ["manifest", "keygen", "--key", "private-key-2.json", "--jwks", "jwks.json"], {
+      files: { "private-key.json": written["private-key.json"], "jwks.json": written["jwks.json"] },
+    });
+  },
+  "guides/sign-and-publish#exposed": async () => {
+    // A key set that publishes the private key by mistake.
+    const files = await ownSignature();
+    const exposed = JSON.stringify({ keys: [JSON.parse(files["private-key.json"])] });
+    return printed("guides/sign-and-publish", "exposed", ["manifest", "verify", "manifest.json", "--jwks", "jwks.json"], {
+      files: { ...files, "jwks.json": exposed },
+      code: 1,
+    });
+  },
+
+  // Build an adapter: the reader's files, run as the page says
+  "guides/build-an-adapter#webhooks": () => expect(block("guides/build-an-adapter", "webhooks").split("\n")).toHaveLength(4),
+  "guides/build-an-adapter#manifest": async () => {
+    const { code } = await hos(["validate", "manifest.json"], { files: { "manifest.json": block("guides/build-an-adapter", "manifest") } });
+    expect(code).toBe(0);
+  },
+  "guides/build-an-adapter#adapter": () => expect(block("guides/build-an-adapter", "adapter")).toContain("createFactWriter"),
+  "guides/build-an-adapter#adapter-run": () => {
+    const cwd = adapterFolder();
+    expectShown(node(cwd, "adapter.mjs"), shown("guides/build-an-adapter", "adapter-run"));
+  },
+  "guides/build-an-adapter#validate-recording": () => {
+    const cwd = adapterFolder();
+    node(cwd, "adapter.mjs");
+    return printed("guides/build-an-adapter", "validate-recording", ["validate", "recording.jsonl", "-m", "manifest.json"], { cwd });
+  },
+  "guides/build-an-adapter#producer-pass": () => {
+    const cwd = adapterFolder();
+    node(cwd, "adapter.mjs");
+    node(cwd, "adapter.mjs", "redelivery.jsonl");
+    return printed("guides/build-an-adapter", "producer-pass", producerCheck, { cwd });
+  },
+  "guides/build-an-adapter#lost-crosswalk": () => {
+    const cwd = adapterFolder();
+    node(cwd, "adapter.mjs");
+    unlinkSync(path.join(cwd, "crosswalk.json"));
+    node(cwd, "adapter.mjs", "redelivery.jsonl");
+    return printed("guides/build-an-adapter", "lost-crosswalk", producerCheck, { cwd, code: 1 });
+  },
+  "guides/build-an-adapter#adapter-test": () => {
+    const cwd = adapterFolder({ "adapter.test.mjs": block("guides/build-an-adapter", "adapter-test") });
+    // node --test exits with 1 when a test fails, which execFileSync turns into an exception.
+    expect(node(cwd, "--test", "adapter.test.mjs")).toContain("pass 1");
+  },
+
+  // Run the checks in CI
+  "guides/ci#github-actions": () => ciCommandsRun(block("guides/ci", "github-actions")),
+  "guides/ci#gitlab-ci": () => ciCommandsRun(block("guides/ci", "gitlab-ci")),
+  "guides/ci#junit": async () => {
+    const { written } = await hos(["conformance", "run", "--all", "--impl", referenceImpl, "--junit", "hos-conformance.xml"]);
+    expectShown(written["hos-conformance.xml"], shown("guides/ci", "junit"));
+  },
+
+  // Rules: each example is the output of the invalid case that breaks the rule
+  ...Object.fromEntries(
+    Object.entries(ruleExamples).map(([id, file]) => [
+      `rules#${id}`,
+      () => expect(block("rules", id)).toBe(snapshot("validate", `hos validate > rejects conformance/invalid/${file} on its rule`)),
+    ]),
+  ),
+  "rules#events-signed-manifests": () => {
+    const files = signingExample();
+    const tampered = files["manifest.json"].replace('"authoritative": false', '"authoritative": true');
+    return printed("rules", "events-signed-manifests", ["manifest", "verify", "manifest.json", "--jwks", "jwks.json"], {
+      files: { ...files, "manifest.json": tampered },
+      code: 1,
+    });
+  },
+
+  // CLI reference: each help text as hos prints it
+  "cli#usage-main": () => printed("cli", "usage-main", ["--help"]),
+  "cli#usage-validate": () => printed("cli", "usage-validate", ["validate", "--help"]),
+  "cli#usage-replay": () => printed("cli", "usage-replay", ["replay", "--help"]),
+  "cli#usage-conformance": () => printed("cli", "usage-conformance", ["conformance", "--help"]),
+  "cli#usage-manifest": () => printed("cli", "usage-manifest", ["manifest", "--help"]),
+
+  // SDK reference: each example runs, and prints what the page shows
+  ...Object.fromEntries(
+    ["validate", "validate-stream", "processing", "facts", "time", "producer", "signing", "conformance"].flatMap((id) => [
+      [`sdk#${id}`, () => expect(block("sdk", id)).toContain('from "@hos-ai/sdk')],
+      [`sdk#${id}-output`, () => expectShown(node(sdkFolder(), `${id}.mjs`), shown("sdk", `${id}-output`))],
+    ]),
+  ),
+};
+
+// The SDK reference's examples, in a folder of the project with the files they read: the Quickstart's, the example
+// producer's as producer-manifest.json, recording.jsonl and redelivery.jsonl, and the early-arrival scenario's folder.
+function sdkFolder() {
+  const cwd = adapterFolder();
+  const kit = producerKit();
+  const files: Record<string, string> = {
+    "unit.status_changed.json": published("examples/unit.status_changed.json"),
+    ...streamAndManifests(),
+    "producer-manifest.json": kit["manifest.json"],
+    "recording.jsonl": kit["recording.jsonl"],
+    "redelivery.jsonl": kit["redelivery.jsonl"],
+  };
+  for (const id of ["validate", "validate-stream", "processing", "facts", "time", "producer", "signing", "conformance"])
+    files[`${id}.mjs`] = block("sdk", id);
+  for (const [name, text] of Object.entries(files)) writeFileSync(path.join(cwd, name), text);
+  copyFolder(path.join(specDirectory, scenario), path.join(cwd, "arrival-readiness"));
+  return cwd;
+}
+
+// The adapter of the build-an-adapter guide, in a folder of the project so that it finds @hos-ai/sdk, as it does once
+// installed. Node runs the SDK from its sources.
+const repository = fileURLToPath(new URL("../../", import.meta.url));
+function adapterFolder(extra: Record<string, string> = {}) {
+  const parent = path.join(repository, "node_modules", ".cache", "hos-docs");
+  mkdirSync(parent, { recursive: true });
+  const cwd = mkdtempSync(path.join(parent, "adapter-"));
+  const files = {
+    "webhooks.jsonl": `${block("guides/build-an-adapter", "webhooks")}\n`,
+    "manifest.json": block("guides/build-an-adapter", "manifest"),
+    "adapter.mjs": block("guides/build-an-adapter", "adapter"),
+    ...extra,
+  };
+  for (const [name, text] of Object.entries(files)) writeFileSync(path.join(cwd, name), text);
+  return cwd;
+}
+function node(cwd: string, ...args: string[]) {
+  // Without the test runner's channel to its workers, which a child process must not take for its own.
+  const env: NodeJS.ProcessEnv = { ...process.env, NODE_OPTIONS: "--conditions=@hos-ai/source" };
+  delete env.NODE_CHANNEL_FD;
+  delete env.NODE_CHANNEL_SERIALIZATION_MODE;
+  return execFileSync(process.execPath, args, { cwd, env, encoding: "utf8" });
+}
+
+// Each npx hos command of a CI file runs with the files it names: it may pass or fail, but never with exit code 2, which
+// would mean the command itself is wrong.
+async function ciCommandsRun(yaml: string) {
+  const commands = yaml
+    .split("\n")
+    .map((line) => line.match(/npx hos (.+)$/)?.[1])
+    .filter((command): command is string => Boolean(command));
+  expect(commands.length).toBeGreaterThan(0);
+  const signing = signingExample();
+  const origin = "https://your-domain.example/.well-known/hos";
+  const urls = Object.fromEntries(Object.entries(signing).map(([name, text]) => [`${origin}/${name}`, text]));
+  const cwd = folder({ "consumer.mjs": block("guides/test-a-consumer", "skeleton"), ...producerKit() });
+  for (const command of commands) {
+    const args = [...command.replace(/"\$\(date[^)]*\)"/, "2026-10-01T00:00:00Z").matchAll(/"([^"]*)"|(\S+)/g)].map(([, quoted, bare]) =>
+      quoted !== undefined ? quoted.replace(/^node /, `"${process.execPath}" `) : bare,
+    );
+    const { code, stderr } = await hos(args, { cwd, urls });
+    expect(code, `npx hos ${command}\n${stderr}`).not.toBe(2);
+  }
+}
+
+// The example producer of the check-a-producer guide, with the reader's find-and-replace in its redelivery.
+const producerCheck = ["conformance", "producer", "--manifest", "manifest.json", "--stream", "recording.jsonl", "--redelivery", "redelivery.jsonl"];
+const kitDirectory = fileURLToPath(new URL("../../public/docs/tools/examples/producer/", import.meta.url));
+function producerKit({ redelivery }: { redelivery?: [string, string] } = {}) {
+  const files = Object.fromEntries(
+    ["manifest.json", "recording.jsonl", "redelivery.jsonl"].map((name) => [name, readFileSync(path.join(kitDirectory, name), "utf8")]),
+  );
+  if (redelivery) {
+    const [from, to] = redelivery;
+    expect(files["redelivery.jsonl"].split(from)).toHaveLength(2);
+    files["redelivery.jsonl"] = files["redelivery.jsonl"].replace(from, to);
+  }
+  return files;
+}
+
+// The fictional producer HOS publishes with its signature and key set.
+const signingExample = () =>
+  Object.fromEntries(["manifest.json", "manifest.jws", "jwks.json"].map((name) => [name, published(`conformance/signing/well-known/${name}`)]));
+
+// The reader's own key, then signature, on the example PMS manifest.
+async function ownKey() {
+  return printed("guides/sign-and-publish", "keygen", ["manifest", "keygen", "--key", "private-key.json", "--jwks", "jwks.json"]);
+}
+async function ownSignature() {
+  const { written } = await ownKey();
+  const files = {
+    "manifest.json": producerKit()["manifest.json"],
+    "private-key.json": written["private-key.json"],
+    "jwks.json": written["jwks.json"],
+  };
+  const signed = await printed("guides/sign-and-publish", "sign", ["manifest", "sign", "manifest.json", "--key", "private-key.json"], { files });
+  return { ...files, "manifest.jws": signed.written["manifest.jws"] };
+}
+
+// The checks that run the Python example.
+const pythonChecks: Record<string, Check> = {
+  "guides/test-a-consumer#python-normative": () =>
+    printed("guides/test-a-consumer", "python-normative", ["conformance", "run", "--all", "--level", "normative", "--impl", `${python} impl.py`], {
+      cwd: folder({ "impl.py": pythonExample() }),
+    }),
+  "guides/test-a-consumer#dedup-lines": () => expect(pythonExample()).toContain(`${block("guides/test-a-consumer", "dedup-lines")}\n`),
+  "guides/test-a-consumer#python-no-dedup": () => {
+    // The reader's edit: the two lines of deduplication are deleted.
+    const edited = pythonExample().replace(`${block("guides/test-a-consumer", "dedup-lines")}\n`, "");
+    expect(edited).not.toBe(pythonExample());
+    return printed(
+      "guides/test-a-consumer",
+      "python-no-dedup",
+      ["conformance", "run", "--all", "--level", "normative", "--impl", `${python} impl.py`],
+      {
+        cwd: folder({ "impl.py": edited }),
+        code: 1,
+      },
+    );
+  },
+  "guides/test-a-consumer#python-reference": () =>
+    printed("guides/test-a-consumer", "python-reference", ["conformance", "run", "arrival-readiness", "--impl", `${python} impl.py`], {
+      cwd: folder({ "impl.py": pythonExample() }),
+      code: 1,
+    }),
 };
 
 describe("outputs shown in the tools documentation", () => {
   it("checks every output block, or names the program that prints it", () => {
-    const outputs = blocks.filter((item) => item.language === "output");
+    const outputs = blocks.filter((item) => item.language === "output" || item.language === "cast");
     for (const item of outputs) expect(item.meta.id || item.meta.from, `an output block of ${item.page}.mdx has no id`).toBeTruthy();
     const withId = blocks.filter((item) => item.meta.id).map((item) => `${item.page}#${item.meta.id}`);
     expect(new Set(withId).size, "ids are unique on each page").toBe(withId.length);
-    expect(withId.sort()).toEqual(Object.keys(checks).sort());
+    expect(withId.sort()).toEqual([...Object.keys(checks), ...Object.keys(pythonChecks)].sort());
+  });
+
+  it("publishes an example producer made of the PMS facts of the early-arrival scenario", () => {
+    const kit = producerKit();
+    const pms = JSON.parse(published(`${scenario}/producers/pms.json`));
+    const facts = published(`${scenario}/events.jsonl`)
+      .split("\n")
+      .filter((line) => line.trim())
+      .map((line) => JSON.parse(line))
+      // The one fact the PMS does not declare: the example producer passes its checks.
+      .filter((fact) => fact.source === pms.producer && fact.type !== "housekeeping.task.created");
+    const lines = (text: string) =>
+      text
+        .trim()
+        .split("\n")
+        .map((line) => JSON.parse(line));
+    expect(JSON.parse(kit["manifest.json"])).toEqual(pms);
+    expect(lines(kit["recording.jsonl"])).toEqual(facts);
+    expect(lines(kit["redelivery.jsonl"])).toEqual(facts);
   });
 
   it("shows what hos --version prints", async () => {
     expect((await hos(["--version"])).stdout.trim()).toBe(versionLine);
   });
 
-  it.each(Object.entries(checks))("%s is what hos prints", async (_, check) => check(), 60_000);
+  it.each(Object.entries(checks))(
+    "%s is what hos prints",
+    async (_, check) => {
+      await check();
+    },
+    60_000,
+  );
+  it.skipIf(!python).each(Object.entries(pythonChecks))(
+    "%s is what hos prints with the Python example",
+    async (_, check) => {
+      await check();
+    },
+    60_000,
+  );
 });

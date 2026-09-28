@@ -116,6 +116,17 @@ A fenced block marked `output` colours ✓ and ✗ and each message level, and l
 
 Every output block has an id, written after the language: `output id="validate-ok"`. `tests/unit/docs-examples.test.ts` runs hos for each id and compares, so a page never shows a message hos no longer prints. For output that another program prints, such as PowerShell, write `output from="powershell"` instead.
 
+### A command replayed
+
+```cast id="conformance-list"
+$ npx @hos-ai/cli conformance list
+arrival-readiness  Early arrival, unit not ready · 13 deliveries, 3 producers
+late-checkout      Late check-out on a same-day turnover · 15 deliveries, 2 producers
+room-out-of-order  Assigned unit out of order · 14 deliveries, 3 producers
+```
+
+A fenced block marked `cast` starts with the command after `$ `, then shows what it prints; "Replay" types the command and shows the output line by line. The whole text is on the page from the start, and readers who ask for reduced motion get no replay. The test checks it like an output block, without its first line.
+
 ### Code
 
 ```json
@@ -182,6 +193,14 @@ A <Term id="producer">producer</Term> declares what it publishes.
 - PowerShell refuses to run scripts: type `npx.cmd`.
 
 </IfItFails>
+
+## Diagrams
+
+Diagrams are components written in HTML, so that their text is read by screen readers and search, follows the theme and stacks on a phone. Each is a figure with a caption that says what it shows:
+
+<DispositionsDiagram />
+
+The others are `ToolsFitDiagram`, `JsonLinesDiagram`, `OutputLineDiagram`, `ProtocolDiagram`, `RedeliveryDiagram`, `SigningDiagram`, `RotationDiagram`, `AdapterDiagram` and `CiDiagram`, in `components/docs/diagrams.tsx`.
 
 ## Files and navigation
 
