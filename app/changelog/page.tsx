@@ -9,6 +9,19 @@ export const metadata: Metadata = { title: "Changelog", description: "Published 
 
 const entries = [
   {
+    date: "28 September 2026",
+    title: "The documentation of the hos command and the SDK is complete.",
+    items: [
+      "Seven guides take a reader through each task: validating files, replaying a stream, testing a system that receives HOS facts in any language, checking what a producer publishes, signing and publishing a manifest, running the checks in CI, and building an adapter with the SDK, around a complete example that runs.",
+      "The references describe every command and option, every function of the SDK, the conformance protocol, and each of the 22 rules the tools report, with an example that breaks it and how to fix it. Troubleshooting has an entry for every message of the hos command, and Get help says what to send.",
+      "Every output the pages show is checked against what the tools print, every example runs in the tests, and diagrams and replayable terminals explain the key steps.",
+    ],
+    links: [
+      ["/docs/tools", "Tools documentation"],
+      ["/docs/tools/troubleshooting", "Troubleshooting"],
+    ],
+  },
+  {
     date: "26 September 2026",
     title: "The hos command and the SDK have their own documentation.",
     items: [

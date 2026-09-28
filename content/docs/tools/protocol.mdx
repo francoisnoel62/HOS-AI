@@ -1,7 +1,92 @@
-<PageInProgress>
+<InShort>
 
-This page will present `hos-conformance/1`, the protocol between `hos conformance run` and the program it tests, with a sequence diagram, the input and output formats, the levels, and how the tool stops a program that takes too long on each system.
+`hos-conformance/1` is how `hos conformance run` talks to the program it tests, so that a consumer written in any language can replay the conformance scenarios and get a verdict. Everything goes through standard input and standard output, as JSON Lines.
 
-Meanwhile, the protocol is published as [PROTOCOL.md](/spec/0.1/conformance/PROTOCOL.md).
+</InShort>
 
-</PageInProgress>
+The protocol is a draft, like HOS 0.1. It has its own version: a change that breaks existing implementations gets a new one. The published text is [PROTOCOL.md](/spec/0.1/conformance/PROTOCOL.md); this page describes the same protocol, with what hos does around it on each system.
+
+## The exchange
+
+<ProtocolDiagram />
+
+For each scenario:
+
+1. hos starts the command given after `--impl`, once, through the system's shell, in the folder hos runs from.
+2. It writes the whole scenario to the command's standard input, as JSON Lines, then closes it. Everything is sent at once: the program reads until the end of its input, and never waits for hos, so the two cannot block each other.
+3. The program writes its answers to standard output, one line of JSON per delivery, and exits with code 0. Standard error is free for its logs.
+4. hos compares the answers with the scenario's `expected.json`.
+
+A scenario fails when the program exits with another code, writes a line that is not JSON, or has not finished after the timeout, 30 seconds by default (`--timeout`). hos then shows the last lines of standard error.
+
+## Input
+
+Each line is a JSON object whose `kind` says what it holds, in this order.
+
+**One `scenario` line**:
+
+```json
+{
+  "kind": "scenario",
+  "protocol": "hos-conformance/1",
+  "level": "reference",
+  "scenario": "arrival-readiness",
+  "tenant": { "id": "tenant_demo" },
+  "property": { "id": "prop_demo", "timezone": "Europe/Paris", "country": "FR" },
+  "projection": { "ready_housekeeping_statuses": ["clean", "inspected"] }
+}
+```
+
+- `protocol`: the protocol's version. A program that does not know it exits with a code other than 0.
+- `level`: the level hos compares, `normative` or `reference`.
+- `projection`: the configuration of the reference projection: the housekeeping statuses that make a unit ready.
+
+**One `manifest` line per producer**, with its Event Producer manifest:
+
+```text
+{"kind": "manifest", "manifest": {"hosmanifestversion": "0.1", "producer": "urn:hos:pms:demo", ...}}
+```
+
+**One `delivery` line per delivery**, in delivery order, with the HOS event exactly as delivered:
+
+```text
+{"kind": "delivery", "delivery": 1, "event": {"specversion": "1.0", "id": "pms-000312", ...}}
+```
+
+## Output
+
+One line per delivery, in any order:
+
+```text
+{"delivery": 6, "disposition": "applied", "stays": {"stay_1042": {"readiness": "not_ready", "situation": "at_risk"}}, "situations": [{"specversion": "1.0", "type": "arrival.room_readiness_at_risk", ...}]}
+```
+
+- `delivery`: the number of the delivery it answers.
+- `disposition`: what the program did with the fact: `applied`, `duplicate`, `superseded`, `non_authoritative` or `undeclared_capability`.
+- `stays`: after the delivery, for every stay the program knows, its `readiness`, `unknown`, `not_ready` or `ready`, and the state of its `situation`, `none`, `at_risk` or `resolved`.
+- `situations`: the reference situations the delivery raised, as complete events, in the order they were raised; an empty array when there are none.
+
+Other members are ignored. A program of the normative level answers `delivery` and `disposition` only.
+
+## Levels and verdict
+
+`expected.json` pins down two things of different standing, and hos reports them apart:
+
+- **normative**: the dispositions. They follow the processing rules of HOS Events 0.1: deduplication on source and id, occurrence order, declared capability and authority. Every conformant consumer must reach them.
+- **reference**: readiness and situations, from the arrival-readiness reference projection. That projection is not normative: a consumer can assess arrivals differently and still follow HOS Events 0.1.
+
+With `--level normative`, hos compares only the dispositions. With `--level reference`, the default, it compares everything. A report reads, for example, `normative 13/13 · reference 13/13 · situations 2/2`: [Read a HOS report](/docs/tools/read-a-report#a-conformance-report) explains each score.
+
+For every delivery, hos compares the disposition and, for every known stay, its readiness and situation. Situations are compared on every attribute except `id` and `hosrecordedat`, which each implementation sets. Each difference is reported with its delivery, its path, the expected value and the value received.
+
+## Running the program, on each system
+
+- **The shell**: hos runs the command through the system's shell: the Command Prompt on Windows, `sh` elsewhere. On Windows, quote with double quotes, not single quotes.
+- **The folder**: the command runs in the folder hos runs from, so relative paths start there.
+- **Line endings**: hos reads answers ending in `\n` or `\r\n`.
+- **Stopping**: past the timeout, hos stops the command and everything it started. On Windows it ends the process tree with `taskkill`; elsewhere, the command runs in its own process group, which hos ends as a whole.
+- **Standard input**: a program may exit without reading its input; hos does not fail on that alone, but the program must still answer every delivery.
+
+## The reference implementation
+
+`hos reference-impl` implements this protocol with the SDK's reference projection. `hos conformance run --all --impl "hos reference-impl"` passes every scenario: it is the tool's check of itself. The [Python example](https://github.com/francoisnoel62/HOS-AI/tree/master/examples/python-dispositions) implements the normative level, and [Test a system that receives HOS facts](/docs/tools/guides/test-a-consumer) starts one in JavaScript.

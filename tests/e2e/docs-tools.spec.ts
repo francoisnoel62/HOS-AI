@@ -4,25 +4,39 @@ import { allToolsPages, toolsPages } from "@/lib/docs/tools";
 
 test("the tools documentation reads in order, from the overview to Get help", async ({ page, isMobile }) => {
   test.skip(isMobile, "The same pages; the mobile menu has its own test.");
+  // Nineteen pages, some long.
+  test.setTimeout(120_000);
+  const nextLink = () => page.getByRole("navigation", { name: "Previous and next pages" }).getByRole("link", { name: /^Next/ });
   await page.goto("/docs/tools");
+  await nextLink().click();
+  await expect(page).toHaveURL(new RegExp(`${toolsPages[1].href}$`));
+
+  // Each page names the next one; following every link by a click would scroll to the foot of each long page.
   for (const [index, item] of toolsPages.entries()) {
-    await expect(page).toHaveURL(new RegExp(`${item.href}$`));
+    await page.goto(item.href);
     await expect(page.getByRole("heading", { level: 1, name: item.title })).toBeVisible();
     await expect(
       page.getByRole("navigation", { name: "Tools documentation" }).getByRole("link", { name: new RegExp(`^${item.navTitle}( ?, being written)?$`) }),
     ).toHaveAttribute("aria-current", "page");
     const next = toolsPages[index + 1];
-    if (!next) {
-      await expect(page.getByRole("link", { name: /^Next/ })).toHaveCount(0);
-      break;
-    }
-    await page.getByRole("link", { name: new RegExp(`^Next\\s*${next.navTitle}$`) }).click();
+    if (!next) await expect(nextLink()).toHaveCount(0);
+    else await expect(nextLink()).toHaveAttribute("href", next.href);
   }
 });
 
 test("every link of the tools documentation leads somewhere, and every section link to its heading", async ({ page, request, isMobile }) => {
   test.skip(isMobile, "Links do not depend on the viewport.");
-  const checked = new Set<string>();
+  test.setTimeout(120_000);
+  // Each page once, and its HTML for the anchors that other pages link to.
+  const pages = new Map<string, string>();
+  async function html(path: string, from: string) {
+    if (!pages.has(path)) {
+      const response = await request.get(path);
+      expect(response.status(), `${from} → ${path}`).toBe(200);
+      pages.set(path, path.endsWith(".md") || path.includes(".json") ? "" : await response.text());
+    }
+    return pages.get(path)!;
+  }
   for (const item of allToolsPages) {
     await page.goto(item.href);
     const hrefs = await page.locator("main a[href]").evaluateAll((links) => links.map((link) => link.getAttribute("href")!));
@@ -32,11 +46,9 @@ test("every link of the tools documentation leads somewhere, and every section l
         continue;
       }
       if (!href.startsWith("/")) continue;
-      // Rule anchors are checked once the rules page exists (phase 4 of PLAN-SDK-DOC.md); the page itself must answer.
-      const path = href.split("#")[0];
-      if (checked.has(path)) continue;
-      checked.add(path);
-      expect((await request.get(path)).status(), `${item.href} → ${path}`).toBe(200);
+      const [path, anchor] = href.split("#");
+      const text = await html(path, item.href);
+      if (anchor) expect(text, `${item.href} → ${href}`).toContain(`id="${anchor}"`);
     }
   }
 });
@@ -72,9 +84,11 @@ test("the search finds a page from a few words or a pasted message, and / moves 
     .getByRole("link", { name: /Sign and publish a producer manifest/ })
     .first()
     .click();
-  await expect(page).toHaveURL(/\/docs\/tools\/guides\/sign-and-publish$/);
+  // The page, or one of its sections.
+  await expect(page).toHaveURL(/\/docs\/tools\/guides\/sign-and-publish(#[a-z0-9-]+)?$/);
 
-  await search.fill("a valid manifest with its limitations stated");
+  // A message pasted from hos, with the level it starts with.
+  await search.fill("error   comes back with different content (time). A source and id name one fact, which never changes");
   await expect(page.getByRole("link", { name: /Check what a producer publishes/ }).first()).toBeVisible();
   await search.fill("zzzz qqqq");
   await expect(page.getByText("No result. Try fewer words, or the words of the error message.").last()).toBeVisible();
@@ -123,4 +137,23 @@ test("each page links to a prefilled GitHub issue about itself", async ({ page }
   expect(url.pathname).toMatch(/\/issues\/new$/);
   expect(url.searchParams.get("title")).toBe("Docs: Install the tools");
   expect(url.searchParams.get("body")).toContain("/docs/tools/install");
+});
+
+test("a terminal replays its command and output, unless the reader asks for less motion", async ({ page }) => {
+  await page.goto("/docs/tools/quickstart");
+  const cast = page
+    .locator("figure")
+    .filter({ has: page.getByRole("button", { name: "Replay" }) })
+    .first();
+  // The whole transcript is there before any replay.
+  await expect(cast).toContainText("invalid event unit.status_changed");
+  await expect(cast.locator(".invisible")).toHaveCount(0);
+  await cast.getByRole("button", { name: "Replay" }).click();
+  await expect(cast.locator(".invisible").first()).toBeAttached();
+  await expect(cast.locator(".invisible")).toHaveCount(0, { timeout: 10_000 });
+
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.reload();
+  await expect(page.getByRole("button", { name: "Replay" })).toHaveCount(0);
+  await expect(page.getByText("invalid event unit.status_changed").first()).toBeVisible();
 });

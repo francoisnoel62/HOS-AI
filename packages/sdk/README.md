@@ -161,6 +161,7 @@ HOS publishes conformance scenarios: a stream of deliveries from several produce
 
 ## Links
 
+- [Documentation of the tools](https://hos-ai.vercel.app/docs/tools), with the [SDK reference](https://hos-ai.vercel.app/docs/tools/sdk) and a guide to [build an adapter](https://hos-ai.vercel.app/docs/tools/guides/build-an-adapter)
 - [HOS 0.1 documentation](https://hos-ai.vercel.app/docs): HOS Core, HOS Events and their schemas
 - [Changelog](https://github.com/francoisnoel62/HOS-AI/blob/master/packages/sdk/CHANGELOG.md) and [source](https://github.com/francoisnoel62/HOS-AI/tree/master/packages/sdk)
 

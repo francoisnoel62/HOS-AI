@@ -1,8 +1,9 @@
 import { ArrowRight } from "lucide-react";
 import Link from "next/link";
 
+import { sourceOf } from "@/lib/docs/content";
 import { glossary } from "@/lib/docs/glossary";
-import { findToolsPage } from "@/lib/docs/tools";
+import { findToolsPage, toolsPages } from "@/lib/docs/tools";
 
 // Where each reader starts, by what they want to do (docs/plans/PLAN-SDK-DOC.md, §1).
 const goals = [
@@ -43,15 +44,36 @@ export function IWantTo() {
   );
 }
 
+// Every term, in alphabetical order, with the pages that use it.
 export function GlossaryList() {
+  const sources = toolsPages.map((item) => ({ item, source: sourceOf(item) }));
+  const usedIn = (id: string) => sources.filter(({ source }) => source.includes(`<Term id="${id}"`)).map(({ item }) => item);
   return (
     <dl className="my-8 divide-y divide-[var(--border)] border-y border-[var(--border)]">
-      {glossary.map((entry) => (
-        <div className="scroll-mt-24 py-5" id={entry.id} key={entry.id}>
-          <dt className="font-semibold">{entry.term}</dt>
-          <dd className="mt-2 leading-7 text-[var(--muted-foreground)]">{entry.definition}</dd>
-        </div>
-      ))}
+      {[...glossary]
+        .sort((a, b) => a.term.localeCompare(b.term, "en"))
+        .map((entry) => {
+          const pages = usedIn(entry.id);
+          return (
+            <div className="scroll-mt-24 py-5" id={entry.id} key={entry.id}>
+              <dt className="font-semibold">{entry.term}</dt>
+              <dd className="mt-2 leading-7 text-[var(--muted-foreground)]">{entry.definition}</dd>
+              {pages.length ? (
+                <dd className="mt-2 text-sm text-[var(--muted-foreground)]">
+                  Used in:{" "}
+                  {pages.map((item, index) => (
+                    <span key={item.href}>
+                      {index ? ", " : ""}
+                      <Link className="text-[var(--accent-strong)] underline underline-offset-4" href={item.href}>
+                        {item.navTitle}
+                      </Link>
+                    </span>
+                  ))}
+                </dd>
+              ) : null}
+            </div>
+          );
+        })}
     </dl>
   );
 }
