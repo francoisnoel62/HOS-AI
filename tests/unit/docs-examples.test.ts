@@ -346,7 +346,7 @@ function adapterFolder(extra: Record<string, string> = {}) {
 }
 function node(cwd: string, ...args: string[]) {
   // Without the test runner's channel to its workers, which a child process must not take for its own.
-  const env: Record<string, string | undefined> = { ...process.env, NODE_OPTIONS: "--conditions=@hos-ai/source" };
+  const env: NodeJS.ProcessEnv = { ...process.env, NODE_OPTIONS: "--conditions=@hos-ai/source" };
   delete env.NODE_CHANNEL_FD;
   delete env.NODE_CHANNEL_SERIALIZATION_MODE;
   return execFileSync(process.execPath, args, { cwd, env, encoding: "utf8" });
