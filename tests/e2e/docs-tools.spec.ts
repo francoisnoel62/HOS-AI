@@ -6,8 +6,9 @@ test("the tools documentation reads in order, from the overview to Get help", as
   test.skip(isMobile, "The same pages; the mobile menu has its own test.");
   // Nineteen pages, some long.
   test.setTimeout(120_000);
+  const nextLink = () => page.getByRole("navigation", { name: "Previous and next pages" }).getByRole("link", { name: /^Next/ });
   await page.goto("/docs/tools");
-  await page.getByRole("link", { name: /^Next/ }).click();
+  await nextLink().click();
   await expect(page).toHaveURL(new RegExp(`${toolsPages[1].href}$`));
 
   // Each page names the next one; following every link by a click would scroll to the foot of each long page.
@@ -18,9 +19,8 @@ test("the tools documentation reads in order, from the overview to Get help", as
       page.getByRole("navigation", { name: "Tools documentation" }).getByRole("link", { name: new RegExp(`^${item.navTitle}( ?, being written)?$`) }),
     ).toHaveAttribute("aria-current", "page");
     const next = toolsPages[index + 1];
-    const link = page.getByRole("link", { name: /^Next/ });
-    if (!next) await expect(link).toHaveCount(0);
-    else await expect(link).toHaveAttribute("href", next.href);
+    if (!next) await expect(nextLink()).toHaveCount(0);
+    else await expect(nextLink()).toHaveAttribute("href", next.href);
   }
 });
 
