@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useId, useState } from "react";
 
 import { DocsSearch } from "@/components/docs/docs-search";
-import { toolsSections } from "@/lib/docs/tools";
+import { toolsPages, toolsSections } from "@/lib/docs/tools";
 import { cn } from "@/lib/utils";
 
 function PageLinks({ pathname, onNavigate }: { pathname: string; onNavigate?: () => void }) {
@@ -45,9 +45,11 @@ function PageLinks({ pathname, onNavigate }: { pathname: string; onNavigate?: ()
           </ul>
         </div>
       ))}
-      <p aria-hidden="true" className="flex items-center gap-1.5 text-xs text-[var(--muted-foreground)]">
-        <PencilLine size={12} /> Being written
-      </p>
+      {toolsPages.some((item) => !item.written) ? (
+        <p aria-hidden="true" className="flex items-center gap-1.5 text-xs text-[var(--muted-foreground)]">
+          <PencilLine size={12} /> Being written
+        </p>
+      ) : null}
     </div>
   );
 }

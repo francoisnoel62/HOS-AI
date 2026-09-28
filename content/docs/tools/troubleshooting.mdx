@@ -1,13 +1,303 @@
-<PageInProgress>
+<InShort>
 
-This page will help you get unstuck, whether you know the symptom, have an error message or a code. You will be able to find a problem:
+Stuck? Paste the message you got into the search box: it finds its entry here. Or find your problem by what you see, or by the exit code. Each entry says what the message means, why it happens, and how to fix it. After a fix, run the same command again: the message is gone, and the exit code tells you the rest.
 
-- by symptom, in plain words: "the hos command is not found", "everything is `undeclared_capability`", "my program passes on my computer but not in the test", "the signature has expired";
-- by the exact message: paste it in the search box;
-- by code: the exit codes 0, 1 and 2, and the seven signature errors.
+</InShort>
 
-Each entry will give the message, what it means, why it happens, how to fix it on each system, how to check the fix, and where to ask if it still fails.
+## By exit code
 
-Meanwhile, the "On Windows" section of the [npm page of the hos command](https://www.npmjs.com/package/@hos-ai/cli) covers the most common problems on Windows, and you can [ask for help](/docs/tools/help).
+| Code | What it means                                                     | Where to look                                                                                                                                                                                                  |
+| :--- | :---------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0    | everything passed                                                 | nothing to fix                                                                                                                                                                                                 |
+| 1    | a file is invalid, a check failed, or a signature does not verify | the output names each problem and its rule: see [Rules](/docs/tools/rules), or the sections on [conformance](#when-a-conformance-run-fails), [producers](#producer-checks) and [signatures](#signatures) below |
+| 2    | the command is wrong, or a file or URL could not be read          | the first line of the output, which starts with `hos`: see [Command errors](#command-errors)                                                                                                                   |
 
-</PageInProgress>
+Print the exit code right after a command: `$LASTEXITCODE` in PowerShell, `echo %ERRORLEVEL%` in the Command Prompt, `echo $?` on macOS and Linux.
+
+## By symptom
+
+- The terminal does not know `node`, `npx` or `hos`: [Installing and running](#installing-and-running).
+- PowerShell refuses to run `npx`: [running scripts is disabled](#running-scripts-is-disabled-on-this-system).
+- A download does nothing, or PowerShell asks for a `Uri`: [curl in PowerShell](#powershell-asks-for-a-uri).
+- A file that looks fine is `Not JSON`: [encoding](#not-json-unexpected-token).
+- Everything in a replay is `undeclared_capability`: [no manifest](#no-manifest-given-so-every-fact-is-undeclared).
+- My program passes on my computer but not in the test: [when a conformance run fails](#when-a-conformance-run-fails).
+- The producer check fails after a restart: [producer checks](#producer-checks).
+- The signature has expired, or does not verify: [signatures](#signatures).
+- An error names a rule, such as `core/unit-status-model`: [Rules](/docs/tools/rules) explains each one.
+
+## Installing and running
+
+### node is not recognized
+
+In PowerShell: `The term 'node' is not recognized`. In the Command Prompt: `'node' is not recognized as an internal or external command`. On macOS and Linux: `command not found: node`.
+
+Node.js is not installed, or the terminal was opened before it was. Install Node.js 22 or later, then open a new terminal: see [Install](/docs/tools/install#install-or-update-node-js).
+
+### EBADENGINE
+
+npm prints a warning containing `EBADENGINE` and `required: { node: '>=22' }`. Your Node.js is older than 22, which the tools need. Check with `node --version`, and [update Node.js](/docs/tools/install#install-or-update-node-js).
+
+### running scripts is disabled on this system
+
+PowerShell says `npx.ps1 cannot be loaded because running scripts is disabled on this system`. Windows starts with PowerShell scripts disabled, and `npx`, `npm` and `hos` are started by small scripts. Type `npx.cmd`, `npm.cmd` or `hos.cmd` instead, or allow scripts for your account if your organisation permits it: see [Install](/docs/tools/install#running-scripts-is-disabled).
+
+### Need to install the following packages
+
+npx asks before it downloads `@hos-ai/cli` the first time. Press Enter to accept. In a script or a CI, where nobody can answer, npx accepts on its own; to pin the version, [install the command in the project](/docs/tools/guides/ci#pin-the-version-of-the-tools).
+
+### hos is not recognized
+
+After `npm install --global @hos-ai/cli`, the terminal does not know `hos`. Open a new terminal. If it still fails, npm's global folder is not on your `PATH`: `npm prefix --global` shows where it is. You can always run `npx @hos-ai/cli` instead.
+
+### ETIMEDOUT, ENOTFOUND or SELF_SIGNED_CERT_IN_CHAIN
+
+npm cannot reach its registry: a company proxy or firewall is in the way. Ask your IT team for the proxy or the internal registry, and set it as [Install](/docs/tools/install#behind-a-company-network) shows.
+
+### PowerShell asks for a Uri
+
+You typed `curl -O ...` in Windows PowerShell 5.1, where `curl` is another command, `Invoke-WebRequest`. PowerShell prompts `Supply values for the following parameters: Uri:`. Press Ctrl+C, and type `curl.exe -O ...`: the real curl, which comes with Windows 10 and 11.
+
+### Not JSON: Unexpected token
+
+hos says a file is `Not JSON: Unexpected token`, followed by an invisible character, though the file looks right in an editor. The file is not plain UTF-8: it was saved as UTF-16, or with a byte order mark at its start. Windows PowerShell 5.1 does it with `>` and `Out-File`, and with a pipe to another program. Download the file again, or save it in your editor as UTF-8 without a byte order mark. Windows PowerShell 5.1 has no option that writes UTF-8 without the mark, not even `-Encoding utf8`: save the file from an editor, or [pipe through the Command Prompt](/docs/tools/guides/validate#validate-what-another-program-prints).
+
+A `.jsonl` stream in which one line is not JSON gives the same message for that line, under the rule [`events/replay`](/docs/tools/rules#events-replay).
+
+### This is not a HOS document
+
+The file is JSON, but has neither `specversion`, as an event or a situation has, nor `hosmanifestversion`, as a manifest has. Check that you validate the event or the manifest itself, not an API response around it. A stream must be named `.jsonl` or `.ndjson`.
+
+## Command errors
+
+These end with exit code 2. The first line names the command, such as `hos validate:`, and what is wrong. A misspelled option gives Node.js's own message, such as `Unknown option '--jsn'`, followed by `Run hos validate --help for usage.`, `Run hos replay --help for usage.`, `Run hos conformance --help for usage.` or `Run hos manifest --help for usage.`: the help lists the options.
+
+### hos: unknown command
+
+`hos: unknown command validat`, or `hos: name a command`: the first word after `hos` is not one of its commands. hos prints the list: `validate`, `replay`, `conformance` or `manifest`.
+
+### cannot read
+
+`hos validate: cannot read unit.json: ENOENT: no such file or directory`, or the same after `hos replay:`, `hos conformance:` or `hos manifest:`. The file is not where the command looks: paths are relative to the folder you run hos from. Check the name, and the folder you are in (`pwd` in PowerShell and on macOS and Linux, `cd` alone in the Command Prompt).
+
+### answers 404
+
+`https://your-domain.example/.well-known/hos/manifest.json answers 404 Not Found`: hos fetched a URL that did not answer 200. Check the address in a browser. For a published manifest, check that the folder `.well-known/hos/` was deployed: see [Sign and publish](/docs/tools/guides/sign-and-publish#publish-the-three-files).
+
+### is not JSON
+
+`hos validate: the manifest pms.json is not JSON: ...`, `hos conformance: the manifest manifest.json is not JSON: ...`, or, for `hos manifest`, `manifest.json is not JSON: ...`: a manifest, a key or a key set could not be read as JSON. Open it in an editor that checks JSON, and see [encoding](#not-json-unexpected-token).
+
+### hos validate: name at least one file, or - for standard input.
+
+Give the files to validate after `validate`, or `-` to read standard input.
+
+### hos validate: --manifest applies to streams (.jsonl) only.
+
+Only a warning: manifests change how a stream is checked, and nothing else. The files are still validated. A stream must be named `.jsonl` or `.ndjson` to be read as one.
+
+### hos replay: name one stream, or - for standard input.
+
+`hos replay` takes exactly one stream. To replay several files, join them in the order they were delivered.
+
+### no manifest given, so every fact is undeclared
+
+`hos replay: no --manifest given, so every fact is undeclared and nothing is applied.` Give each producer's manifest after `-m`: see [Replay a stream](/docs/tools/guides/replay#the-most-common-mistake-no-manifest).
+
+### name the implementation to test with --impl
+
+`hos conformance: name the implementation to test with --impl, for example --impl "python impl.py".` `hos conformance run` needs the command that starts your program, in quotes: see [Test a consumer](/docs/tools/guides/test-a-consumer).
+
+### name the scenarios to run, or use --all.
+
+Give scenario names after `run`, such as `arrival-readiness`, or `--all`.
+
+### no scenario
+
+`hos conformance: no scenario arrival. The scenarios are arrival-readiness, late-checkout, room-out-of-order.` A name is misspelled: use one of those listed. `hos conformance list` lists them too.
+
+### cannot read the scenarios in
+
+`hos conformance: cannot read the scenarios in scenarios: ...`, or `scenarios holds no scenario: a scenario directory has a scenario.json.` The folder given to `--scenario-dir` is not a scenario, nor a folder of scenarios: see [your own scenarios](/docs/tools/guides/test-a-consumer#your-own-scenarios).
+
+### --level is
+
+`hos conformance: --level is full; use normative or reference.` Only those two levels exist.
+
+### --timeout is
+
+`hos conformance: --timeout is 1m; give a number of seconds.` Write `--timeout 60`.
+
+### unknown subcommand
+
+`hos conformance: unknown subcommand start: use list, run or producer.`, or `hos manifest: unknown subcommand create; use keygen, sign or verify.` Use one of the subcommands listed.
+
+### hos conformance: producer needs --manifest and --stream.
+
+The producer check needs the manifest and the recording: see [Check a producer](/docs/tools/guides/check-a-producer).
+
+### hos reference-impl: the input speaks
+
+`hos reference-impl` read a scenario of another protocol version than the one it speaks. Use the same version of hos for `conformance run` and for `reference-impl`.
+
+### keygen needs --key and --jwks.
+
+Give both files: where to write the private key, and the key set to add its public key to.
+
+### already exists. A new key goes to a new file, so no key is lost.
+
+`private-key.json already exists.` `keygen` never overwrites a key. Choose another file name, such as `private-key-2.json`, for a new key.
+
+### already has a key with kid
+
+`jwks.json already has a key with kid ... A kid names one key.` The `--kid` you gave is taken in the key set. Choose another, or leave out `--kid` to use the key's fingerprint.
+
+### is not a key set: a key set has keys.
+
+The file given to `--jwks` is JSON, but not a key set, whose members are in `keys`. Check that you gave `jwks.json`, not the private key.
+
+### cannot read the key set
+
+`cannot read the key set jwks.json`: the key set could not be read. Check its name and folder.
+
+### --alg is
+
+`--alg is RS256; use Ed25519 or ES256.` HOS manifests are signed with one of those two algorithms only.
+
+### sign needs a manifest and --key.
+
+Give the manifest to sign, then `--key` and the private key.
+
+### --days is
+
+`--days is 90d; give a number of days.` Write `--days 90`.
+
+### verify needs a manifest, as a file or a URL.
+
+Give the manifest after `verify`: its file, or its URL.
+
+### `name the producer's key set: --jwks <file> or --jwks-url <url>.`
+
+A manifest given as a file needs its key set: `--jwks jwks.json`, or `--jwks-url` with its address. A manifest given by URL finds it on its own.
+
+### give the key set once: --jwks or --jwks-url.
+
+Give one of the two, not both.
+
+### --at is
+
+`--at is tomorrow; give a time such as 2026-11-01T00:00:00Z.` `--at` takes a date and time in UTC, ending in `Z`.
+
+### unexpected
+
+`hos manifest: unexpected extra.json.` The command got more files than it takes. Check the quotes around paths with spaces.
+
+## When a conformance run fails
+
+A scenario fails with exit code 1 when its report differs from `expected.json`, or when the program itself fails. For a difference, the report names the delivery, the field, the value expected and the one received: [Read a report](/docs/tools/read-a-report#when-a-scenario-fails) explains it. The program's failures are these.
+
+### could not start the implementation
+
+`could not start the implementation: ...`, followed by the system's reason: hos could not start the command after `--impl`. Run the command on its own, in the same folder, to see why.
+
+### the implementation exited with code
+
+`the implementation exited with code 1`, followed by the last lines of its standard error. When those lines say the program is not recognised, or `command not found`, the command does not exist on this system:
+
+- On Windows, Python is usually `py`, not `python3`. If `python3` opens the Microsoft Store, or prints `Python was not found`, use `--impl "py impl.py"`.
+- Paths are relative to the folder you run hos from, not to the program's folder.
+- `--impl` runs through the Command Prompt on Windows: use double quotes, and quote paths with spaces inside them.
+
+Otherwise, your program failed: its standard error says why.
+
+### the implementation did not finish within
+
+`the implementation did not finish within 30 s`: hos stopped the program. It usually waits for input that will never come: read standard input until its end, then answer. If it is only slow, raise `--timeout`.
+
+### of the output is not JSON
+
+`line 1 of the output is not JSON: Starting...`: the program printed something else than answers on standard output. Print logs to standard error, and only one JSON object per line to standard output.
+
+### of the output names no delivery
+
+`line 2 of the output names no delivery: {"disposition":"applied"}`: a line of the output is JSON, but has no `delivery` number. Each answer carries the number of the delivery it answers.
+
+### which the scenario does not have
+
+`line 3 of the output answers delivery 14, which the scenario does not have`: answer with the numbers the input gave, from 1 to the number of deliveries.
+
+### is answered twice
+
+`delivery 5 is answered twice, on lines 5 and 6 of the output`: each delivery gets one answer.
+
+### the implementation answered no delivery
+
+The program exited with code 0 but printed nothing. Check that it writes to standard output, and that it flushes before it exits.
+
+### no answer has stays or situations
+
+`no answer has stays or situations: an implementation of the normative level runs with --level normative`. The program answers dispositions only, and runs at the reference level. Add `--level normative`, or answer `stays` and `situations` as the [protocol](/docs/tools/protocol#output) describes.
+
+## Producer checks
+
+The producer check ends with exit code 1 when one of its checks fails. [Check what a producer publishes](/docs/tools/guides/check-a-producer#check-your-own-producer) explains the checks; here are their messages.
+
+### limitations is empty
+
+`limitations is empty. A producer states its known gaps, unsupported states and access constraints, which the Event Producer checks require.` State what your system does not publish, does not know, or cannot share.
+
+### The recording holds no fact.
+
+The file given to `--stream` is empty, or is not the recording.
+
+### but the manifest is
+
+`source is urn:hos:pms:demo, but the manifest is urn:hos:housekeeping:demo's.` The recording holds another producer's facts: record one producer per file, with its own manifest.
+
+### is not in the recording
+
+`pms-000999 from urn:hos:pms:demo is not in the recording.` After a restart, the producer published a fact under a new id. Derive ids from the source's own id for the event: see [Same data, same facts](/docs/tools/guides/check-a-producer#same-data-same-facts).
+
+### comes back with different content
+
+`pms-000312 comes back with different content (time).` The field in brackets changed between the recording and the redelivery: it comes from the clock or from state the adapter lost, such as its crosswalk. See [Build an adapter](/docs/tools/guides/build-an-adapter#restart-it-on-the-same-data).
+
+### does not declare
+
+`urn:hos:pms:demo does not declare housekeeping.task.created at prop_demo: a consumer ignores this event (undeclared_capability).` Declare the fact in the manifest, for the hotel, or stop publishing it: see [`events/declared-capability`](/docs/tools/rules#events-declared-capability).
+
+## Signatures
+
+`hos manifest verify` ends with exit code 1 when the signature does not verify, and names the reason.
+
+### bad signature
+
+The manifest changed after it was signed, or another key signed it. Sign again, and publish the manifest and its signature together.
+
+### expired
+
+The signature's end date has passed. Sign again, and warn yourself next time with `--at` in a scheduled check: see [Sign again before it expires](/docs/tools/guides/sign-and-publish#sign-again-before-it-expires).
+
+### not yet valid
+
+The signature starts in the future: the clock of the signing system, or of the verifying one, is wrong by more than 60 seconds. Set both clocks from the network.
+
+### unknown key
+
+No key in the key set has the signature's `kid`, or two keys have it. Publish the key set that has the signing key.
+
+### unusable key
+
+The key cannot verify the signature, or it is a private key. A private key published in the key set has leaked: follow [If a private key leaks](/docs/tools/guides/sign-and-publish#if-a-private-key-leaks).
+
+### unsupported algorithm
+
+The signature uses another algorithm than Ed25519 or ES256, such as `none`. Sign with `hos manifest sign`.
+
+### malformed
+
+`manifest.jws` is not a detached signature with a key and dates. Sign again with `hos manifest sign`, and publish the file as it is.
+
+## Still stuck
+
+[Get help](/docs/tools/help): what to send, and where.

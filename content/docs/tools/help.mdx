@@ -1,20 +1,39 @@
-<PageInProgress>
+<InShort>
 
-This page will list what to check before asking, and what to send so that someone can help quickly.
+Questions and problems with the tools go to the project's GitHub issues, where anyone can answer and everyone can find the answer later. Check five things first, then send what someone needs to reproduce your problem, with made-up data only.
 
-</PageInProgress>
+</InShort>
+
+## Before you ask
+
+1. **Paste the message** into the search box at the top of these pages. [Troubleshooting](/docs/tools/troubleshooting) has an entry for every message of hos.
+2. **Check your versions**: `node --version` prints 22 or more, and `npx @hos-ai/cli@latest --version` gives the newest version of hos, which may already fix your problem.
+3. **Run the command again, alone**, in a new terminal, in the folder of your files. Many problems come from a folder or a shell.
+4. **Read the rule** that an error names: [Rules](/docs/tools/rules) explains each one, with how to fix it.
+5. **Try the example** of the guide you follow. If the example works and your file does not, the difference is the answer, or a good question.
 
 ## Ask on GitHub
 
-Questions and problems with the tools go to the project's GitHub issues, with the [template for the CLI and the SDK](https://github.com/francoisnoel62/HOS-AI/issues/new?template=cli-sdk-problem.yml). It asks for:
+Open an issue with the [template for the CLI and the SDK](https://github.com/francoisnoel62/HOS-AI/issues/new?template=cli-sdk-problem.yml). It asks for what someone needs to reproduce your problem:
 
-- the output of `hos --version` and `node --version`;
-- your system, for example Windows 11 with PowerShell;
-- the exact command, and everything it printed, with `--json` when the command has it;
+- the output of `hos --version`, or the version of `@hos-ai/sdk` in your `package.json`;
+- the output of `node --version`, and your system, such as Windows 11 with PowerShell;
+- the exact command you ran, or a short piece of code;
+- everything it printed, with `--json` when the command has it;
 - a file that shows the problem, if there is one.
 
-The repository is public. Use synthetic data only: never real guest data, credentials, API keys or private keys.
+A question about the documentation itself, such as a step that does not work or a sentence that is unclear, goes in an issue too: each page has a "Report a problem with this page" link at its foot, which fills in the page for you.
+
+<Callout type="warning" title="Made-up data only">
+
+The repository is public, and so is every issue. Never send real guest data, a hotel's operational data, credentials, API keys or a private key. Replace names and ids with made-up ones, as the examples of these pages do. If the problem only shows with real data, say so, and describe it without the data.
+
+</Callout>
 
 ## Report a vulnerability
 
-A security problem does not go in a public issue: follow the [security policy](https://github.com/francoisnoel62/HOS-AI/blob/master/SECURITY.md).
+A security problem, such as a way to get a signature accepted that should not be, does not go in a public issue. Follow the [security policy](https://github.com/francoisnoel62/HOS-AI/blob/master/SECURITY.md), which says how to report it privately.
+
+## What to expect
+
+The tools are alphas, maintained in the open. Issues are read and answered as time allows; there is no support contract and no response time. Fixes come in new versions of the packages, which their changelogs list: [the command](https://github.com/francoisnoel62/HOS-AI/blob/master/packages/cli/CHANGELOG.md), [the SDK](https://github.com/francoisnoel62/HOS-AI/blob/master/packages/sdk/CHANGELOG.md).

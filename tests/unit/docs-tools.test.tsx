@@ -111,6 +111,33 @@ describe("reference pages", () => {
   });
 });
 
+describe("troubleshooting", () => {
+  // The messages of the CLI, from its sources: the first text given to each error call, and the problems of a
+  // conformance run. The longest fixed part of each, between its ${…} values and line breaks, must be on the page.
+  const cli = sourcesOf(path.join(process.cwd(), "packages/cli/src")).join(" ");
+  const calls = /(?:usageError|UsageError|stderr|problems\.push)\(\s*(`(?:[^`\\]|\\.)*`|"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')/g;
+  const runProblems = /[`"]((?:could not start|the implementation|no answer has)[^`"]*)[`"]/g;
+  const fixedPart = (text: string) =>
+    text
+      .split(/\$\{[^}]*\}|\\n/)
+      .map((part) => part.trim())
+      .filter((part) => !part.includes("${"))
+      .sort((a, b) => b.length - a.length)[0] ?? "";
+
+  it("has an entry for every message the CLI prints", () => {
+    const page = pageSource("/docs/tools/troubleshooting");
+    const messages = [
+      ...[...cli.matchAll(calls)].map(([, literal]) => literal.slice(1, -1)),
+      ...[...cli.matchAll(runProblems)].map(([, text]) => text),
+    ];
+    const parts = [...new Set(messages.map(fixedPart).filter((part) => part.length >= 10))];
+    expect(parts.length).toBeGreaterThan(35);
+    // Messages built from nested templates, which the patterns above do not read.
+    parts.push("hos: unknown command", "hos: name a command", "answers 404");
+    for (const part of parts) expect(page, part).toContain(part);
+  });
+});
+
 describe("MDX sources", () => {
   it("splits a page at its headings and steps, with the ids the rendered headings get", () => {
     const sections = readMdx(
