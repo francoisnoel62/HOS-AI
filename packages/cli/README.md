@@ -189,6 +189,7 @@ Keep `private-key.json` secret, and out of version control: whoever holds it can
 
 ## Links
 
+- [Documentation of the tools](https://hos-ai.vercel.app/docs/tools): install, quickstart, guides, references and [troubleshooting](https://hos-ai.vercel.app/docs/tools/troubleshooting)
 - [HOS 0.1 documentation](https://hos-ai.vercel.app/docs): HOS Core, HOS Events and their schemas
 - [Conformance protocol](https://hos-ai.vercel.app/spec/0.1/conformance/PROTOCOL.md), for implementations in any language
 - [@hos-ai/sdk](https://www.npmjs.com/package/@hos-ai/sdk): the same checks as a TypeScript library

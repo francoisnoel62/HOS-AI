@@ -150,11 +150,13 @@ export const toolsSections: ToolsSection[] = [
     title: "Help",
     pages: [
       page("troubleshooting", {
+        written: true,
         title: "Troubleshooting",
         navTitle: "Troubleshooting",
         description: "Find your problem by symptom, by the exact message or by its code, and fix it step by step.",
       }),
       page("help", {
+        written: true,
         title: "Get help",
         navTitle: "Get help",
         description: "What to check first, what to send, and where to ask.",

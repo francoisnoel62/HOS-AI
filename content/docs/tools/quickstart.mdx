@@ -107,7 +107,8 @@ Validate it again:
 npx @hos-ai/cli validate unit.status_changed.json
 ```
 
-```output id="validate-error"
+```cast id="validate-error"
+$ npx @hos-ai/cli validate unit.status_changed.json
 ✗ unit.status_changed.json: invalid event unit.status_changed (1 error)
   error   data.current is "cleaning", not one of: dirty, clean, inspected, unknown. Readiness as reported by the housekeeping authority.
           rule core/unit-status-model · at /data/current
@@ -171,7 +172,8 @@ Replay the facts, with the three manifests, each after `-m`:
 npx @hos-ai/cli replay events.jsonl -m pms.json -m housekeeping.json -m messaging.json
 ```
 
-```output id="replay"
+```cast id="replay"
+$ npx @hos-ai/cli replay events.jsonl -m pms.json -m housekeeping.json -m messaging.json
  1  applied                reservation.created · pms-000312 · urn:hos:pms:demo
  2  applied                stay.expected · pms-000421 · urn:hos:pms:demo
     stay_1042: expected, unit none, readiness unknown, situation none

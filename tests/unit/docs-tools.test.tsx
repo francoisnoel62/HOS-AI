@@ -8,6 +8,7 @@ import * as sdkReference from "@hos-ai/sdk/reference";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { Command } from "@/components/docs/command";
+import { OutputLineDiagram } from "@/components/docs/diagrams";
 import { Os, OsTabs } from "@/components/docs/os-tabs";
 import { TerminalOutput } from "@/components/docs/terminal-output";
 import { buildSearchIndex, contentDirectory, sourceOf } from "@/lib/docs/content";
@@ -111,6 +112,33 @@ describe("reference pages", () => {
   });
 });
 
+describe("troubleshooting", () => {
+  // The messages of the CLI, from its sources: the first text given to each error call, and the problems of a
+  // conformance run. The longest fixed part of each, between its ${…} values and line breaks, must be on the page.
+  const cli = sourcesOf(path.join(process.cwd(), "packages/cli/src")).join(" ");
+  const calls = /(?:usageError|UsageError|stderr|problems\.push)\(\s*(`(?:[^`\\]|\\.)*`|"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')/g;
+  const runProblems = /[`"]((?:could not start|the implementation|no answer has)[^`"]*)[`"]/g;
+  const fixedPart = (text: string) =>
+    text
+      .split(/\$\{[^}]*\}|\\n/)
+      .map((part) => part.trim())
+      .filter((part) => !part.includes("${"))
+      .sort((a, b) => b.length - a.length)[0] ?? "";
+
+  it("has an entry for every message the CLI prints", () => {
+    const page = pageSource("/docs/tools/troubleshooting");
+    const messages = [
+      ...[...cli.matchAll(calls)].map(([, literal]) => literal.slice(1, -1)),
+      ...[...cli.matchAll(runProblems)].map(([, text]) => text),
+    ];
+    const parts = [...new Set(messages.map(fixedPart).filter((part) => part.length >= 10))];
+    expect(parts.length).toBeGreaterThan(35);
+    // Messages built from nested templates, which the patterns above do not read.
+    parts.push("hos: unknown command", "hos: name a command", "answers 404");
+    for (const part of parts) expect(page, part).toContain(part);
+  });
+});
+
 describe("MDX sources", () => {
   it("splits a page at its headings and steps, with the ids the rendered headings get", () => {
     const sections = readMdx(
@@ -181,6 +209,21 @@ describe("documentation search", () => {
     expect(index.find((entry) => entry.href === "/docs/tools")?.text).toContain("which one you need");
     expect(index.some((entry) => entry.href === "/docs/tools/help#ask-on-github")).toBe(true);
     expect(index.some((entry) => entry.href.startsWith("/docs/tools/authoring"))).toBe(false);
+  });
+});
+
+describe("diagrams", () => {
+  it("annotate the very output that hos prints for the Quickstart's error", () => {
+    const { container } = render(<OutputLineDiagram />);
+    const pre = container.querySelector("pre")!.cloneNode(true) as HTMLElement;
+    for (const number of pre.querySelectorAll("sup")) number.remove();
+    const quickstart = sourceOf(findToolsPage("/docs/tools/quickstart")!);
+    // The block of the Quickstart, without its command line; the diagram keeps the first sentence of the message.
+    const printed = quickstart.split('```cast id="validate-error"\n')[1].split("\n```")[0].split("\n").slice(1);
+    const [summary, error, rule] = pre.textContent!.split("\n");
+    expect(summary).toBe(printed[0]);
+    expect(printed[1].startsWith(error.trimEnd())).toBe(true);
+    expect(rule).toBe(printed[2]);
   });
 });
 

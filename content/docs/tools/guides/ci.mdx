@@ -12,6 +12,8 @@ Every hos command ends with an exit code that a CI reads: 0 when everything pass
 
 ## Why this matters
 
+<CiDiagram />
+
 The checks of the other guides catch problems when someone runs them. A CI runs them every time: a change to the adapter that breaks deduplication, or a new field that HOS does not accept, fails the build before it is merged. And a scheduled job warns you weeks before your manifest's signature expires, instead of the day every consumer stops trusting it.
 
 ## Exit codes

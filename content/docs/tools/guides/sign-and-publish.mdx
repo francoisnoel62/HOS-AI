@@ -22,6 +22,8 @@ Think of a wax seal. Your **private key** is the seal: only you have it. Your **
 
 ## What you publish
 
+<SigningDiagram />
+
 A public producer serves three files, on one HTTPS origin, the address of its website:
 
 | File                             | What it is                                       |
@@ -115,7 +117,8 @@ Then:
 npx @hos-ai/cli manifest keygen --key private-key.json --jwks jwks.json
 ```
 
-```output id="keygen" varies="kid"
+```cast id="keygen" varies="kid"
+$ npx @hos-ai/cli manifest keygen --key private-key.json --jwks jwks.json
 Wrote the private key JX2SZbhtnWjL3S56tqzpZ-uCF0aAYhGO7RMRmQoI9hY (Ed25519) to private-key.json. Keep it secret: whoever holds it can sign as this producer.
 Added its public key to jwks.json, which now holds 1 key. Publish it at /.well-known/hos/jwks.json.
 ```
@@ -219,6 +222,8 @@ npx @hos-ai/cli manifest verify https://your-domain.example/.well-known/hos/mani
 [Run the checks in CI](/docs/tools/guides/ci) will give a complete workflow.
 
 ## Change keys
+
+<RotationDiagram />
 
 Change keys from time to time, and whenever a key may have been seen by someone it should not. Add the new key to the same key set:
 
