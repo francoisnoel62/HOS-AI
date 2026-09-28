@@ -27,7 +27,16 @@ test("the tools documentation reads in order, from the overview to Get help", as
 test("every link of the tools documentation leads somewhere, and every section link to its heading", async ({ page, request, isMobile }) => {
   test.skip(isMobile, "Links do not depend on the viewport.");
   test.setTimeout(120_000);
-  const checked = new Set<string>();
+  // Each page once, and its HTML for the anchors that other pages link to.
+  const pages = new Map<string, string>();
+  async function html(path: string, from: string) {
+    if (!pages.has(path)) {
+      const response = await request.get(path);
+      expect(response.status(), `${from} → ${path}`).toBe(200);
+      pages.set(path, path.endsWith(".md") || path.includes(".json") ? "" : await response.text());
+    }
+    return pages.get(path)!;
+  }
   for (const item of allToolsPages) {
     await page.goto(item.href);
     const hrefs = await page.locator("main a[href]").evaluateAll((links) => links.map((link) => link.getAttribute("href")!));
@@ -37,11 +46,9 @@ test("every link of the tools documentation leads somewhere, and every section l
         continue;
       }
       if (!href.startsWith("/")) continue;
-      // Rule anchors are checked once the rules page exists (phase 4 of PLAN-SDK-DOC.md); the page itself must answer.
-      const path = href.split("#")[0];
-      if (checked.has(path)) continue;
-      checked.add(path);
-      expect((await request.get(path)).status(), `${item.href} → ${path}`).toBe(200);
+      const [path, anchor] = href.split("#");
+      const text = await html(path, item.href);
+      if (anchor) expect(text, `${item.href} → ${href}`).toContain(`id="${anchor}"`);
     }
   }
 });

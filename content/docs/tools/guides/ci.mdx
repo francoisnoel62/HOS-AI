@@ -22,7 +22,7 @@ The checks of the other guides catch problems when someone runs them. A CI runs 
 | 1    | a file is invalid, a check failed, or a signature does not verify | the step fails                               |
 | 2    | the command is wrong, or a file or URL could not be read          | the step fails: fix the job, not the product |
 
-Every command also prints its result as JSON with `--json`, for a script that needs the details, and `hos conformance run` writes a JUnit report with `--junit`, which most CI tools display test by test.
+Every command also prints its result as JSON with `--json`, for a script that needs the details, and `hos conformance run` writes a <Term id="junit">JUnit report</Term> with `--junit`, which most CI tools display test by test.
 
 <Steps>
 <Step title="Pin the version of the tools">

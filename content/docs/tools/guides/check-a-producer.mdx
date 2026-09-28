@@ -98,7 +98,7 @@ You need the same three files from your system.
 
 - **manifest.json**: your producer's manifest. [Sign and publish a producer manifest](/docs/tools/guides/sign-and-publish) explains how to publish it.
 - **recording.jsonl**: every fact your adapter publishes during a test, one JSON object per line, in the order it published them. The simplest way is to have the adapter append each fact it publishes to a file, one line each. Record one producer per file.
-- **redelivery.jsonl**: stop the adapter, start it again with the state it keeps between runs, such as its identity crosswalk, feed it the same source data, and record what it publishes. A producer that remembers what it already published may publish nothing again: an empty redelivery passes.
+- **redelivery.jsonl**, the <Term id="redelivery">redelivery</Term>: stop the adapter, start it again with the state it keeps between runs, such as its identity crosswalk, feed it the same source data, and record what it publishes. A producer that remembers what it already published may publish nothing again: an empty redelivery passes.
 
 The HOS mappings of Mews, Apaleo and Cloudbeds are checked this way, from their read-only live checks: [`lib/hos/mappings/sync.ts`](https://github.com/francoisnoel62/HOS-AI/blob/master/lib/hos/mappings/sync.ts) delivers the same data twice, then through a restarted adapter, and runs the same check.
 

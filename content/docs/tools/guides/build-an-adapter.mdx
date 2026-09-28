@@ -1,6 +1,6 @@
 <InShort>
 
-An adapter turns what a hotel system knows into HOS facts. With the SDK, you map each source event to a HOS event type, give entities stable HOS ids, let the SDK fill in the envelope, validate each fact before you publish it, and check the whole producer in a test. This guide builds a complete adapter for a made-up housekeeping app, in about sixty lines of JavaScript.
+An <Term id="adapter">adapter</Term> turns what a hotel system knows into HOS facts. With the SDK, you map each source event to a HOS event type, give entities stable HOS ids, let the SDK fill in the envelope, validate each fact before you publish it, and check the whole producer in a test. This guide builds a complete adapter for a made-up housekeeping app, in about sixty lines of JavaScript.
 
 </InShort>
 
@@ -148,7 +148,7 @@ Open `recording.jsonl`: three facts, one per line. The SDK filled in the envelop
 - **`hostenant`**, **`hosproperty`**, **`hospropertytimezone`** and **`hossubjects`**: from the hotel and the unit.
 - **`hosactor`**: `user:actor_…`, a pseudonymous id for `staff-17`.
 
-`crosswalk.json` now holds the HOS id of each room and staff member. The adapter reads it at the next start, so room 204 keeps its HOS id. HOS ids are opaque on purpose: they never carry the source system's own ids, so they survive a migration of that system.
+`crosswalk.json` now holds the HOS id of each room and staff member: it is the <Term id="crosswalk">crosswalk</Term>. The adapter reads it at the next start, so room 204 keeps its HOS id. HOS ids are opaque on purpose: they never carry the source system's own ids, so they survive a migration of that system.
 
 <TechnicalDetail title="When the source does not date the change">
 

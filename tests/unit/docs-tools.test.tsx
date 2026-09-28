@@ -2,6 +2,9 @@ import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import * as sdk from "@hos-ai/sdk";
+import * as sdkNode from "@hos-ai/sdk/node";
+import * as sdkReference from "@hos-ai/sdk/reference";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { Command } from "@/components/docs/command";
@@ -13,6 +16,10 @@ import { headingsOf, readMdx, slugify } from "@/lib/docs/markdown";
 import { chooseShell } from "@/lib/docs/os-choice";
 import { createSearch } from "@/lib/docs/search";
 import { allToolsPages, findToolsPage, neighboursOf, ruleHref, toolsPages } from "@/lib/docs/tools";
+import { conformanceUsage } from "@/packages/cli/src/conformance/command";
+import { manifestUsage } from "@/packages/cli/src/manifest";
+import { replayUsage } from "@/packages/cli/src/replay";
+import { validateUsage } from "@/packages/cli/src/validate";
 
 const mdxFiles = (directory = contentDirectory): string[] =>
   readdirSync(directory, { withFileTypes: true }).flatMap((entry) =>
@@ -64,6 +71,43 @@ describe("tools documentation pages", () => {
       for (const [, target] of source.matchAll(/\]\((\/docs\/tools[^)#\s]*)/g)) expect(hrefs, `${item.file} → ${target}`).toContain(target);
       for (const [, id] of source.matchAll(/<Term id="([^"]+)"/g)) expect(terms, `${item.file} → ${id}`).toContain(id);
     }
+  });
+});
+
+// Every source file of a package, as text.
+const sourcesOf = (directory: string): string[] =>
+  readdirSync(directory, { withFileTypes: true }).flatMap((entry) =>
+    entry.isDirectory()
+      ? sourcesOf(path.join(directory, entry.name))
+      : entry.name.endsWith(".ts")
+        ? [readFileSync(path.join(directory, entry.name), "utf8")]
+        : [],
+  );
+const pageSource = (href: string) => sourceOf(findToolsPage(href)!);
+
+describe("reference pages", () => {
+  it("explain every rule the SDK and the CLI can report, under the anchor hos links to", () => {
+    const code = [...sourcesOf(path.join(process.cwd(), "packages/sdk/src")), ...sourcesOf(path.join(process.cwd(), "packages/cli/src"))].join(" ");
+    const rules = new Set([...code.matchAll(/["'`]((?:core|events)\/[a-z0-9-]+)["'`]/g)].map(([, rule]) => rule));
+    expect(rules.size).toBeGreaterThan(20);
+    const anchors = new Set(headingsOf(pageSource("/docs/tools/rules")).map((heading) => heading.id));
+    for (const rule of rules) expect(anchors, rule).toContain(ruleHref(rule).split("#")[1]);
+  });
+
+  it("describe every function and constant the three entry points of the SDK export", () => {
+    const page = pageSource("/docs/tools/sdk");
+    const names = [...Object.keys(sdk), ...Object.keys(sdkNode), ...Object.keys(sdkReference)];
+    expect(names.length).toBeGreaterThan(25);
+    for (const name of names) expect(page, name).toContain(name);
+  });
+
+  it("give every option of every command, in its help text and in a table", () => {
+    const page = pageSource("/docs/tools/cli");
+    for (const usage of [validateUsage, replayUsage, conformanceUsage, manifestUsage])
+      for (const [option] of usage.matchAll(/--[a-z][a-z-]*/g)) {
+        if (option === "--help") continue;
+        expect(page.split(`\`${option}\``).length - 1, option).toBeGreaterThan(0);
+      }
   });
 });
 

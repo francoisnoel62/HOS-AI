@@ -158,7 +158,7 @@ export default function EventsSpecificationPage() {
         </div>
       </section>
 
-      <SectionFrame eyebrow="Principles" title="Facts before intentions.">
+      <SectionFrame id="principles" eyebrow="Principles" title="Facts before intentions.">
         <div className="grid gap-4 md:grid-cols-2">
           {principles.map(([title, text]) => (
             <Card className="p-6" key={title}>

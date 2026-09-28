@@ -21,7 +21,7 @@ import { GlossaryList, IWantTo } from "@/components/docs/lists";
 import { Os, OsTabs } from "@/components/docs/os-tabs";
 import { Term } from "@/components/docs/term";
 import { TerminalOutput } from "@/components/docs/terminal-output";
-import { CliVersion, NpxPrompt, SpecVersionOutput, VersionOutput, Versions } from "@/components/docs/versions";
+import { CliVersion, NpxPrompt, SpecVersion, SpecVersionOutput, VersionOutput, Versions } from "@/components/docs/versions";
 import { slugify, textOf } from "@/lib/docs/markdown";
 
 // How the MDX pages of /docs/tools render: Markdown elements in the site's style, and the documentation components,
@@ -125,6 +125,7 @@ const components: MDXComponents = {
   TerminalOutput,
   CliVersion,
   NpxPrompt,
+  SpecVersion,
   SpecVersionOutput,
   VersionOutput,
   Versions,
