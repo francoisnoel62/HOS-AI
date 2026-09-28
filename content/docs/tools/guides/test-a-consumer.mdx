@@ -54,7 +54,9 @@ HOS publishes a consumer of about 130 lines of Python, with the standard library
   bash="curl -O https://raw.githubusercontent.com/francoisnoel62/HOS-AI/master/examples/python-dispositions/impl.py"
 />
 
-Run the three scenarios through it. On Windows, the Python launcher is `py`; on macOS and Linux, `python3`:
+It needs Python 3.11 or later. On Windows, Python installed from python.org comes with the launcher `py`; Python from the Microsoft Store is `python`. On macOS and Linux, it is `python3`. Check with `py --version`, `python --version` or `python3 --version`, and use the one that answers in the commands below.
+
+Run the three scenarios through it:
 
 <Command
   powershell={`npx @hos-ai/cli conformance run --all --level normative --impl "py impl.py"`}

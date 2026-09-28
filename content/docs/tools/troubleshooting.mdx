@@ -204,7 +204,7 @@ A scenario fails with exit code 1 when its report differs from `expected.json`, 
 
 `the implementation exited with code 1`, followed by the last lines of its standard error. When those lines say the program is not recognised, or `command not found`, the command does not exist on this system:
 
-- On Windows, Python is usually `py`, not `python3`. If `python3` opens the Microsoft Store, or prints `Python was not found`, use `--impl "py impl.py"`.
+- On Windows, Python is `py` when it comes from python.org, and `python` when it comes from the Microsoft Store; `python3` may only open the Store, or print `Python was not found`. Run `py --version` and `python --version`, and use the one that answers: `--impl "py impl.py"` or `--impl "python impl.py"`.
 - Paths are relative to the folder you run hos from, not to the program's folder.
 - `--impl` runs through the Command Prompt on Windows: use double quotes, and quote paths with spaces inside them.
 
