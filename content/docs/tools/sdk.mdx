@@ -1,12 +1,398 @@
-<PageInProgress>
+<InShort>
 
-This reference will describe the SDK's three entry points and every function, with its signature, its purpose, an example and the errors it throws:
+`@hos-ai/sdk` gives TypeScript and JavaScript code the same checks as the hos command, and the tools to build HOS facts. This reference lists its three entry points and every function, with an example that runs and what it prints.
 
-- `@hos-ai/sdk`, for Node and the browser, with the schemas built in: validation, the processing rules, writing facts, time helpers, the producer check, signing and the conformance helpers;
-- `@hos-ai/sdk/node`, which loads scenarios from files;
-- `@hos-ai/sdk/reference`, the arrival-readiness reference projection, which is not normative;
-- the generated types, one per event.
+</InShort>
 
-Meanwhile, the [npm page of the SDK](https://www.npmjs.com/package/@hos-ai/sdk) documents each entry point.
+The SDK needs Node.js 22 or later, or a current browser through a bundler, and is an ES module: see [Install the SDK](/docs/tools/install#install-the-sdk). Each example below is a file, such as `example.mjs`, run with `node example.mjs` in a folder where the SDK is installed. The examples read the files of the [Quickstart](/docs/tools/quickstart) and of the [example producer](/docs/tools/guides/check-a-producer), where they need them.
 
-</PageInProgress>
+## Entry points
+
+| Import                  | Runs in           | What it holds                                                                                                                |
+| :---------------------- | :---------------- | :--------------------------------------------------------------------------------------------------------------------------- |
+| `@hos-ai/sdk`           | Node and browsers | types, validation, processing rules, fact creation, the producer check, signing. The schemas are built in: it reads no file. |
+| `@hos-ai/sdk/node`      | Node              | `loadScenario` and `loadExpectedOutcome`, which read a conformance scenario from its files                                   |
+| `@hos-ai/sdk/reference` | Node and browsers | `replayArrivalReadiness`, the arrival-readiness reference projection, which is **not normative**                             |
+
+`HOS_SPEC_VERSION` is the draft of HOS the SDK implements: <SpecVersion /> for this version.
+
+## Validation
+
+### validate
+
+```ts
+validate(document: unknown): { valid: boolean; kind: "event" | "situation" | "manifest" | null; errors: ValidationError[] }
+```
+
+Recognises an event, a reference situation or a producer manifest, and checks it against the HOS 0.1 schemas. Each error has a `path`, a readable `message` and, most of the time, the `rule` it breaks, as `hos validate` prints them. `kind` is `null` for a document that is none of the three.
+
+```js id="validate"
+import { readFileSync } from "node:fs";
+
+import { validate } from "@hos-ai/sdk";
+
+const event = JSON.parse(readFileSync("unit.status_changed.json", "utf8"));
+event.data.current = "cleaning";
+
+const result = validate(event);
+console.log(result.kind, result.valid);
+for (const error of result.errors) console.log(`${error.rule} at ${error.path}: ${error.message}`);
+```
+
+```output id="validate-output"
+event false
+core/unit-status-model at /data/current: data.current is "cleaning", not one of: dirty, clean, inspected, unknown. Readiness as reported by the housekeeping authority.
+```
+
+### validateStream
+
+```ts
+validateStream(text: string, options?: { manifests?: ProducerManifest[] }): { valid: boolean; events: number; issues: StreamIssue[] }
+```
+
+Checks a stream in JSON Lines: each line, then the stream as a whole, and, given manifests, what each producer declares. Each issue has a `severity`, `error`, `warning` or `info`, and a `line`. The stream is valid when no issue is an error. [Validate](/docs/tools/guides/validate#what-a-stream-reveals) lists the checks.
+
+```js id="validate-stream"
+import { readFileSync } from "node:fs";
+
+import { validateStream } from "@hos-ai/sdk";
+
+const manifests = ["pms.json", "housekeeping.json", "messaging.json"].map((file) => JSON.parse(readFileSync(file, "utf8")));
+const stream = validateStream(readFileSync("events.jsonl", "utf8"), { manifests });
+
+console.log(stream.valid, stream.events);
+for (const issue of stream.issues) console.log(`line ${issue.line} ${issue.severity} ${issue.rule}`);
+```
+
+```output id="validate-stream-output"
+false 13
+line 5 info events/at-least-once-delivery
+line 7 error events/declared-capability
+```
+
+### validateEvent, validateManifest, validateSituation, validateUnit, validateProperty, validateMaintenanceWindow
+
+```ts
+validateEvent(document: unknown): boolean  // with validateEvent.errors after a call
+```
+
+The compiled JSON Schema validators, from Ajv, for code that wants the raw schema errors rather than readable messages. Each returns `true` or `false`, and keeps the schema errors of its last call in its `errors` property.
+
+## Processing rules
+
+The rules of HOS Events 0.1 that every consumer applies, in the order [Concepts](/docs/tools/concepts#the-five-dispositions) describes. They are normative.
+
+### factKey
+
+```ts
+factKey(fact: { source: string; id: string }): string
+```
+
+The identity of a fact: its source and id. Two deliveries with the same key are the same fact, and the second is a `duplicate`.
+
+### isLater and byOccurrence
+
+```ts
+isLater(candidate: Occurrence, current: Occurrence | undefined): boolean
+byOccurrence(a: Occurrence, b: Occurrence): number
+```
+
+Which of two facts happened later: by `time`, then `source`, then `id`, so that every implementation breaks ties the same way. `isLater` is `true` when there is no current fact. `byOccurrence` sorts facts in that order, for `Array.prototype.sort`.
+
+### findDeclaration and authority
+
+```ts
+findDeclaration(manifests: ProducerManifest[], event: HosFact, dimension?: UnitStatusDimension): declaration | undefined
+authority(manifests: ProducerManifest[], event: HosFact, dimension?: UnitStatusDimension): "authoritative" | "non_authoritative" | "undeclared_capability"
+```
+
+`findDeclaration` finds the entry of the producer's manifest that declares the fact for its hotel. `authority` says what follows: the producer is the authority, a declared producer that is not, or nobody declared it. For a status change, give the dimension.
+
+### statusChanges
+
+```ts
+statusChanges(event: UnitStatusChanged): Array<[UnitStatusDimension, string]>
+```
+
+The dimensions a `unit.status_changed` reports, with their new values: one for a change, every dimension of a snapshot.
+
+```js id="processing"
+import { readFileSync } from "node:fs";
+
+import { authority, factKey, isLater, statusChanges } from "@hos-ai/sdk";
+
+const manifests = ["pms.json", "housekeeping.json", "messaging.json"].map((file) => JSON.parse(readFileSync(file, "utf8")));
+const events = readFileSync("events.jsonl", "utf8")
+  .trim()
+  .split("\n")
+  .map((line) => JSON.parse(line));
+const delivery = (number) => events[number - 1];
+
+// Deliveries 4 and 5 are the same fact, delivered twice.
+console.log(factKey(delivery(4)) === factKey(delivery(5)));
+// Who may change the housekeeping status of unit 204: the housekeeping system, not the PMS.
+console.log(authority(manifests, delivery(4), "housekeeping"), authority(manifests, delivery(9), "housekeeping"));
+// The PMS does not declare housekeeping tasks.
+console.log(authority(manifests, delivery(7)));
+// The guest's message of delivery 11 happened before the one of delivery 10.
+console.log(isLater(delivery(11), delivery(10)));
+console.log(statusChanges(delivery(4)));
+```
+
+```output id="processing-output"
+true
+authoritative non_authoritative
+undeclared_capability
+false
+[ [ 'housekeeping', 'dirty' ] ]
+```
+
+## Creating facts
+
+### createIdentityRegistry
+
+```ts
+createIdentityRegistry(crosswalk?: Crosswalk, mint?: () => string): { resolve(kind: HosEntityKind, sourceId: string): string }
+```
+
+HOS ids for the entities of a source system: `reservation`, `stay`, `unit`, `guest`, `maintenance`, or `actor` for pseudonymous actors. `resolve` returns the id the crosswalk already has, or mints a new opaque one, such as `unit_4f1c…`. Keep what `resolve` returns in your own crosswalk, and give it back at the next start: [Build an adapter](/docs/tools/guides/build-an-adapter) shows why.
+
+### createFactWriter
+
+```ts
+createFactWriter(context: { source; tenant; propertyId; timezone; recordedAt; idPrefix }): {
+  events: HosFact[];
+  publish(type, key, time, subjects, data, options?: { businessDate?; timeBasis?: "modified" | "recorded"; actor? }): void;
+}
+```
+
+Collects the facts of one delivery from a source system, and fills in their envelope. `publish` takes the HOS type, the source's key for the event, the time of the change, the subjects as `kind:id`, and the data. The fact's id is built from `idPrefix`, the key, the type and the time, so the same source event always gets the same id. `hosbusinessdate` is the local date of the time, unless `businessDate` gives another; `timeBasis` says the time is not the moment of the change.
+
+```js id="facts"
+import { createFactWriter, createIdentityRegistry } from "@hos-ai/sdk";
+
+// The crosswalk an adapter saved on its last run: room 204 already has its HOS id.
+const registry = createIdentityRegistry({ unit: { 204: "unit_204" } });
+const writer = createFactWriter({
+  source: "urn:hos:housekeeping:example",
+  tenant: "tenant_demo",
+  propertyId: "prop_demo",
+  timezone: "Europe/Paris",
+  recordedAt: "2026-07-30T06:40:02Z",
+  idPrefix: "hk",
+});
+
+const unit = registry.resolve("unit", "204");
+writer.publish("unit.status_changed", "evt-5521", "2026-07-30T06:40:00Z", [`unit:${unit}`], {
+  unit_id: unit,
+  dimension: "housekeeping",
+  current: "dirty",
+  authority_source: "urn:hos:housekeeping:example",
+});
+
+const [fact] = writer.events;
+console.log(fact.id);
+console.log(fact.time, fact.hosrecordedat, fact.hosbusinessdate, fact.hossubjects);
+console.log(registry.resolve("unit", "118").startsWith("unit_"));
+```
+
+```output id="facts-output"
+hk:evt-5521:unit.status_changed:20260730T064000Z
+2026-07-30T06:40:00Z 2026-07-30T06:40:02Z 2026-07-30 unit:unit_204
+true
+```
+
+The writer does not validate: pass each fact to `validate` before you publish it.
+
+## Time
+
+### utc, localDate and zonedTimeToUtc
+
+```ts
+utc(value: string | number): string
+localDate(iso: string, timeZone: string): string
+zonedTimeToUtc(date: string, time: string, timeZone: string): string
+```
+
+`utc` writes an instant as HOS does: in UTC, with milliseconds only when there are some. `localDate` gives the date of an instant in a time zone. `zonedTimeToUtc` turns a wall-clock time at the hotel, such as a 15:00 check-in, into an instant, daylight saving included.
+
+```js id="time"
+import { localDate, utc, zonedTimeToUtc } from "@hos-ai/sdk";
+
+console.log(utc("2026-07-30T08:40:00+02:00"));
+// A 15:00 check-in in Paris, in summer and in winter.
+console.log(zonedTimeToUtc("2026-07-30", "15:00", "Europe/Paris"), zonedTimeToUtc("2026-12-01", "15:00", "Europe/Paris"));
+// 23:30 UTC is already the next day in Paris.
+console.log(localDate("2026-07-30T23:30:00Z", "Europe/Paris"));
+```
+
+```output id="time-output"
+2026-07-30T06:40:00Z
+2026-07-30T13:00:00Z 2026-12-01T14:00:00Z
+2026-07-31
+```
+
+## The producer check
+
+### checkProducer
+
+```ts
+checkProducer({ manifest, recording, redelivery }: { manifest: unknown; recording: string; redelivery?: string }): ProducerCheck
+```
+
+The checks of `hos conformance producer`, for your tests: `valid`, the `producer`, and the result of the `manifest`, the `recording` and the `redelivery`, whose `repeated` counts the facts that came back unchanged. `recording` and `redelivery` are JSON Lines. [Check what a producer publishes](/docs/tools/guides/check-a-producer) explains each check.
+
+```js id="producer"
+import { readFileSync } from "node:fs";
+
+import { checkProducer } from "@hos-ai/sdk";
+
+const check = checkProducer({
+  manifest: JSON.parse(readFileSync("producer-manifest.json", "utf8")),
+  recording: readFileSync("recording.jsonl", "utf8"),
+  redelivery: readFileSync("redelivery.jsonl", "utf8"),
+});
+console.log(check.valid, check.producer, check.recording.events, check.redelivery.repeated);
+```
+
+Here `producer-manifest.json` is the `manifest.json` of the example producer, renamed next to the Quickstart's files:
+
+```output id="producer-output"
+true urn:hos:pms:demo 5 5
+```
+
+## Signing
+
+### generateManifestKey
+
+```ts
+generateManifestKey(options?: { alg?: "Ed25519" | "ES256"; kid?: string }): Promise<{ privateJwk: JWK; publicJwk: JWK }>
+```
+
+A new signing key, Ed25519 by default. Its `kid` is the public key's thumbprint (RFC 7638), unless you give one. Publish `publicJwk` in your key set; keep `privateJwk` secret.
+
+### signManifest
+
+```ts
+signManifest(manifest: ProducerManifest, privateJwk: JWK, options: { issuedAt?: Date; expiresAt: Date }): Promise<string>
+```
+
+The detached signature of a manifest, as `manifest.jws` holds it: the protected header, two dots, the signature. It throws a `TypeError` when the manifest is not valid, or the key is not a private Ed25519 or P-256 key with a `kid`, and a `RangeError` when `expiresAt` is not after `issuedAt`.
+
+### verifyManifest
+
+```ts
+verifyManifest(manifest: unknown, jws: string, jwks: JSONWebKeySet, options?: { now?: Date; clockTolerance?: number }): Promise<ManifestVerification>
+```
+
+Verifies a signature with the producer's key set, as of `now`, allowing 60 seconds of clock difference by default. The result is `{ valid: true, header, key }`, or `{ valid: false, error, message }`, where `error` is one of the seven codes [Sign and publish](/docs/tools/guides/sign-and-publish#why-a-signature-fails) lists.
+
+### canonicalize
+
+```ts
+canonicalize(value: unknown): string
+```
+
+The canonical JSON of a value (RFC 8785): members sorted, no spaces. It is what a signature covers, so the spacing and member order of `manifest.json` do not matter.
+
+```js id="signing"
+import { readFileSync } from "node:fs";
+
+import { canonicalize, generateManifestKey, signManifest, verifyManifest } from "@hos-ai/sdk";
+
+const manifest = JSON.parse(readFileSync("producer-manifest.json", "utf8"));
+const { privateJwk, publicJwk } = await generateManifestKey();
+const jws = await signManifest(manifest, privateJwk, { expiresAt: new Date(Date.now() + 90 * 24 * 3600 * 1000) });
+
+const verified = await verifyManifest(manifest, jws, { keys: [publicJwk] });
+console.log(verified.valid, verified.header.alg, verified.header.kid === publicJwk.kid);
+
+const changed = await verifyManifest({ ...manifest, name: "Another name" }, jws, { keys: [publicJwk] });
+console.log(changed.valid, changed.error);
+
+console.log(canonicalize({ b: [2, 1], a: "é" }));
+```
+
+```output id="signing-output"
+true Ed25519 true
+false bad_signature
+{"a":"é","b":[2,1]}
+```
+
+`manifestSignatureAlgorithms` lists the two algorithms: `["Ed25519", "ES256"]`.
+
+## Conformance scenarios
+
+### loadScenario and loadExpectedOutcome
+
+```ts
+// from "@hos-ai/sdk/node"
+loadScenario(directory: string): { scenario: ConformanceScenario; manifests: ProducerManifest[]; events: HosFact[] }
+loadExpectedOutcome(directory: string): ExpectedOutcome
+```
+
+Read a conformance scenario from its folder: `scenario.json`, the manifests and the events it names, and `expected.json`. They throw the file system's error when a file is missing, and a `SyntaxError` when one is not JSON.
+
+### replayArrivalReadiness
+
+```ts
+// from "@hos-ai/sdk/reference"
+replayArrivalReadiness(events: HosFact[], manifests: ProducerManifest[], config: { ready_housekeeping_statuses: string[] }): ReplayStep[]
+```
+
+Replays facts in order through the processing rules and the arrival-readiness reference projection: for each delivery, its `disposition`, every stay after it, and the situations it `emitted`. `hos replay` prints it. The dispositions are normative; the readiness and situations are one example of reading arrivals.
+
+### toExpectedOutcome and parseJsonLines
+
+```ts
+toExpectedOutcome(steps: ReplayStep[], scenario: ConformanceScenario): ExpectedOutcome
+parseJsonLines(text: string): unknown[]
+```
+
+`toExpectedOutcome` keeps what `expected.json` pins down from a replay, to compare the two. `parseJsonLines` reads JSON Lines, one value per non-empty line, and throws a `SyntaxError` on a line that is not JSON.
+
+```js id="conformance"
+import { deepStrictEqual } from "node:assert";
+
+import { toExpectedOutcome } from "@hos-ai/sdk";
+import { loadExpectedOutcome, loadScenario } from "@hos-ai/sdk/node";
+import { replayArrivalReadiness } from "@hos-ai/sdk/reference";
+
+const folder = "arrival-readiness";
+const { scenario, manifests, events } = loadScenario(folder);
+const steps = replayArrivalReadiness(events, manifests, scenario.projection);
+
+for (const step of steps.filter((step) => step.emitted.length)) console.log(step.delivery, step.disposition, step.emitted[0].type);
+deepStrictEqual(toExpectedOutcome(steps, scenario), loadExpectedOutcome(folder));
+console.log("The replay matches expected.json.");
+```
+
+With the folder of the early-arrival scenario, laid out as [Test a consumer](/docs/tools/guides/test-a-consumer#your-own-scenarios) shows:
+
+```output id="conformance-output"
+10 applied arrival.room_readiness_at_risk
+12 applied arrival.room_readiness_resolved
+The replay matches expected.json.
+```
+
+`projectionSource`, `urn:hos:projection:arrival-readiness`, is the source of the situations the projection raises.
+
+## Types
+
+The SDK exports the TypeScript types of HOS documents, generated from the schemas:
+
+- `HosFact`, any HOS event, and one type per event, such as `UnitStatusChanged` or `StayExpected`, with its data, such as `UnitStatusChangedData`;
+- `ProducerManifest`, and the Core entities, such as `Unit` or `Reservation`, with their statuses, such as `HousekeepingStatus`;
+- `ValidationError`, `StreamIssue`, `ProducerCheck`, `ManifestVerification`, `Disposition` and the other results above;
+- from `@hos-ai/sdk/reference`: `Situation`, `ReplayStep`, `StayView` and the projection's types.
+
+Give a document its type once `validate` accepts it:
+
+```ts
+import { type HosFact, validate } from "@hos-ai/sdk";
+
+const document: unknown = JSON.parse(text);
+if (validate(document).valid) {
+  const fact = document as HosFact;
+}
+```

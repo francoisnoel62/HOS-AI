@@ -1,6 +1,6 @@
 <InShort>
 
-An adapter turns what a hotel system knows into HOS facts. With the SDK, you map each source event to a HOS event type, give entities stable HOS ids, let the SDK fill in the envelope, validate each fact before you publish it, and check the whole producer in a test. This guide builds a complete adapter for a made-up housekeeping app, in about sixty lines of JavaScript.
+An <Term id="adapter">adapter</Term> turns what a hotel system knows into HOS facts. With the SDK, you map each source event to a HOS event type, give entities stable HOS ids, let the SDK fill in the envelope, validate each fact before you publish it, and check the whole producer in a test. This guide builds a complete adapter for a made-up housekeeping app, in about sixty lines of JavaScript.
 
 </InShort>
 
@@ -11,6 +11,8 @@ An adapter turns what a hotel system knows into HOS facts. With the SDK, you map
 />
 
 ## Why this matters
+
+<AdapterDiagram />
 
 A <Term id="producer">producer</Term> is only as good as its adapter. Three things go wrong most often: a status that HOS does not define, ids that change when the adapter restarts, and times in the hotel's local time instead of UTC. The SDK handles the envelope and the ids; this guide shows the decisions left to you.
 
@@ -148,7 +150,7 @@ Open `recording.jsonl`: three facts, one per line. The SDK filled in the envelop
 - **`hostenant`**, **`hosproperty`**, **`hospropertytimezone`** and **`hossubjects`**: from the hotel and the unit.
 - **`hosactor`**: `user:actor_…`, a pseudonymous id for `staff-17`.
 
-`crosswalk.json` now holds the HOS id of each room and staff member. The adapter reads it at the next start, so room 204 keeps its HOS id. HOS ids are opaque on purpose: they never carry the source system's own ids, so they survive a migration of that system.
+`crosswalk.json` now holds the HOS id of each room and staff member: it is the <Term id="crosswalk">crosswalk</Term>. The adapter reads it at the next start, so room 204 keeps its HOS id. HOS ids are opaque on purpose: they never carry the source system's own ids, so they survive a migration of that system.
 
 <TechnicalDetail title="When the source does not date the change">
 
@@ -182,7 +184,8 @@ node adapter.mjs redelivery.jsonl
 npx @hos-ai/cli conformance producer --manifest manifest.json --stream recording.jsonl --redelivery redelivery.jsonl
 ```
 
-```output id="producer-pass"
+```cast id="producer-pass"
+$ npx @hos-ai/cli conformance producer --manifest manifest.json --stream recording.jsonl --redelivery redelivery.jsonl
 Producer urn:hos:housekeeping:spotless-demo
 ✓ manifest.json: valid manifest, with its limitations
 ✓ recording.jsonl: 3 facts, valid and declared

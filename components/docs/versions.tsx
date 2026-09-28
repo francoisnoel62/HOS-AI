@@ -42,3 +42,5 @@ export const NpxPrompt = () => (
 );
 
 export const SpecVersionOutput = () => <TerminalOutput>{versions.spec}</TerminalOutput>;
+
+export const SpecVersion = () => <code className="rounded bg-[var(--muted)] px-1.5 py-0.5 font-mono text-[0.85em]">{versions.spec}</code>;

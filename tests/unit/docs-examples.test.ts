@@ -35,7 +35,12 @@ const blocks: Array<CodeBlock & { page: string }> = mdxFiles().flatMap((file) =>
 function shown(page: string, id: string) {
   const found = blocks.filter((item) => item.page === page && item.meta.id === id);
   expect(found, `${page}.mdx has one block with id="${id}"`).toHaveLength(1);
-  return found[0];
+  const [item] = found;
+  if (item.language !== "cast") return item;
+  // A cast starts with the command, typed after "$ ", then shows what it prints.
+  const [command, ...output] = item.text.split("\n");
+  expect(command, `${page}#${id} starts with its command`).toMatch(/^\$ npx @hos-ai\/cli /);
+  return { ...item, text: output.join("\n") };
 }
 const block = (page: string, id: string) => shown(page, id).text;
 
@@ -114,6 +119,29 @@ const pythonExample = () => readFileSync(fileURLToPath(new URL("../../examples/p
 
 type Check = () => Promise<unknown> | unknown;
 
+// The invalid case that illustrates each rule on the rules page.
+const ruleExamples: Record<string, string> = {
+  "core-entities": "stream-property-tenant.json",
+  "core-opaque-identifiers": "event-identifier-with-space.json",
+  "core-unit-status-model": "event-housekeeping-value.json",
+  "core-time": "stream-property-timezone.json",
+  "core-extensions": "event-extension-namespace.json",
+  "events-envelope": "event-without-tenant.json",
+  "events-catalogue": "event-unknown-type.json",
+  "events-minimal-data": "event-personal-data.json",
+  "events-honest-time-and-actor": "event-actor-name.json",
+  "events-explicit-snapshots": "event-snapshot-without-sensitivity.json",
+  "events-plans-are-not-states": "event-maintenance-operational.json",
+  "events-immutable-facts": "stream-conflicting-id.json",
+  "events-at-least-once-delivery": "manifest-exactly-once.json",
+  "events-no-global-order": "manifest-global-order.json",
+  "events-declared-capability": "stream-undeclared-event.json",
+  "events-one-authority": "stream-two-authorities.json",
+  "events-replay": "stream-unreadable-line.json",
+  "events-producers": "manifest-without-limitations.json",
+  "events-reference": "situation-unknown-reason.json",
+};
+
 const checks: Record<string, Check> = {
   // Quickstart
   "quickstart#validate-ok": () =>
@@ -158,6 +186,7 @@ const checks: Record<string, Check> = {
     expect(block("read-a-report", "producer-fail")).toBe(snapshot("conformance", "hos conformance producer > names what fails, and prints JSON")),
   "read-a-report#conformance-normative": () =>
     printed("read-a-report", "conformance-normative", ["conformance", "run", "--all", "--level", "normative", "--impl", referenceImpl]),
+  "authoring#conformance-list": () => printed("authoring", "conformance-list", ["conformance", "list"]),
   "authoring#producer-fail": () =>
     expect(block("authoring", "producer-fail")).toBe(snapshot("conformance", "hos conformance producer > names what fails, and prints JSON")),
 
@@ -326,7 +355,57 @@ const checks: Record<string, Check> = {
     const { written } = await hos(["conformance", "run", "--all", "--impl", referenceImpl, "--junit", "hos-conformance.xml"]);
     expectShown(written["hos-conformance.xml"], shown("guides/ci", "junit"));
   },
+
+  // Rules: each example is the output of the invalid case that breaks the rule
+  ...Object.fromEntries(
+    Object.entries(ruleExamples).map(([id, file]) => [
+      `rules#${id}`,
+      () => expect(block("rules", id)).toBe(snapshot("validate", `hos validate > rejects conformance/invalid/${file} on its rule`)),
+    ]),
+  ),
+  "rules#events-signed-manifests": () => {
+    const files = signingExample();
+    const tampered = files["manifest.json"].replace('"authoritative": false', '"authoritative": true');
+    return printed("rules", "events-signed-manifests", ["manifest", "verify", "manifest.json", "--jwks", "jwks.json"], {
+      files: { ...files, "manifest.json": tampered },
+      code: 1,
+    });
+  },
+
+  // CLI reference: each help text as hos prints it
+  "cli#usage-main": () => printed("cli", "usage-main", ["--help"]),
+  "cli#usage-validate": () => printed("cli", "usage-validate", ["validate", "--help"]),
+  "cli#usage-replay": () => printed("cli", "usage-replay", ["replay", "--help"]),
+  "cli#usage-conformance": () => printed("cli", "usage-conformance", ["conformance", "--help"]),
+  "cli#usage-manifest": () => printed("cli", "usage-manifest", ["manifest", "--help"]),
+
+  // SDK reference: each example runs, and prints what the page shows
+  ...Object.fromEntries(
+    ["validate", "validate-stream", "processing", "facts", "time", "producer", "signing", "conformance"].flatMap((id) => [
+      [`sdk#${id}`, () => expect(block("sdk", id)).toContain('from "@hos-ai/sdk')],
+      [`sdk#${id}-output`, () => expectShown(node(sdkFolder(), `${id}.mjs`), shown("sdk", `${id}-output`))],
+    ]),
+  ),
 };
+
+// The SDK reference's examples, in a folder of the project with the files they read: the Quickstart's, the example
+// producer's as producer-manifest.json, recording.jsonl and redelivery.jsonl, and the early-arrival scenario's folder.
+function sdkFolder() {
+  const cwd = adapterFolder();
+  const kit = producerKit();
+  const files: Record<string, string> = {
+    "unit.status_changed.json": published("examples/unit.status_changed.json"),
+    ...streamAndManifests(),
+    "producer-manifest.json": kit["manifest.json"],
+    "recording.jsonl": kit["recording.jsonl"],
+    "redelivery.jsonl": kit["redelivery.jsonl"],
+  };
+  for (const id of ["validate", "validate-stream", "processing", "facts", "time", "producer", "signing", "conformance"])
+    files[`${id}.mjs`] = block("sdk", id);
+  for (const [name, text] of Object.entries(files)) writeFileSync(path.join(cwd, name), text);
+  copyFolder(path.join(specDirectory, scenario), path.join(cwd, "arrival-readiness"));
+  return cwd;
+}
 
 // The adapter of the build-an-adapter guide, in a folder of the project so that it finds @hos-ai/sdk, as it does once
 // installed. Node runs the SDK from its sources.
@@ -437,7 +516,7 @@ const pythonChecks: Record<string, Check> = {
 
 describe("outputs shown in the tools documentation", () => {
   it("checks every output block, or names the program that prints it", () => {
-    const outputs = blocks.filter((item) => item.language === "output");
+    const outputs = blocks.filter((item) => item.language === "output" || item.language === "cast");
     for (const item of outputs) expect(item.meta.id || item.meta.from, `an output block of ${item.page}.mdx has no id`).toBeTruthy();
     const withId = blocks.filter((item) => item.meta.id).map((item) => `${item.page}#${item.meta.id}`);
     expect(new Set(withId).size, "ids are unique on each page").toBe(withId.length);

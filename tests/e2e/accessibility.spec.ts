@@ -25,6 +25,12 @@ for (const path of [
   "/docs/tools/guides/sign-and-publish",
   "/docs/tools/guides/ci",
   "/docs/tools/guides/build-an-adapter",
+  "/docs/tools/cli",
+  "/docs/tools/sdk",
+  "/docs/tools/protocol",
+  "/docs/tools/rules",
+  "/docs/tools/troubleshooting",
+  "/docs/tools/help",
   // Every component of the tools documentation, on one page.
   "/docs/tools/authoring",
   "/docs/tools/glossary",

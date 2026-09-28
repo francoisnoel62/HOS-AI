@@ -1,13 +1,311 @@
-<PageInProgress>
+<InShort>
 
-This page will explain each rule the tools report, such as `events/minimal-data` or `core/unit-status-model`, under its own heading, so that a rule id in an error leads straight to it. For each rule:
+Every problem the tools report names the rule it breaks, such as `core/unit-status-model`. This page explains each rule: what it means, why HOS has it, an example that breaks it, and how to fix it. In the output of hos, each rule id is a link to its section here.
 
-- what it means, in plain language, and why it exists;
-- a real example that breaks it, from the conformance cases;
-- the exact message the hos command prints;
-- how to fix it;
-- the section of the specification that states it.
+</InShort>
 
-Meanwhile, [HOS Core 0.1](/docs/core) and [HOS Events 0.1](/docs/events) state the rules.
+A rule id has two parts. `core/` rules come from [HOS Core 0.1](/docs/core), the entities and their statuses; `events/` rules come from [HOS Events 0.1](/docs/events), the facts and how they travel. The examples come from the invalid cases HOS publishes under [`/spec/0.1/conformance/invalid/`](https://github.com/francoisnoel62/HOS-AI/tree/master/public/spec/0.1/conformance/invalid), each made to break one rule.
 
-</PageInProgress>
+## HOS Core
+
+### core/entities
+
+**A hotel belongs to one <Term id="tenant">tenant</Term>.** The tenant, `hostenant`, is the organisation the data belongs to, such as a hotel group, and the boundary of its security and policies. Every fact about a property, `hosproperty`, names the same tenant.
+
+**Why**: a property that moves between tenants within a stream means facts are mixed up between organisations, which could expose one group's data to another.
+
+```output id="core-entities"
+✗ stream-property-tenant.jsonl: invalid stream of 2 events (1 error)
+  error   line 2: Puts prop_demo in tenant "tenant_other", where line 1 put it in "tenant_demo". A property belongs to one tenant.
+          rule core/entities · at /hostenant
+```
+
+**Fix**: give every fact of a property the tenant it belongs to, from one place in your configuration. Spec: [HOS Core, entities](/docs/core#entities).
+
+### core/opaque-identifiers
+
+**HOS ids are opaque.** An id such as `stay_1042` has letters, digits, `.`, `_`, `~` or `-`, at most 128 characters, and means nothing by itself: no confirmation number, no name, no date.
+
+**Why**: an id that carries meaning leaks data, and breaks when the source system changes its numbering. An opaque id survives a migration of that system.
+
+```output id="core-opaque-identifiers"
+✗ event-identifier-with-space.json: invalid event reservation.created (1 error)
+  error   data.reservation_id is "res 1042", which does not have the expected form ^[A-Za-z0-9][A-Za-z0-9._~-]{0,127}$. Opaque, stable HOS identifier, unique within its Tenant. It carries no business meaning and no personal data.
+          rule core/opaque-identifiers · at /data/reservation_id
+```
+
+**Fix**: mint HOS ids and keep the link to the source's own ids in a crosswalk; `createIdentityRegistry` of the SDK does it, as [Build an adapter](/docs/tools/guides/build-an-adapter) shows. Spec: [HOS Core, identifiers](/docs/core#identifiers).
+
+### core/external-references
+
+**A source system's id travels as a typed reference**: which system it comes from, what kind of id it is, and the id itself. A PMS confirmation number is an external reference, never a HOS id.
+
+**Why**: another system can then find the same reservation in the source, without HOS pretending the source's id is its own.
+
+**Fix**: put source ids in the external references the event type defines, with each member it requires. The message names the member that is missing or wrong. Spec: [HOS Core, identifiers](/docs/core#identifiers).
+
+### core/unit-status-model
+
+**A unit has four statuses, each with its own values**: occupancy, housekeeping, maintenance and commercial. Housekeeping, for example, is `dirty`, `clean`, `inspected` or `unknown`.
+
+**Why**: with the same values everywhere, every system reads a room the same way, and knows whether it can be sold or given to a guest.
+
+```output id="core-unit-status-model"
+✗ event-housekeeping-value.json: invalid event unit.status_changed (1 error)
+  error   data.current is "cleaning", not one of: dirty, clean, inspected, unknown. Readiness as reported by the housekeeping authority.
+          rule core/unit-status-model · at /data/current
+```
+
+**Fix**: map each status of your system to one of the HOS values. A status with no equivalent is not published, and your manifest's limitations say so; see [Build an adapter](/docs/tools/guides/build-an-adapter#the-decisions-that-are-yours). Spec: [HOS Core, unit status model](/docs/core#unit-status).
+
+### core/time
+
+**Times are unambiguous.** Every instant is in UTC, a property has one IANA time zone, such as `Europe/Paris`, and it keeps it within a stream.
+
+**Why**: local times derive from the property's time zone. If it changes between facts, a 15:00 check-in means two different instants.
+
+```output id="core-time"
+✗ stream-property-timezone.jsonl: invalid stream of 2 events (1 error)
+  error   line 2: Gives prop_demo the time zone "Europe/Lisbon", where line 1 gave "Europe/Paris". Local times derive from the property's time zone, which a stream does not change.
+          rule core/time · at /hospropertytimezone
+```
+
+**Fix**: take the time zone of each property from one place in your configuration, and convert local times with `zonedTimeToUtc` of the SDK. Spec: [HOS Core, time](/docs/core#time-extensions).
+
+### core/extensions
+
+**Vendor detail goes in `data.extensions`, under your own namespace**: an inverted domain name, such as `com.example`. An extension never redefines a HOS field or value.
+
+**Why**: detail that has no place in HOS can still travel, without two vendors' fields colliding, and without changing what HOS fields mean.
+
+```output id="core-extensions"
+✗ event-extension-namespace.json: invalid event reservation.created (1 error)
+  error   data.extensions has the key "mews", which is not allowed. Vendor detail under an inverted domain namespace such as com.example. Each namespace publishes its own schema and documentation, and can never redefine a Core field or enum.
+          rule core/extensions · at /data/extensions
+```
+
+**Fix**: name the key after a domain you own, reversed: `com.example`, not `example`. Spec: [HOS Core, extensions](/docs/core#time-extensions).
+
+### core/sensitivity-classes
+
+**Data sent as a snapshot is classified**: its sensitivity class says how carefully it must be handled.
+
+**Why**: a snapshot restates a whole state at once, and a consumer must know what it holds before it stores or shows it.
+
+**Fix**: use one of the classes HOS defines; the message lists them. Spec: [HOS Core, sensitivity classes](/docs/core#time-extensions).
+
+## HOS Events
+
+### events/envelope
+
+**Every event carries the HOS envelope**: the CloudEvents attributes, and the HOS ones, such as the tenant, the property and its time zone, with the right types.
+
+**Why**: the envelope is what every consumer reads first, whatever the event type: who published it, when, about which hotel and which entities.
+
+```output id="events-envelope"
+✗ event-without-tenant.json: invalid event reservation.created (1 error)
+  error   hostenant is missing. Tenant: the security, policy and data-autonomy boundary.
+          rule events/envelope · at /hostenant
+```
+
+**Fix**: let `createFactWriter` of the SDK fill in the envelope, or check each attribute the message names. Spec: [HOS Events, envelope](/docs/events#envelope).
+
+### events/catalogue
+
+**An event has one of the fifteen HOS types, and the data that type defines**: its required fields, with their types. A manifest declares only those types.
+
+**Why**: a type is a promise about meaning. A consumer that knows `stay.unit_unassigned` knows the unit it releases is there.
+
+```output id="events-catalogue"
+✗ event-unknown-type.json: invalid event reservation.confirmed (1 error)
+  error   type is "reservation.confirmed", which is not a type of HOS Events 0.1.
+          rule events/catalogue · at /type
+```
+
+**Fix**: map the source's event to the HOS type with the same meaning, and fill in each field the message says is missing. Spec: [HOS Events, catalogue](/docs/events#catalogue).
+
+### events/minimal-data
+
+**Data objects are closed**: only the fields a type defines are allowed, and people appear only as pseudonymous references.
+
+**Why**: a guest's name, e-mail or phone number never enters HOS. With closed data, personal or commercial data cannot travel unnoticed.
+
+```output id="events-minimal-data"
+✗ event-personal-data.json: invalid event reservation.created (1 error)
+  error   data.guest_name is not defined for reservation.created. Data objects are closed so that personal or commercial data cannot travel unnoticed; vendor detail goes in data.extensions under an inverted domain namespace.
+          rule events/minimal-data · at /data/guest_name
+```
+
+**Fix**: remove the field. If it is vendor detail that is not personal data, move it to `data.extensions`, under your namespace. Spec: [HOS Events, delivery rules](/docs/events#delivery).
+
+### events/honest-time-and-actor
+
+**`time` is when the fact happened, and says so honestly.** When the source only knows the entity's last modification, `hostimebasis` is `modified`; when it knows no time, `recorded`. `hosactor`, when known, names who acted as `user:`, `guest:`, `system:` or `integration:` with a pseudonymous reference.
+
+**Why**: consumers order facts by time. A time that pretends to be exact reorders them wrongly; a name in `hosactor` leaks personal data.
+
+```output id="events-honest-time-and-actor"
+✗ event-actor-name.json: invalid event reservation.created (1 error)
+  error   hosactor is "user:Jane Example", which does not have the expected form ^(?:user|guest|system|integration):[A-Za-z0-9][A-Za-z0-9._~-]{0,127}$. Who made the change in the producer, when it knows: user (a staff member), guest, system (the producer itself) or integration (another system through its API), with a pseudonymous, producer-scoped reference, for example user:staff_k3. Never a name or contact detail.
+          rule events/honest-time-and-actor · at /hosactor
+```
+
+**Fix**: give actors pseudonymous ids from your crosswalk, and use `timeBasis` when the source does not date the change. Spec: [HOS Events, principles](/docs/events#principles).
+
+### events/explicit-snapshots
+
+**A <Term id="snapshot">snapshot</Term> says it is one.** An event that restates a whole state, rather than one change, sets `hosdatamode` to `snapshot`, carries a sensitivity class, is of a type that allows snapshots, and is declared as a snapshot in its producer's manifest.
+
+**Why**: a consumer applies a change and a full restatement differently. A snapshot sent without notice could overwrite what other systems are the authority on.
+
+```output id="events-explicit-snapshots"
+✗ event-snapshot-without-sensitivity.json: invalid event unit.status_changed (1 error)
+  error   hossensitivity is missing. Sensitivity class of data. Required for snapshots.
+          rule events/explicit-snapshots · at /hossensitivity
+```
+
+**Fix**: send changes as they happen. Use a snapshot only to recover a state that changes could not, declare it in your manifest, and classify it. Spec: [HOS Events, principles](/docs/events#principles).
+
+### events/plans-are-not-states
+
+**A maintenance window is a plan**: `unit.maintenance_scheduled` says when a unit will be out of service or out of sale, and which statuses it will impose. The unit's statuses change only through `unit.status_changed`, when the window begins.
+
+**Why**: a plan and a state are different facts. A consumer that treats a planned window as the current state would block a room that is still available.
+
+```output id="events-plans-are-not-states"
+✗ event-maintenance-operational.json: invalid event unit.maintenance_scheduled (1 error)
+  error   data.statuses.maintenance is "operational"; HOS requires "out_of_service".
+          rule events/plans-are-not-states · at /data/statuses/maintenance
+```
+
+**Fix**: in a window, state what it imposes: maintenance `out_of_service`, commercial `not_sellable`, or both. Publish the status changes when they happen. Spec: [HOS Events, principles](/docs/events#principles).
+
+### events/immutable-facts
+
+**A fact never changes.** A source and an id name one fact forever. A correction, a released unit or a reverted check-in is a new fact, with a new id.
+
+**Why**: a consumer that already has a fact discards another with the same source and id as a repeat. A changed fact under the same id is never seen.
+
+```output id="events-immutable-facts"
+✗ stream-conflicting-id.jsonl: invalid stream of 2 events (1 error)
+  error   line 2: Reuses the source and id of line 1 with different content (data.current). A source and id name one fact, which never changes: a correction is a new event.
+          rule events/immutable-facts
+```
+
+**Fix**: publish corrections as new facts. When a producer publishes the same fact again, derive every value from the source data, never from the clock; see [Check what a producer publishes](/docs/tools/guides/check-a-producer#same-data-same-facts). Spec: [HOS Events, principles](/docs/events#principles).
+
+### events/at-least-once-delivery
+
+**Facts arrive at least once, and sometimes twice.** Consumers discard repeats by source and id. A manifest promises at-least-once delivery, and a producer that publishes the same data again publishes the same facts, with the same ids.
+
+**Why**: no network delivers exactly once. Deduplication by source and id makes repeats harmless, as long as ids are stable.
+
+```output id="events-at-least-once-delivery"
+✗ manifest-exactly-once.json: invalid manifest urn:hos:pms:demo (1 error)
+  error   delivery.guarantee is "exactly-once"; HOS requires "at-least-once". HOS delivery is at-least-once; consumers deduplicate on source and id.
+          rule events/at-least-once-delivery · at /delivery/guarantee
+```
+
+In a stream, a repeated fact is a note under this rule, not an error.
+
+**Fix**: declare `at-least-once`, and give each fact an id derived from the source's own id for the event. Spec: [HOS Events, delivery rules](/docs/events#delivery).
+
+### events/no-global-order
+
+**There is no global order.** A producer may declare an order per subject, or in total for what it publishes; otherwise consumers order facts by time, then source, then id. Delivery order never decides.
+
+**Why**: facts from several systems cannot share one order. The rule makes every consumer reach the same result, whatever the order of delivery.
+
+```output id="events-no-global-order"
+✗ manifest-global-order.json: invalid manifest urn:hos:pms:demo (1 error)
+  error   delivery.ordering is "global", not one of: none, per-subject, total. Ordering is never global; it holds only as declared here.
+          rule events/no-global-order · at /delivery/ordering
+```
+
+**Fix**: declare `none`, `per-subject` or `total`, as your system really delivers. Spec: [HOS Events, delivery rules](/docs/events#delivery).
+
+### events/declared-capability
+
+**Undeclared means denied.** A consumer processes only the facts a producer's manifest declares, for the hotels it lists.
+
+**Why**: a consumer must know what each system is allowed to say. A fact nobody declared could come from a misconfigured or unknown system.
+
+```output id="events-declared-capability"
+✗ stream-undeclared-event.jsonl: invalid stream of 1 event (1 error)
+  error   line 1: urn:hos:messaging:demo does not declare stay.checked_in at prop_demo: a consumer ignores this event (undeclared_capability).
+          rule events/declared-capability · at /type
+```
+
+**Fix**: declare the fact in the manifest, for the hotel, if your system really is a source for it. Otherwise stop publishing it. Spec: [HOS Events, delivery rules](/docs/events#delivery).
+
+### events/one-authority
+
+**At most one producer is the authority on a thing**: for a hotel, an event type and, for statuses, a dimension. Other producers may report it, as non-authoritative.
+
+**Why**: the authority's facts change the value; the others are shown as disagreements. Two authorities would make the result depend on who spoke last.
+
+```output id="events-one-authority"
+✗ stream-two-authorities.jsonl: invalid stream of 1 event (1 error)
+  error   urn:hos:pms:demo and urn:hos:housekeeping:demo are both authoritative for unit.status_changed (housekeeping) at prop_demo. At most one producer is authoritative for a property, event type and dimension.
+          rule events/one-authority
+```
+
+**Fix**: agree which system is the system of record, and set `authoritative` to `false` in the other manifests. Spec: [HOS Events, delivery rules](/docs/events#delivery).
+
+### events/replay
+
+**Streams and replays are JSON Lines**: one event per line. A manifest says whether the producer can replay its facts, and for how long it keeps them.
+
+**Why**: a consumer that lost facts asks for a replay, and reads it line by line, like any stream.
+
+```output id="events-replay"
+✗ stream-unreadable-line.jsonl: invalid stream of 2 events (1 error)
+  error   line 2: Not JSON: Expected ',' or '}' after property value in JSON at position 41. A stream is JSON Lines: one event per line.
+          rule events/replay
+```
+
+**Fix**: write each event on one line, as `JSON.stringify` does without indentation, and nothing else on the line. Spec: [HOS Events, delivery rules](/docs/events#delivery).
+
+### events/producers
+
+**A producer declares itself in a valid manifest, with its limitations**, and publishes its facts under the `source` its manifest declares.
+
+**Why**: the manifest is how a consumer knows what to trust, and the limitations say what the system does not do, so nobody assumes it does.
+
+```output id="events-producers"
+✗ manifest-without-limitations.json: invalid manifest urn:hos:pms:demo (1 error)
+  error   limitations is missing. Known gaps, unsupported states and access constraints, stated explicitly. Empty only when there are none.
+          rule events/producers · at /limitations
+```
+
+The producer checks go further than the schema: they require at least one limitation. See [Check what a producer publishes](/docs/tools/guides/check-a-producer).
+
+**Fix**: state what your system does not publish, does not know, or cannot share. Spec: [HOS Events, producers](/docs/events#producers).
+
+### events/signed-manifests
+
+**A manifest a consumer retrieves is signed by its producer**, with a key from the producer's published key set, and the signature has not expired.
+
+**Why**: a manifest decides what consumers trust. A manifest that fails verification counts as no manifest: nothing it declares is processed.
+
+```output id="events-signed-manifests" excerpt="head"
+✗ manifest.jws: bad signature
+  error   The signature does not match this manifest and key Rmvn6iiK5EPEKShAwybtwHfST8XHnptFp5kdveGjsfk: the manifest changed after it was signed, or another key signed it.
+          rule events/signed-manifests
+```
+
+**Fix**: sign the manifest again and publish it with its signature; [Sign and publish a producer manifest](/docs/tools/guides/sign-and-publish#why-a-signature-fails) lists every signature error and its fix. Spec: [HOS Events, signed manifests](/docs/events#signed-manifests).
+
+### events/reference
+
+**A reference situation follows the reference projection**: its type, and the reasons it gives, are the ones HOS defines for its example of arrival readiness.
+
+**Why**: a situation that claims to be a HOS reference situation must mean the same thing everywhere. A system that reads arrivals its own way publishes its own situations, not these.
+
+```output id="events-reference"
+✗ situation-unknown-reason.json: invalid situation arrival.room_readiness_resolved (1 error)
+  error   data.reason is "room_cleaned", not one of: unit_ready, unit_available, unit_reassigned, unit_vacated, departure_before_arrival, arrival_not_early, reservation_inactive, stay_started. What stopped the risk: the stay was given another unit, the unit became ready, its maintenance window went, the guest in house left or is now due to leave first, the arrival is no longer early, the reservation became inactive, or the stay started.
+          rule events/reference · at /data/reason
+```
+
+**Fix**: use one of the reasons the message lists. Spec: [HOS Events, reference projection](/docs/events#reference).

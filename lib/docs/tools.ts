@@ -115,26 +115,31 @@ export const toolsSections: ToolsSection[] = [
     title: "Reference",
     pages: [
       page("cli", {
+        written: true,
         title: "hos command reference",
         navTitle: "CLI reference",
         description: "Every command and option of @hos-ai/cli, with its exit codes and output.",
       }),
       page("sdk", {
+        written: true,
         title: "@hos-ai/sdk reference",
         navTitle: "SDK reference",
         description: "The entry points and functions of @hos-ai/sdk, for Node and the browser.",
       }),
       page("protocol", {
+        written: true,
         title: "The conformance protocol",
         navTitle: "Conformance protocol",
         description: "hos-conformance/1: how hos talks to the program it tests, over standard input and output.",
       }),
       page("rules", {
+        written: true,
         title: "Validation rules",
         navTitle: "Rules",
         description: "Each rule the tools report, what it means, an example that breaks it and how to fix it.",
       }),
       page("glossary", {
+        written: true,
         title: "Glossary",
         navTitle: "Glossary",
         description: "The terms of the HOS tools documentation, in plain language.",
@@ -145,11 +150,13 @@ export const toolsSections: ToolsSection[] = [
     title: "Help",
     pages: [
       page("troubleshooting", {
+        written: true,
         title: "Troubleshooting",
         navTitle: "Troubleshooting",
         description: "Find your problem by symptom, by the exact message or by its code, and fix it step by step.",
       }),
       page("help", {
+        written: true,
         title: "Get help",
         navTitle: "Get help",
         description: "What to check first, what to send, and where to ask.",
