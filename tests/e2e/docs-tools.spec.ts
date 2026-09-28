@@ -138,3 +138,22 @@ test("each page links to a prefilled GitHub issue about itself", async ({ page }
   expect(url.searchParams.get("title")).toBe("Docs: Install the tools");
   expect(url.searchParams.get("body")).toContain("/docs/tools/install");
 });
+
+test("a terminal replays its command and output, unless the reader asks for less motion", async ({ page }) => {
+  await page.goto("/docs/tools/quickstart");
+  const cast = page
+    .locator("figure")
+    .filter({ has: page.getByRole("button", { name: "Replay" }) })
+    .first();
+  // The whole transcript is there before any replay.
+  await expect(cast).toContainText("invalid event unit.status_changed");
+  await expect(cast.locator(".invisible")).toHaveCount(0);
+  await cast.getByRole("button", { name: "Replay" }).click();
+  await expect(cast.locator(".invisible").first()).toBeAttached();
+  await expect(cast.locator(".invisible")).toHaveCount(0, { timeout: 10_000 });
+
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.reload();
+  await expect(page.getByRole("button", { name: "Replay" })).toHaveCount(0);
+  await expect(page.getByText("invalid event unit.status_changed").first()).toBeVisible();
+});

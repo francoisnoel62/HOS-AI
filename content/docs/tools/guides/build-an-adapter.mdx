@@ -12,6 +12,8 @@ An <Term id="adapter">adapter</Term> turns what a hotel system knows into HOS fa
 
 ## Why this matters
 
+<AdapterDiagram />
+
 A <Term id="producer">producer</Term> is only as good as its adapter. Three things go wrong most often: a status that HOS does not define, ids that change when the adapter restarts, and times in the hotel's local time instead of UTC. The SDK handles the envelope and the ids; this guide shows the decisions left to you.
 
 The example is Spotless, a housekeeping app invented for this guide. It sends a webhook each time a room changes status. The adapter reads a file of these webhooks, so you can run it without a server; in production, the same code runs for each webhook it receives.
@@ -182,7 +184,8 @@ node adapter.mjs redelivery.jsonl
 npx @hos-ai/cli conformance producer --manifest manifest.json --stream recording.jsonl --redelivery redelivery.jsonl
 ```
 
-```output id="producer-pass"
+```cast id="producer-pass"
+$ npx @hos-ai/cli conformance producer --manifest manifest.json --stream recording.jsonl --redelivery redelivery.jsonl
 Producer urn:hos:housekeeping:spotless-demo
 ✓ manifest.json: valid manifest, with its limitations
 ✓ recording.jsonl: 3 facts, valid and declared

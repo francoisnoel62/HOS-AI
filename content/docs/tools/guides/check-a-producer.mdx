@@ -38,7 +38,8 @@ curl -O https://hos-ai.vercel.app/docs/tools/examples/producer/redelivery.jsonl`
 npx @hos-ai/cli conformance producer --manifest manifest.json --stream recording.jsonl --redelivery redelivery.jsonl
 ```
 
-```output id="pass"
+```cast id="pass"
+$ npx @hos-ai/cli conformance producer --manifest manifest.json --stream recording.jsonl --redelivery redelivery.jsonl
 Producer urn:hos:pms:demo
 ✓ manifest.json: valid manifest, with its limitations
 ✓ recording.jsonl: 5 facts, valid and declared
@@ -117,6 +118,8 @@ Producer urn:hos:pms:demo
 ```
 
 ## Same data, same facts
+
+<RedeliveryDiagram />
 
 To pass the fourth check, derive every part of a fact from the source data, never from the moment you publish it:
 

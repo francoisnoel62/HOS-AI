@@ -100,6 +100,8 @@ The <Term id="authority">authority</Term> on a value is the system of record for
 
 For each fact it receives, a consumer reaches one <Term id="disposition">disposition</Term>. HOS Events 0.1 decides which, in this order:
 
+<DispositionsDiagram />
+
 | Disposition             | When                                                                                 | In the Quickstart |
 | :---------------------- | :----------------------------------------------------------------------------------- | :---------------- |
 | `duplicate`             | the consumer has already received a fact with the same `source` and `id`             | delivery 5        |
@@ -120,11 +122,7 @@ For each fact it receives, a consumer reaches one <Term id="disposition">disposi
 
 A <Term id="stream">stream</Term> is a file of facts in JSON Lines: one fact per line, in the order they were delivered, usually named `.jsonl`. A `.json` file holds one document; a `.jsonl` file holds many, one per line.
 
-```text
-{"specversion":"1.0","id":"pms-000312","source":"urn:hos:pms:demo","type":"reservation.created",...}
-{"specversion":"1.0","id":"pms-000421","source":"urn:hos:pms:demo","type":"stay.expected",...}
-{"specversion":"1.0","id":"pms-000422","source":"urn:hos:pms:demo","type":"stay.unit_assigned",...}
-```
+<JsonLinesDiagram />
 
 **Why it matters**: some problems only show across facts: the same fact sent twice, two facts with the same id but different content, a fact that no manifest declares. `hos validate` checks a stream as a whole, and `hos replay` plays it back.
 
