@@ -98,11 +98,13 @@ export const toolsSections: ToolsSection[] = [
         description: "Create a key, sign your manifest, publish it under /.well-known/hos/ and keep it valid.",
       }),
       page("guides/ci", {
+        written: true,
         title: "Run the checks in CI",
         navTitle: "Use in CI",
         description: "Exit codes, JSON and JUnit output, and a complete GitHub Actions workflow.",
       }),
       page("guides/build-an-adapter", {
+        written: true,
         title: "Build an adapter with the SDK",
         navTitle: "Build an adapter",
         description: "Turn a system's data into HOS facts with stable ids, validate them and check them, in TypeScript.",

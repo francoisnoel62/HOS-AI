@@ -1,13 +1,284 @@
-<PageInProgress>
+<InShort>
 
-This guide will build, step by step, an adapter that turns a system's data into HOS facts with the SDK, following the Mews, Apaleo and Cloudbeds mappings:
+An adapter turns what a hotel system knows into HOS facts. With the SDK, you map each source event to a HOS event type, give entities stable HOS ids, let the SDK fill in the envelope, validate each fact before you publish it, and check the whole producer in a test. This guide builds a complete adapter for a made-up housekeeping app, in about sixty lines of JavaScript.
 
-- keeping HOS ids opaque and stable with an identity registry;
-- writing facts with `createFactWriter`: the envelope, the time basis, the actor and the business date;
-- the time helpers, and daylight saving time;
-- validating facts before publishing them, and checking the producer in tests;
-- a runnable example, driven by a made-up housekeeping webhook.
+</InShort>
 
-Meanwhile, the [npm page of the SDK](https://www.npmjs.com/package/@hos-ai/sdk) has examples of each step.
+<FactSheet
+  audience="Developers who connect a system to HOS, in TypeScript or JavaScript"
+  time="45 minutes"
+  needs={["Node.js 22 or later", "hos, see Install", "Some JavaScript"]}
+/>
 
-</PageInProgress>
+## Why this matters
+
+A <Term id="producer">producer</Term> is only as good as its adapter. Three things go wrong most often: a status that HOS does not define, ids that change when the adapter restarts, and times in the hotel's local time instead of UTC. The SDK handles the envelope and the ids; this guide shows the decisions left to you.
+
+The example is Spotless, a housekeeping app invented for this guide. It sends a webhook each time a room changes status. The adapter reads a file of these webhooks, so you can run it without a server; in production, the same code runs for each webhook it receives.
+
+<Steps>
+<Step title="Set up a project">
+
+In a new folder, install the SDK:
+
+```sh
+npm install @hos-ai/sdk
+```
+
+Save four webhooks of Spotless as `webhooks.jsonl`, one per line. Each has an id, a room, a status and the previous one, the local date and time of the change, when the webhook was received, and the staff member who made the change:
+
+```jsonl id="webhooks"
+{"event_id":"sp-9001","room":"204","status":"DIRTY","previous":"INSPECTED","date":"2026-07-30","time":"08:40","received_at":"2026-07-30T06:40:02Z","user":"staff-17"}
+{"event_id":"sp-9002","room":"118","status":"CLEAN","previous":"DIRTY","date":"2026-07-30","time":"09:05","received_at":"2026-07-30T07:05:01Z","user":"staff-17"}
+{"event_id":"sp-9003","room":"204","status":"IN_PROGRESS","previous":"DIRTY","date":"2026-07-30","time":"10:10","received_at":"2026-07-30T08:10:03Z","user":"staff-22"}
+{"event_id":"sp-9004","room":"204","status":"INSPECTED","previous":"IN_PROGRESS","date":"2026-07-30","time":"11:44","received_at":"2026-07-30T09:44:02Z","user":"staff-05"}
+```
+
+</Step>
+<Step title="Write the manifest">
+
+The <Term id="manifest">manifest</Term> declares what the adapter publishes: the housekeeping status of units, for one hotel, as the <Term id="authority">authority</Term>. It states its limitations too. Save it as `manifest.json`:
+
+```json id="manifest"
+{
+  "hosmanifestversion": "0.1",
+  "producer": "urn:hos:housekeeping:spotless-demo",
+  "name": "Spotless, a made-up housekeeping app",
+  "organization": { "name": "Spotless example" },
+  "system_role": "housekeeping",
+  "property_ids": ["prop_demo"],
+  "entities": ["Unit"],
+  "events": [{ "type": "unit.status_changed", "dimensions": ["housekeeping"], "authoritative": true }],
+  "delivery": { "mechanisms": ["webhook"], "guarantee": "at-least-once", "ordering": "none" },
+  "replay": { "supported": false },
+  "retention": { "event_days": 30 },
+  "limitations": ["IN_PROGRESS, a room being cleaned, has no HOS status: it is not published."]
+}
+```
+
+</Step>
+<Step title="Write the adapter">
+
+Save this as `adapter.mjs`. The comments explain each decision:
+
+```js id="adapter"
+// An adapter for Spotless, a made-up housekeeping app. It turns each webhook of webhooks.jsonl into HOS facts, and
+// writes them, one per line, to the file named on the command line: recording.jsonl by default.
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
+
+import { createFactWriter, createIdentityRegistry, validate, zonedTimeToUtc } from "@hos-ai/sdk";
+
+const out = process.argv[2] ?? "recording.jsonl";
+const source = "urn:hos:housekeeping:spotless-demo";
+const hotel = { tenant: "tenant_demo", propertyId: "prop_demo", timezone: "Europe/Paris" };
+
+// HOS ids are opaque, and a room keeps its id from one run to the next: the crosswalk remembers them.
+const crosswalk = existsSync("crosswalk.json") ? JSON.parse(readFileSync("crosswalk.json", "utf8")) : {};
+const registry = createIdentityRegistry(crosswalk);
+function hosId(kind, sourceId) {
+  const id = registry.resolve(kind, sourceId);
+  (crosswalk[kind] ??= {})[sourceId] = id;
+  return id;
+}
+
+// What each Spotless status means in HOS. IN_PROGRESS, a room being cleaned, has no HOS status: it is not published.
+const statuses = { DIRTY: "dirty", CLEAN: "clean", INSPECTED: "inspected" };
+
+const facts = [];
+for (const line of readFileSync("webhooks.jsonl", "utf8")
+  .split("\n")
+  .filter((text) => text.trim())) {
+  const hook = JSON.parse(line);
+  const current = statuses[hook.status];
+  if (!current) {
+    console.log(`${hook.event_id}: ${hook.status} has no HOS status, not published`);
+    continue;
+  }
+  // Every value comes from the webhook, never from the clock, so the same webhook always gives the same fact.
+  const writer = createFactWriter({ source, ...hotel, recordedAt: hook.received_at, idPrefix: "spotless" });
+  const unit = hosId("unit", hook.room);
+  writer.publish(
+    "unit.status_changed",
+    hook.event_id,
+    // Spotless gives the hotel's local time: HOS times are UTC.
+    zonedTimeToUtc(hook.date, hook.time, hotel.timezone),
+    [`unit:${unit}`],
+    {
+      unit_id: unit,
+      dimension: "housekeeping",
+      ...(statuses[hook.previous] ? { previous: statuses[hook.previous] } : {}),
+      current,
+      authority_source: source,
+    },
+    // Who made the change, as a pseudonymous id: never a name.
+    { actor: `user:${hosId("actor", hook.user)}` },
+  );
+  for (const fact of writer.events) {
+    const { valid, errors } = validate(fact);
+    if (!valid) throw new Error(`${hook.event_id}: ${errors[0].message}`);
+    facts.push(fact);
+  }
+}
+
+writeFileSync(out, `${facts.map((fact) => JSON.stringify(fact)).join("\n")}\n`);
+writeFileSync("crosswalk.json", JSON.stringify(crosswalk, null, 2));
+console.log(`${facts.length} facts written to ${out}`);
+```
+
+Run it:
+
+```sh
+node adapter.mjs
+```
+
+```output id="adapter-run"
+sp-9003: IN_PROGRESS has no HOS status, not published
+3 facts written to recording.jsonl
+```
+
+</Step>
+<Step title="Understand what it wrote">
+
+Open `recording.jsonl`: three facts, one per line. The SDK filled in the envelope of each one:
+
+- **`id`**, such as `spotless:sp-9001:unit.status_changed:20260730T064000Z`: the prefix, the webhook's id, the HOS type and the time of the change. The same webhook always gives the same id, even from another process.
+- **`time`**: `2026-07-30T06:40:00Z`. Spotless said 08:40 in Paris, which is 06:40 UTC in summer. `zonedTimeToUtc` converts the hotel's wall-clock time, daylight saving included.
+- **`hosrecordedat`**: when the webhook was received, taken from the webhook, not from the clock.
+- **`hosbusinessdate`**: the hotel's operating day, 2026-07-30, computed in its time zone.
+- **`hostenant`**, **`hosproperty`**, **`hospropertytimezone`** and **`hossubjects`**: from the hotel and the unit.
+- **`hosactor`**: `user:actor_…`, a pseudonymous id for `staff-17`.
+
+`crosswalk.json` now holds the HOS id of each room and staff member. The adapter reads it at the next start, so room 204 keeps its HOS id. HOS ids are opaque on purpose: they never carry the source system's own ids, so they survive a migration of that system.
+
+<TechnicalDetail title="When the source does not date the change">
+
+Some systems only give the time of an entity's last modification, or no time at all. Tell HOS with `timeBasis` in the options of `publish`: `modified` when the time is the last modification, `recorded` when the source gives none, and the SDK then uses `recordedAt`. A consumer then knows how far to trust the time.
+
+</TechnicalDetail>
+
+</Step>
+<Step title="Validate what it publishes">
+
+```sh
+npx @hos-ai/cli validate recording.jsonl -m manifest.json
+```
+
+```output id="validate-recording"
+✓ recording.jsonl: valid stream of 3 events
+```
+
+Each fact is valid, and declared by the manifest. The adapter also validates each fact before writing it, with `validate` from the SDK: a fact HOS would reject never leaves the adapter.
+
+</Step>
+<Step title="Restart it on the same data">
+
+A producer must publish the same facts when it runs again on the same data. Run the adapter a second time, into another file, then check the producer:
+
+```sh
+node adapter.mjs redelivery.jsonl
+```
+
+```sh
+npx @hos-ai/cli conformance producer --manifest manifest.json --stream recording.jsonl --redelivery redelivery.jsonl
+```
+
+```output id="producer-pass"
+Producer urn:hos:housekeeping:spotless-demo
+✓ manifest.json: valid manifest, with its limitations
+✓ recording.jsonl: 3 facts, valid and declared
+✓ redelivery.jsonl: 3 facts, each already in the recording with the same id and content
+
+✓ urn:hos:housekeeping:spotless-demo passes the producer checks.
+```
+
+Now see why the crosswalk matters. Delete `crosswalk.json`, run the adapter into `redelivery.jsonl` again, and check again:
+
+```output id="lost-crosswalk"
+Producer urn:hos:housekeeping:spotless-demo
+✓ manifest.json: valid manifest, with its limitations
+✓ recording.jsonl: 3 facts, valid and declared
+✗ redelivery.jsonl: 3 facts, 0 already in the recording unchanged (3 errors)
+  error   line 1: spotless:sp-9001:unit.status_changed:20260730T064000Z comes back with different content (hossubjects, hosactor, data.unit_id). A source and id name one fact, which never changes: a correction is a new event.
+          rule events/immutable-facts
+  error   line 2: spotless:sp-9002:unit.status_changed:20260730T070500Z comes back with different content (hossubjects, hosactor, data.unit_id). A source and id name one fact, which never changes: a correction is a new event.
+          rule events/immutable-facts
+  error   line 3: spotless:sp-9004:unit.status_changed:20260730T094400Z comes back with different content (hossubjects, hosactor, data.unit_id). A source and id name one fact, which never changes: a correction is a new event.
+          rule events/immutable-facts
+
+✗ urn:hos:housekeeping:spotless-demo fails the producer checks.
+```
+
+Without the crosswalk, the restarted adapter gave the rooms and the staff new HOS ids. For every consumer, room 204 would have become another room. In production, keep the crosswalk in your database, and never lose it.
+
+</Step>
+<Step title="Check it in your tests">
+
+`checkProducer` runs the same checks in your own tests. Save this as `adapter.test.mjs`, delete `crosswalk.json` for a fresh start, and run it with the test runner of Node.js:
+
+```js id="adapter-test"
+import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
+import { readFileSync } from "node:fs";
+import { test } from "node:test";
+
+import { checkProducer } from "@hos-ai/sdk";
+
+test("the adapter passes the producer checks, restart included", () => {
+  execFileSync(process.execPath, ["adapter.mjs", "recording.jsonl"]);
+  execFileSync(process.execPath, ["adapter.mjs", "redelivery.jsonl"]);
+  const check = checkProducer({
+    manifest: JSON.parse(readFileSync("manifest.json", "utf8")),
+    recording: readFileSync("recording.jsonl", "utf8"),
+    redelivery: readFileSync("redelivery.jsonl", "utf8"),
+  });
+  assert.equal(check.valid, true, JSON.stringify(check, null, 2));
+});
+```
+
+```sh
+node --test adapter.test.mjs
+```
+
+```output from="node"
+✔ the adapter passes the producer checks, restart included (548.9673ms)
+ℹ tests 1
+ℹ pass 1
+ℹ fail 0
+```
+
+Node.js prints a few more counters, and the durations differ on each run.
+
+</Step>
+</Steps>
+
+## The decisions that are yours
+
+The SDK writes the envelope. These decisions stay with you, and the guide made each one:
+
+- **Map every source value to a HOS value, or publish nothing.** `IN_PROGRESS` has no HOS equivalent, so the adapter skips it rather than inventing a status, and the manifest says so in its limitations. Vendor detail that has no place in HOS can travel in `data.extensions`, under your own namespace such as `com.example`.
+- **Declare yourself the authority only for what you are the system of record for.** Spotless is for housekeeping status; the PMS is for occupancy.
+- **Take every value from the source.** Times, statuses and the reception time come from the webhook. The ids come from the webhook's own id and from the crosswalk.
+- **Never publish names or contact details.** Staff become pseudonymous actors; guests never appear by name.
+
+The HOS mappings of [Mews](/demo/mews), [Apaleo](/demo/apaleo) and [Cloudbeds](/demo/cloudbeds) follow the same pattern on real PMS data, with more event types. Their code is in [`lib/hos/mappings`](https://github.com/francoisnoel62/HOS-AI/tree/master/lib/hos/mappings).
+
+<Checkpoint>
+
+`node adapter.mjs` writes three facts, `hos validate` accepts them, the producer check passes after a restart, and `node --test` reports `pass 1`.
+
+</Checkpoint>
+
+<IfItFails>
+
+- `Cannot find package '@hos-ai/sdk'`: run `npm install @hos-ai/sdk` in the folder of `adapter.mjs`.
+- The adapter throws with a message from `validate`: the fact is not valid HOS. The message names the field and the value; [Validate](/docs/tools/guides/validate#read-a-line-of-output) explains how to read it.
+- `comes back with different content`: the adapter took a value from the clock, or lost its crosswalk.
+- `does not declare unit.status_changed at ...`: the manifest's `property_ids` or `producer` does not match what the adapter publishes.
+
+</IfItFails>
+
+## Next steps
+
+- [Sign and publish a producer manifest](/docs/tools/guides/sign-and-publish): publish `manifest.json`, signed.
+- [Run the checks in CI](/docs/tools/guides/ci): run the producer check on every change of the adapter.
+- [The SDK on npm](https://www.npmjs.com/package/@hos-ai/sdk): every function, until the SDK reference is written.

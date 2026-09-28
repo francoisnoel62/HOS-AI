@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { execFileSync } from "node:child_process";
-import { copyFileSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { copyFileSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -283,7 +283,95 @@ const checks: Record<string, Check> = {
       code: 1,
     });
   },
+
+  // Build an adapter: the reader's files, run as the page says
+  "guides/build-an-adapter#webhooks": () => expect(block("guides/build-an-adapter", "webhooks").split("\n")).toHaveLength(4),
+  "guides/build-an-adapter#manifest": async () => {
+    const { code } = await hos(["validate", "manifest.json"], { files: { "manifest.json": block("guides/build-an-adapter", "manifest") } });
+    expect(code).toBe(0);
+  },
+  "guides/build-an-adapter#adapter": () => expect(block("guides/build-an-adapter", "adapter")).toContain("createFactWriter"),
+  "guides/build-an-adapter#adapter-run": () => {
+    const cwd = adapterFolder();
+    expectShown(node(cwd, "adapter.mjs"), shown("guides/build-an-adapter", "adapter-run"));
+  },
+  "guides/build-an-adapter#validate-recording": () => {
+    const cwd = adapterFolder();
+    node(cwd, "adapter.mjs");
+    return printed("guides/build-an-adapter", "validate-recording", ["validate", "recording.jsonl", "-m", "manifest.json"], { cwd });
+  },
+  "guides/build-an-adapter#producer-pass": () => {
+    const cwd = adapterFolder();
+    node(cwd, "adapter.mjs");
+    node(cwd, "adapter.mjs", "redelivery.jsonl");
+    return printed("guides/build-an-adapter", "producer-pass", producerCheck, { cwd });
+  },
+  "guides/build-an-adapter#lost-crosswalk": () => {
+    const cwd = adapterFolder();
+    node(cwd, "adapter.mjs");
+    unlinkSync(path.join(cwd, "crosswalk.json"));
+    node(cwd, "adapter.mjs", "redelivery.jsonl");
+    return printed("guides/build-an-adapter", "lost-crosswalk", producerCheck, { cwd, code: 1 });
+  },
+  "guides/build-an-adapter#adapter-test": () => {
+    const cwd = adapterFolder({ "adapter.test.mjs": block("guides/build-an-adapter", "adapter-test") });
+    // node --test exits with 1 when a test fails, which execFileSync turns into an exception.
+    expect(node(cwd, "--test", "adapter.test.mjs")).toContain("pass 1");
+  },
+
+  // Run the checks in CI
+  "guides/ci#github-actions": () => ciCommandsRun(block("guides/ci", "github-actions")),
+  "guides/ci#gitlab-ci": () => ciCommandsRun(block("guides/ci", "gitlab-ci")),
+  "guides/ci#junit": async () => {
+    const { written } = await hos(["conformance", "run", "--all", "--impl", referenceImpl, "--junit", "hos-conformance.xml"]);
+    expectShown(written["hos-conformance.xml"], shown("guides/ci", "junit"));
+  },
 };
+
+// The adapter of the build-an-adapter guide, in a folder of the project so that it finds @hos-ai/sdk, as it does once
+// installed. Node runs the SDK from its sources.
+const repository = fileURLToPath(new URL("../../", import.meta.url));
+function adapterFolder(extra: Record<string, string> = {}) {
+  const parent = path.join(repository, "node_modules", ".cache", "hos-docs");
+  mkdirSync(parent, { recursive: true });
+  const cwd = mkdtempSync(path.join(parent, "adapter-"));
+  const files = {
+    "webhooks.jsonl": `${block("guides/build-an-adapter", "webhooks")}\n`,
+    "manifest.json": block("guides/build-an-adapter", "manifest"),
+    "adapter.mjs": block("guides/build-an-adapter", "adapter"),
+    ...extra,
+  };
+  for (const [name, text] of Object.entries(files)) writeFileSync(path.join(cwd, name), text);
+  return cwd;
+}
+function node(cwd: string, ...args: string[]) {
+  // Without the test runner's channel to its workers, which a child process must not take for its own.
+  const env: Record<string, string | undefined> = { ...process.env, NODE_OPTIONS: "--conditions=@hos-ai/source" };
+  delete env.NODE_CHANNEL_FD;
+  delete env.NODE_CHANNEL_SERIALIZATION_MODE;
+  return execFileSync(process.execPath, args, { cwd, env, encoding: "utf8" });
+}
+
+// Each npx hos command of a CI file runs with the files it names: it may pass or fail, but never with exit code 2, which
+// would mean the command itself is wrong.
+async function ciCommandsRun(yaml: string) {
+  const commands = yaml
+    .split("\n")
+    .map((line) => line.match(/npx hos (.+)$/)?.[1])
+    .filter((command): command is string => Boolean(command));
+  expect(commands.length).toBeGreaterThan(0);
+  const signing = signingExample();
+  const origin = "https://your-domain.example/.well-known/hos";
+  const urls = Object.fromEntries(Object.entries(signing).map(([name, text]) => [`${origin}/${name}`, text]));
+  const cwd = folder({ "consumer.mjs": block("guides/test-a-consumer", "skeleton"), ...producerKit() });
+  for (const command of commands) {
+    const args = [...command.replace(/"\$\(date[^)]*\)"/, "2026-10-01T00:00:00Z").matchAll(/"([^"]*)"|(\S+)/g)].map(([, quoted, bare]) =>
+      quoted !== undefined ? quoted.replace(/^node /, `"${process.execPath}" `) : bare,
+    );
+    const { code, stderr } = await hos(args, { cwd, urls });
+    expect(code, `npx hos ${command}\n${stderr}`).not.toBe(2);
+  }
+}
 
 // The example producer of the check-a-producer guide, with the reader's find-and-replace in its redelivery.
 const producerCheck = ["conformance", "producer", "--manifest", "manifest.json", "--stream", "recording.jsonl", "--redelivery", "redelivery.jsonl"];

@@ -1,11 +1,171 @@
-<PageInProgress>
+<InShort>
 
-This guide will show how to run the checks automatically:
+Every hos command ends with an exit code that a CI reads: 0 when everything passes, 1 when a check fails, 2 when the command itself is wrong. Run the checks on every change, keep their reports, and verify your published manifest every day, so that a broken fact or an expiring signature never reaches a hotel.
 
-- the exit codes, 0, 1 and 2, and what a CI should do with each;
-- `--json` output, and JUnit reports with `--junit`;
-- a complete, commented GitHub Actions workflow that validates files, runs the conformance scenarios, checks a producer and warns before a manifest signature expires;
-- the same for GitLab CI;
-- pinning the version of the tools.
+</InShort>
 
-</PageInProgress>
+<FactSheet
+  audience="Developers and integrators who automate checks"
+  time="20 minutes"
+  needs={["A project in a Git repository", "GitHub Actions, GitLab CI or another CI"]}
+/>
+
+## Why this matters
+
+The checks of the other guides catch problems when someone runs them. A CI runs them every time: a change to the adapter that breaks deduplication, or a new field that HOS does not accept, fails the build before it is merged. And a scheduled job warns you weeks before your manifest's signature expires, instead of the day every consumer stops trusting it.
+
+## Exit codes
+
+| Code | Meaning                                                           | What the CI does                             |
+| :--- | :---------------------------------------------------------------- | :------------------------------------------- |
+| 0    | everything is valid, or every check passed                        | the step passes                              |
+| 1    | a file is invalid, a check failed, or a signature does not verify | the step fails                               |
+| 2    | the command is wrong, or a file or URL could not be read          | the step fails: fix the job, not the product |
+
+Every command also prints its result as JSON with `--json`, for a script that needs the details, and `hos conformance run` writes a JUnit report with `--junit`, which most CI tools display test by test.
+
+<Steps>
+<Step title="Pin the version of the tools">
+
+In the project, install the command as a development dependency, at an exact version:
+
+```sh
+npm install --save-dev --save-exact @hos-ai/cli
+```
+
+The tools are alphas: messages and checks may change from one version to the next. With an exact version, the CI runs what you tested, and you move to a new version on purpose. Run the command as `npx hos` in the project: npx uses the project's copy.
+
+</Step>
+<Step title="Choose the checks">
+
+Keep the checks that match what your system does:
+
+| Your system                 | Check                                                                                                          |
+| :-------------------------- | :------------------------------------------------------------------------------------------------------------- |
+| receives HOS facts          | `npx hos conformance run --all --level normative --impl "node consumer.mjs" --junit hos-conformance.xml`       |
+| publishes HOS facts         | `npx hos conformance producer --manifest manifest.json --stream recording.jsonl --redelivery redelivery.jsonl` |
+| publishes files you keep    | `npx hos validate manifest.json`                                                                               |
+| publishes a signed manifest | `npx hos manifest verify https://your-domain.example/.well-known/hos/manifest.json --at <a date ahead>`        |
+
+For the producer check, have a step of the job produce `recording.jsonl` and `redelivery.jsonl`, as the test of [Build an adapter](/docs/tools/guides/build-an-adapter#check-it-in-your-tests) does.
+
+</Step>
+<Step title="Add a GitHub Actions workflow">
+
+Save this as `.github/workflows/hos.yml`, and adapt the commands and paths to your project:
+
+```yaml id="github-actions"
+name: HOS checks
+
+on:
+  push:
+  pull_request:
+  # Every morning, to catch a manifest signature about to expire.
+  schedule:
+    - cron: "0 6 * * *"
+
+jobs:
+  hos:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      # Installs the exact version of @hos-ai/cli that package.json pins.
+      - run: npm ci
+
+      - name: Test the consumer against the conformance scenarios
+        run: npx hos conformance run --all --level normative --impl "node consumer.mjs" --junit hos-conformance.xml
+
+      - name: Record what the adapter publishes, then again after a restart
+        run: |
+          node adapter.mjs recording.jsonl
+          node adapter.mjs redelivery.jsonl
+
+      - name: Check the producer
+        run: npx hos conformance producer --manifest manifest.json --stream recording.jsonl --redelivery redelivery.jsonl
+
+      - name: Verify the published manifest as of 30 days from now
+        run: npx hos manifest verify https://your-domain.example/.well-known/hos/manifest.json --at "$(date -u -d '+30 days' +%Y-%m-%dT%H:%M:%SZ)"
+
+      - name: Keep the conformance report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: hos-conformance
+          path: hos-conformance.xml
+```
+
+Each step fails on exit code 1 or 2, and the job fails with it. The last step keeps the JUnit report even when a scenario fails, to read in the run's artifacts.
+
+</Step>
+<Step title="Read the JUnit report">
+
+`--junit` writes one test suite per scenario and one test case per delivery, named after the fact. A failure carries the difference, as the text report prints it:
+
+```xml id="junit" excerpt="head"
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites name="hos conformance" tests="3" failures="0">
+  <testsuite name="arrival-readiness" tests="13" failures="0" errors="0">
+    <testcase classname="arrival-readiness" name="delivery 1 (pms-000312 from urn:hos:pms:demo)"/>
+    <testcase classname="arrival-readiness" name="delivery 2 (pms-000421 from urn:hos:pms:demo)"/>
+```
+
+The report does not replace the text output of the step, which says in one line per scenario what passed.
+
+</Step>
+</Steps>
+
+## GitLab CI
+
+The same checks in `.gitlab-ci.yml`, with the JUnit report shown in merge requests:
+
+```yaml id="gitlab-ci"
+hos:
+  image: node:22
+  script:
+    - npm ci
+    - npx hos conformance run --all --level normative --impl "node consumer.mjs" --junit hos-conformance.xml
+    - node adapter.mjs recording.jsonl
+    - node adapter.mjs redelivery.jsonl
+    - npx hos conformance producer --manifest manifest.json --stream recording.jsonl --redelivery redelivery.jsonl
+  artifacts:
+    when: always
+    reports:
+      junit: hos-conformance.xml
+```
+
+For the daily check of the manifest, add a scheduled pipeline in the project's CI/CD settings.
+
+## Read the JSON output
+
+`--json` gives the same result as the text, as one JSON document. The top-level `valid` of `validate` and `conformance producer`, and `passed` of `conformance run`, say whether everything passed, as the exit code does. With `jq`, for example:
+
+```sh
+npx hos conformance run --all --level normative --impl "node consumer.mjs" --json | jq '.scenarios[] | {scenario, passed, scores}'
+```
+
+The guides show each command's JSON: [validate](/docs/tools/guides/validate#get-the-result-as-json), [replay](/docs/tools/guides/replay#get-the-timeline-as-json), [conformance producer](/docs/tools/guides/check-a-producer#get-the-result-as-json).
+
+<Checkpoint>
+
+A change that breaks a check fails the workflow, and a scheduled run fails while the manifest's signature has less than 30 days left.
+
+</Checkpoint>
+
+<IfItFails>
+
+- The step fails with exit code 2: the command is wrong or a file is missing. Read the first line of its output, which starts with `hos` and says what is missing.
+- `npx hos` downloads a package instead of using the project's: `@hos-ai/cli` is not in `devDependencies`, or `npm ci` did not run first.
+- The scenarios pass on your computer but not in the CI: the command after `--impl` starts differently on Linux. Run it on its own in the CI to see.
+- `date: invalid option`: `date -d` is GNU date, as on the Ubuntu runners of GitHub. On macOS runners, use `date -u -v+30d +%Y-%m-%dT%H:%M:%SZ`.
+
+</IfItFails>
+
+## Next steps
+
+- [Test a system that receives HOS facts](/docs/tools/guides/test-a-consumer): the conformance scenarios in detail.
+- [Check what a producer publishes](/docs/tools/guides/check-a-producer): the producer checks in detail.
+- [Sign and publish a producer manifest](/docs/tools/guides/sign-and-publish): signing again before expiry.
