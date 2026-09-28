@@ -27,7 +27,16 @@ test("the tools documentation reads in order, from the overview to Get help", as
 test("every link of the tools documentation leads somewhere, and every section link to its heading", async ({ page, request, isMobile }) => {
   test.skip(isMobile, "Links do not depend on the viewport.");
   test.setTimeout(120_000);
-  const checked = new Set<string>();
+  // Each page once, and its HTML for the anchors that other pages link to.
+  const pages = new Map<string, string>();
+  async function html(path: string, from: string) {
+    if (!pages.has(path)) {
+      const response = await request.get(path);
+      expect(response.status(), `${from} → ${path}`).toBe(200);
+      pages.set(path, path.endsWith(".md") || path.includes(".json") ? "" : await response.text());
+    }
+    return pages.get(path)!;
+  }
   for (const item of allToolsPages) {
     await page.goto(item.href);
     const hrefs = await page.locator("main a[href]").evaluateAll((links) => links.map((link) => link.getAttribute("href")!));
@@ -37,11 +46,9 @@ test("every link of the tools documentation leads somewhere, and every section l
         continue;
       }
       if (!href.startsWith("/")) continue;
-      // Rule anchors are checked once the rules page exists (phase 4 of PLAN-SDK-DOC.md); the page itself must answer.
-      const path = href.split("#")[0];
-      if (checked.has(path)) continue;
-      checked.add(path);
-      expect((await request.get(path)).status(), `${item.href} → ${path}`).toBe(200);
+      const [path, anchor] = href.split("#");
+      const text = await html(path, item.href);
+      if (anchor) expect(text, `${item.href} → ${href}`).toContain(`id="${anchor}"`);
     }
   }
 });
@@ -130,4 +137,23 @@ test("each page links to a prefilled GitHub issue about itself", async ({ page }
   expect(url.pathname).toMatch(/\/issues\/new$/);
   expect(url.searchParams.get("title")).toBe("Docs: Install the tools");
   expect(url.searchParams.get("body")).toContain("/docs/tools/install");
+});
+
+test("a terminal replays its command and output, unless the reader asks for less motion", async ({ page }) => {
+  await page.goto("/docs/tools/quickstart");
+  const cast = page
+    .locator("figure")
+    .filter({ has: page.getByRole("button", { name: "Replay" }) })
+    .first();
+  // The whole transcript is there before any replay.
+  await expect(cast).toContainText("invalid event unit.status_changed");
+  await expect(cast.locator(".invisible")).toHaveCount(0);
+  await cast.getByRole("button", { name: "Replay" }).click();
+  await expect(cast.locator(".invisible").first()).toBeAttached();
+  await expect(cast.locator(".invisible")).toHaveCount(0, { timeout: 10_000 });
+
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.reload();
+  await expect(page.getByRole("button", { name: "Replay" })).toHaveCount(0);
+  await expect(page.getByText("invalid event unit.status_changed").first()).toBeVisible();
 });

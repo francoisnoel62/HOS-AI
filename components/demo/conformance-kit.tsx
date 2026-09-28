@@ -56,8 +56,11 @@ export function ConformanceKit({ id }: { id: ConformanceScenarioId }) {
         ))}
       </div>
       <div className="mt-8 flex flex-wrap gap-3">
+        <Link href="/docs/tools/guides/test-a-consumer">
+          <Button>Run it with the CLI</Button>
+        </Link>
         <Link href="/docs/events">
-          <Button>Read HOS Events 0.1</Button>
+          <Button variant="secondary">Read HOS Events 0.1</Button>
         </Link>
         <Link href="/participate/pilot">
           <Button variant="secondary">Run this scenario with your systems</Button>

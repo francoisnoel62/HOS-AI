@@ -57,7 +57,7 @@ HOS events follow the [CloudEvents](https://cloudevents.io) format, with HOS att
 
 ## Producers and consumers
 
-A <Term id="producer">producer</Term> publishes facts: a property management system (PMS), a housekeeping app, a guest messaging platform. A <Term id="consumer">consumer</Term> receives them and decides what to do with each one: a dashboard, an operations app, an AI assistant. One system can be both.
+A <Term id="producer">producer</Term> publishes facts: a property management system (<Term id="pms">PMS</Term>), a housekeeping app, a guest messaging platform. A <Term id="consumer">consumer</Term> receives them and decides what to do with each one: a dashboard, an operations app, an AI assistant. One system can be both.
 
 **In a hotel**: the housekeeper who reports a room's state, and the front desk that reads it before handing over a key.
 
@@ -100,6 +100,8 @@ The <Term id="authority">authority</Term> on a value is the system of record for
 
 For each fact it receives, a consumer reaches one <Term id="disposition">disposition</Term>. HOS Events 0.1 decides which, in this order:
 
+<DispositionsDiagram />
+
 | Disposition             | When                                                                                 | In the Quickstart |
 | :---------------------- | :----------------------------------------------------------------------------------- | :---------------- |
 | `duplicate`             | the consumer has already received a fact with the same `source` and `id`             | delivery 5        |
@@ -120,11 +122,7 @@ For each fact it receives, a consumer reaches one <Term id="disposition">disposi
 
 A <Term id="stream">stream</Term> is a file of facts in JSON Lines: one fact per line, in the order they were delivered, usually named `.jsonl`. A `.json` file holds one document; a `.jsonl` file holds many, one per line.
 
-```text
-{"specversion":"1.0","id":"pms-000312","source":"urn:hos:pms:demo","type":"reservation.created",...}
-{"specversion":"1.0","id":"pms-000421","source":"urn:hos:pms:demo","type":"stay.expected",...}
-{"specversion":"1.0","id":"pms-000422","source":"urn:hos:pms:demo","type":"stay.unit_assigned",...}
-```
+<JsonLinesDiagram />
 
 **Why it matters**: some problems only show across facts: the same fact sent twice, two facts with the same id but different content, a fact that no manifest declares. `hos validate` checks a stream as a whole, and `hos replay` plays it back.
 

@@ -20,8 +20,21 @@ import { Command } from "@/components/docs/command";
 import { GlossaryList, IWantTo } from "@/components/docs/lists";
 import { Os, OsTabs } from "@/components/docs/os-tabs";
 import { Term } from "@/components/docs/term";
+import {
+  AdapterDiagram,
+  CiDiagram,
+  DispositionsDiagram,
+  JsonLinesDiagram,
+  OutputLineDiagram,
+  ProtocolDiagram,
+  RedeliveryDiagram,
+  RotationDiagram,
+  SigningDiagram,
+  ToolsFitDiagram,
+} from "@/components/docs/diagrams";
+import { TerminalCast } from "@/components/docs/terminal-cast";
 import { TerminalOutput } from "@/components/docs/terminal-output";
-import { CliVersion, NpxPrompt, SpecVersionOutput, VersionOutput, Versions } from "@/components/docs/versions";
+import { CliVersion, NpxPrompt, SpecVersion, SpecVersionOutput, VersionOutput, Versions } from "@/components/docs/versions";
 import { slugify, textOf } from "@/lib/docs/markdown";
 
 // How the MDX pages of /docs/tools render: Markdown elements in the site's style, and the documentation components,
@@ -77,6 +90,7 @@ function Pre({ children }: ComponentPropsWithoutRef<"pre">) {
   const language = code?.props.className?.replace(/^language-/, "") ?? "text";
   const text = textOf(code?.props.children).replace(/\r\n/g, "\n").replace(/\n$/, "");
   if (language === "output") return <TerminalOutput>{text}</TerminalOutput>;
+  if (language === "cast") return <TerminalCast text={text} />;
   if (language in shellLabels) return <Command label={shellLabels[language]}>{text}</Command>;
   return (
     <Command copyLabel="Copy code" label={codeLabels[language] ?? language.toUpperCase()}>
@@ -123,8 +137,19 @@ const components: MDXComponents = {
   TechnicalDetail,
   Term,
   TerminalOutput,
+  AdapterDiagram,
+  CiDiagram,
+  DispositionsDiagram,
+  JsonLinesDiagram,
+  OutputLineDiagram,
+  ProtocolDiagram,
+  RedeliveryDiagram,
+  RotationDiagram,
+  SigningDiagram,
+  ToolsFitDiagram,
   CliVersion,
   NpxPrompt,
+  SpecVersion,
   SpecVersionOutput,
   VersionOutput,
   Versions,

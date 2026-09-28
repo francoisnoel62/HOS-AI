@@ -1,11 +1,240 @@
-<PageInProgress>
+<InShort>
 
-This reference will have a section for each command and subcommand of `hos`: `validate`, `replay`, `conformance list`, `conformance run`, `conformance producer`, `manifest keygen`, `manifest sign` and `manifest verify`. Each section will give:
+Every command and option of the hos command, `@hos-ai/cli`, with its exit codes. The help text of each command is shown as hos prints it; the guides show each command at work.
 
-- the synopsis, taken from the command's own help;
-- every option, with its type, its default and whether it repeats;
-- the exit codes, examples, the text and JSON output, and the common errors.
+</InShort>
 
-Meanwhile, `hos <command> --help` lists the options of a command, and the [npm page](https://www.npmjs.com/package/@hos-ai/cli) lists the commands and exit codes.
+Run `hos <command> --help` for the same text in your terminal. Below, `hos` stands for `npx @hos-ai/cli`, or `npx hos` in a project that installs it; see [Install](/docs/tools/install#choose-how-to-run-hos).
 
-</PageInProgress>
+## hos
+
+```text id="usage-main"
+Usage: hos <command> [options]
+
+Tools for HOS 0.1.0-draft.2.
+
+Commands:
+  validate <file...>        validate events, reference situations and manifests (.json), and event streams (.jsonl)
+  conformance list          list the conformance scenarios
+  conformance run <...>     run the conformance scenarios through an implementation, in any language
+  conformance producer      check a producer's recorded facts against its manifest
+  replay <stream.jsonl>     replay a recorded stream through the reference projection, delivery by delivery
+  manifest keygen           create a key to sign manifests with, and add it to a key set
+  manifest sign <file>      sign a producer manifest
+  manifest verify <file>    verify a signed manifest, from files or from its URL
+
+Options:
+  -h, --help                show this help
+  -v, --version             print the version
+
+Run hos <command> --help for the options of a command.
+```
+
+`hos --version` prints the version of the command and the draft of HOS it checks:
+
+<VersionOutput />
+
+### Exit codes
+
+Every command ends with one of three codes:
+
+| Code | Meaning                                                           |
+| :--- | :---------------------------------------------------------------- |
+| 0    | everything is valid, or every check passed                        |
+| 1    | a file is invalid, a check failed, or a signature does not verify |
+| 2    | the command is wrong, or a file or URL could not be read          |
+
+A usage error starts with the command's name, such as `hos validate:`, says what is wrong, and ends with the command's help or a pointer to it.
+
+## hos validate
+
+```text id="usage-validate"
+Usage: hos validate [options] <file...>
+
+Validates HOS events, reference situations and producer manifests (.json), and event streams (.jsonl, one event
+per line). - reads standard input.
+
+Options:
+  -m, --manifest <file>  a producer manifest to check the streams against; repeat it for each producer
+      --json             print the results as JSON
+  -h, --help             show this help
+
+Exit codes: 0 when every file is valid, 1 when one is not, 2 for a usage or read error.
+```
+
+| Option             | Value | Repeat | What it does                                           |
+| :----------------- | :---- | :----- | :----------------------------------------------------- |
+| `<file...>`        | files | yes    | the files to validate; `-` reads standard input        |
+| `-m`, `--manifest` | file  | yes    | a producer manifest; changes the check of streams only |
+| `--json`           |       |        | print `{ valid, results }`, one result per file        |
+
+What it recognises, and how to read its output: [Validate events, manifests and streams](/docs/tools/guides/validate).
+
+## hos replay
+
+```text id="usage-replay"
+Usage: hos replay <stream.jsonl> --manifest <file>... [options]
+
+Replays a recorded stream of HOS events, one per line, through the arrival-readiness reference projection and shows
+the timeline: each delivery's disposition, the stays it changes and the situations it raises.
+
+Options:
+  -m, --manifest <file>  a producer manifest; repeat it for each producer. Facts without a manifest are ignored.
+      --ready <status>   a housekeeping status that makes a unit ready; repeat it (default: clean and inspected)
+      --json             print the timeline as JSON
+  -h, --help             show this help
+
+Exit codes: 0 when every line replayed, 1 when a line was not a valid event and was skipped, 2 for a usage or read
+error.
+```
+
+| Option             | Value  | Default              | Repeat | What it does                                  |
+| :----------------- | :----- | :------------------- | :----- | :-------------------------------------------- |
+| `<stream.jsonl>`   | file   |                      |        | the stream; `-` reads standard input          |
+| `-m`, `--manifest` | file   | none                 | yes    | the manifest of a producer of the stream      |
+| `--ready`          | status | `clean`, `inspected` | yes    | a housekeeping status that makes a unit ready |
+| `--json`           |        |                      |        | print `{ deliveries, skipped }`               |
+
+How to read the timeline: [Replay a stream](/docs/tools/guides/replay).
+
+## hos conformance
+
+The three subcommands share one help text:
+
+```text id="usage-conformance"
+Usage: hos conformance list [--scenario-dir <dir>]
+       hos conformance run <scenario...> --impl <command> [options]
+       hos conformance run --all --impl <command> [options]
+       hos conformance producer --manifest <file> --stream <file.jsonl> [--redelivery <file.jsonl>]
+
+run replays the HOS 0.1 conformance scenarios through a consumer, in any language, and compares what it answers
+with expected.json. The consumer reads a scenario on standard input and answers on standard output, as the
+protocol hos-conformance/1 describes: PROTOCOL.md, next to the published conformance scenarios.
+
+producer checks what a producer publishes against its manifest: a valid manifest that states its limitations;
+valid facts, under the manifest's producer, declared for their property; no source and id naming two facts; and,
+given a redelivery of the same data, the same facts with the same ids.
+
+Options of run:
+      --impl <command>      the implementation to test, run through the shell once per scenario
+      --all                 run every scenario
+      --level <level>       reference, the default: dispositions, readiness and situations;
+                            normative: dispositions only, which HOS Events 0.1 requires
+      --timeout <seconds>   how long the implementation may take per scenario (default 30)
+      --scenario-dir <dir>  a scenario directory, or a directory of scenarios, instead of the embedded ones
+      --json                print the results as JSON
+      --junit <file>        also write a JUnit report, for a CI
+
+Options of producer:
+      --manifest <file>     the producer's manifest
+      --stream <file>       a recording of the facts it published, one per line
+      --redelivery <file>   the facts it published again from the same data, for example after a restart
+      --json                print the results as JSON
+
+  -h, --help                show this help
+
+Exit codes: 0 when every check passes, 1 when one fails, 2 for a usage or read error.
+```
+
+### hos conformance list
+
+Lists the scenarios hos carries, or those of `--scenario-dir`: their name, title, and how many deliveries and producers each has.
+
+### hos conformance run
+
+| Option           | Value   | Default                | What it does                                                                                |
+| :--------------- | :------ | :--------------------- | :------------------------------------------------------------------------------------------ |
+| `<scenario...>`  | names   |                        | the scenarios to run: `arrival-readiness`, `late-checkout`, `room-out-of-order`             |
+| `--all`          |         |                        | every scenario, instead of names                                                            |
+| `--impl`         | command | required               | the program under test, started through the shell, in the current folder                    |
+| `--level`        | level   | `reference`            | `normative`: dispositions only. `reference`: also readiness and situations                  |
+| `--timeout`      | seconds | 30                     | how long the program may take per scenario, after which hos stops it                        |
+| `--scenario-dir` | folder  | the embedded scenarios | a scenario folder, or a folder of scenario folders                                          |
+| `--json`         |         |                        | print `{ protocol, level, passed, scenarios }`, with each scenario's scores and differences |
+| `--junit`        | file    |                        | also write a JUnit report: one suite per scenario, one case per delivery                    |
+
+The exchange with the program follows the [conformance protocol](/docs/tools/protocol). The guide: [Test a system that receives HOS facts](/docs/tools/guides/test-a-consumer).
+
+`hos reference-impl`, which the help leaves out, implements the protocol with the reference projection of the SDK. `hos conformance run --all --impl "hos reference-impl"` passes every scenario: it is the tool's check of itself.
+
+### hos conformance producer
+
+| Option         | Value | Required | What it does                                                 |
+| :------------- | :---- | :------- | :----------------------------------------------------------- |
+| `--manifest`   | file  | yes      | the producer's manifest                                      |
+| `--stream`     | file  | yes      | the recording: the facts it published, one per line          |
+| `--redelivery` | file  | no       | what it published again from the same data                   |
+| `--json`       |       |          | print `{ valid, producer, manifest, recording, redelivery }` |
+
+The four checks and how to record a producer: [Check what a producer publishes](/docs/tools/guides/check-a-producer).
+
+## hos manifest
+
+The three subcommands share one help text:
+
+```text id="usage-manifest"
+Usage: hos manifest keygen --key <file> --jwks <file> [--alg <alg>] [--kid <id>]
+       hos manifest sign <manifest.json> --key <file> [--days <n>] [--out <file>]
+       hos manifest verify <manifest.json | url> [--jws <file | url>] [--jwks <file> | --jwks-url <url>] [--at <time>]
+
+A producer signs its manifest as HOS Events 0.1 specifies: a JWS on the manifest's canonical form, detached, which
+it publishes beside the manifest as manifest.jws, with its public keys in a key set, jwks.json. A public producer
+serves the three under /.well-known/hos/ on its origin.
+
+keygen creates a private key and adds its public key to a key set: to start, or to rotate keys. Keep an old key in
+the set until every manifest signed with it has expired.
+
+Options of keygen:
+      --key <file>          where to write the private key; the file must not exist yet. Keep it secret.
+      --jwks <file>         the key set to add the public key to, created if missing
+      --alg <alg>           Ed25519, the default, or ES256
+      --kid <id>            the key's id, unique in the set (default: its thumbprint, RFC 7638)
+
+Options of sign:
+      --key <file>          the private key to sign with
+      --days <n>            how many days the signature lasts (default 90); sign again before it expires
+      --out <file>          where to write the signature (default: the manifest's file, ending in .jws)
+
+Options of verify:
+      --jws <file | url>    the signature (default: the manifest's file or URL, ending in .jws)
+      --jwks <file>         the producer's key set
+      --jwks-url <url>      the producer's key set on the web. A manifest given by its URL defaults to
+                            /.well-known/hos/jwks.json on the same origin.
+      --at <time>           verify as of a time, such as 2026-11-01T00:00:00Z, rather than now
+      --json                print the result as JSON
+
+  -h, --help                show this help
+
+Exit codes: 0 when done or valid, 1 when the manifest or its signature is invalid, 2 for a usage or read error.
+```
+
+### hos manifest keygen
+
+| Option   | Value                | Default              | What it does                                             |
+| :------- | :------------------- | :------------------- | :------------------------------------------------------- |
+| `--key`  | file                 | required             | where to write the private key; never overwrites a file  |
+| `--jwks` | file                 | required             | the key set to add the public key to, created if missing |
+| `--alg`  | `Ed25519` or `ES256` | `Ed25519`            | the key's algorithm                                      |
+| `--kid`  | id                   | the key's thumbprint | the key's id in the set                                  |
+
+### hos manifest sign
+
+| Option            | Value | Default                     | What it does                           |
+| :---------------- | :---- | :-------------------------- | :------------------------------------- |
+| `<manifest.json>` | file  | required                    | the manifest to sign; it must be valid |
+| `--key`           | file  | required                    | the private key                        |
+| `--days`          | days  | 90                          | how long the signature lasts           |
+| `--out`           | file  | the manifest's name, `.jws` | where to write the signature           |
+
+### hos manifest verify
+
+| Option       | Value       | Default                                               | What it does                                     |
+| :----------- | :---------- | :---------------------------------------------------- | :----------------------------------------------- |
+| `<manifest>` | file or URL | required                                              | the manifest                                     |
+| `--jws`      | file or URL | next to the manifest, ending in `.jws`                | the signature                                    |
+| `--jwks`     | file        |                                                       | the key set, from a file                         |
+| `--jwks-url` | URL         | `/.well-known/hos/jwks.json` on the manifest's origin | the key set, from the web                        |
+| `--at`       | time        | now                                                   | verify as of another time                        |
+| `--json`     |             |                                                       | print `{ valid, producer, manifest, signature }` |
+
+Keys, signing, publishing and the seven signature errors: [Sign and publish a producer manifest](/docs/tools/guides/sign-and-publish).
