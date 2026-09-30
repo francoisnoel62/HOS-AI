@@ -90,12 +90,12 @@ export async function pollEvery<State>(
     intervalMs = pollingDefaults.intervalMs,
     signal,
     onPoll,
-  }: { intervalMs?: number; signal?: AbortSignal; onPoll?: (outcome: PollOutcome, at: Date) => void } = {},
+  }: { intervalMs?: number; signal?: AbortSignal; onPoll?: (outcome: PollOutcome, at: Date) => void | Promise<void> } = {},
 ) {
   await markStarted(pool, target);
   while (!signal?.aborted) {
     const started = new Date();
-    onPoll?.(await pollOnce(pool, target, poll, started), started);
+    await onPoll?.(await pollOnce(pool, target, poll, started), started);
     const rest = started.getTime() + intervalMs - Date.now();
     if (rest > 0 && !signal?.aborted) await sleep(rest, undefined, { signal }).catch(() => undefined);
   }
