@@ -24,7 +24,37 @@ export type DeliveryResult = {
   changed: string[];
 };
 
-type Queryable = Pick<Pool | PoolClient, "query">;
+export type Queryable = Pick<Pool | PoolClient, "query">;
+
+// One fact of a journal: its position, and the JSON text it was first written with.
+export type JournalEntry = { seq: number; line: string };
+
+// Runs work in one transaction: all of it is written, or none.
+export async function transaction<T>(pool: Pool, work: (client: PoolClient) => Promise<T>): Promise<T> {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const result = await work(client);
+    await client.query("COMMIT");
+    return result;
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+// Locks a producer until the transaction ends, creating it on its first use: its deliveries and purges are written one
+// after the other, and a second one waits, then reads what the first wrote.
+export async function lockProducer<State>(client: PoolClient, { tenant, source }: ProducerKey) {
+  await client.query("INSERT INTO hos_producer.producers (tenant, source) VALUES ($1, $2) ON CONFLICT DO NOTHING", [tenant, source]);
+  const { rows } = await client.query<{ adapter_state: State | null; purged_through: string }>(
+    "SELECT adapter_state, purged_through FROM hos_producer.producers WHERE tenant = $1 AND source = $2 FOR UPDATE",
+    [tenant, source],
+  );
+  return { state: rows[0].adapter_state ?? undefined, purgedThrough: Number(rows[0].purged_through) };
+}
 
 // The HOS id given to each source entity of a producer.
 export async function readCrosswalk(db: Queryable, { tenant, source }: ProducerKey): Promise<Crosswalk> {
@@ -37,11 +67,18 @@ export async function readCrosswalk(db: Queryable, { tenant, source }: ProducerK
   return crosswalk;
 }
 
-// The facts of a producer after position after, in the order they were written, as the JSON text first written.
-export async function readJournal(db: Queryable, { tenant, source }: ProducerKey, after = 0) {
+// The facts of a producer in the order they were written: those after position after, recorded since the time since,
+// at most limit of them.
+export async function readJournal(
+  db: Queryable,
+  { tenant, source }: ProducerKey,
+  { after = 0, since, limit }: { after?: number; since?: string; limit?: number } = {},
+): Promise<JournalEntry[]> {
   const { rows } = await db.query<{ seq: string; fact: string }>(
-    "SELECT seq, fact FROM hos_producer.journal WHERE tenant = $1 AND source = $2 AND seq > $3 ORDER BY seq",
-    [tenant, source, after],
+    `SELECT seq, fact FROM hos_producer.journal
+     WHERE tenant = $1 AND source = $2 AND seq > $3 AND ($4::timestamptz IS NULL OR recorded_at >= $4)
+     ORDER BY seq LIMIT $5`,
+    [tenant, source, after, since ?? null, limit ?? null],
   );
   return rows.map(({ seq, fact }) => ({ seq: Number(seq), line: fact }));
 }
@@ -57,16 +94,8 @@ export async function processDelivery<State>(
   deliver: (context: { state: State | undefined; identities: IdentityRegistry }) => Delivered<State> | Promise<Delivered<State>>,
 ): Promise<DeliveryResult> {
   const { tenant, source } = producer;
-  const client = await pool.connect();
-  try {
-    await client.query("BEGIN");
-    await client.query("INSERT INTO hos_producer.producers (tenant, source) VALUES ($1, $2) ON CONFLICT DO NOTHING", [tenant, source]);
-    const {
-      rows: [stored],
-    } = await client.query<{ adapter_state: State | null }>(
-      "SELECT adapter_state FROM hos_producer.producers WHERE tenant = $1 AND source = $2 FOR UPDATE",
-      [tenant, source],
-    );
+  return transaction(pool, async (client) => {
+    const stored = await lockProducer<State>(client, producer);
 
     // The stored crosswalk, and the ids this delivery gives for the first time.
     const crosswalk = await readCrosswalk(client, producer);
@@ -80,7 +109,7 @@ export async function processDelivery<State>(
       },
     };
 
-    const { events, state } = await deliver({ state: stored.adapter_state ?? undefined, identities });
+    const { events, state } = await deliver({ state: stored.state, identities });
     // An invalid fact fails the whole delivery, so nothing of it is written and the source system delivers it again.
     for (const event of events) if (!validateEvent(event)) throw new Error(`Invalid HOS fact ${event.id}: ${JSON.stringify(validateEvent.errors)}`);
 
@@ -120,12 +149,6 @@ export async function processDelivery<State>(
       source,
       JSON.stringify(state),
     ]);
-    await client.query("COMMIT");
     return { appended, repeated: repeated.map((event) => event.id), changed };
-  } catch (error) {
-    await client.query("ROLLBACK");
-    throw error;
-  } finally {
-    client.release();
-  }
+  });
 }

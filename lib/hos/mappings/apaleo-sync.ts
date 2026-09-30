@@ -1,7 +1,7 @@
 import { createIdentityRegistry, type ProducerManifest } from "@hos-ai/sdk";
 
 import { type ApaleoMaintenance, type ApaleoReservation, type ApaleoUnit, type ApaleoWebhook, createApaleoAdapter } from "@/lib/hos/mappings/apaleo";
-import { liveManifest, synchronise, type SyncOptions, type SyncReport } from "@/lib/hos/mappings/sync";
+import { liveManifest, type MappingCapabilities, synchronise, type SyncOptions, type SyncReport } from "@/lib/hos/mappings/sync";
 
 // A first synchronisation of the experimental Apaleo mapping with a live Apaleo property: every fetched unit, maintenance
 // and reservation goes through the adapter as if a webhook had named it. lib/hos/mappings/sync.ts runs it and builds the
@@ -22,25 +22,27 @@ export type ApaleoSyncReport = SyncReport<{ reservations: number; units: number;
 // The synthetic webhooks carry no account: the adapter only checks that they name the configured one.
 const accountId = "live-check";
 
+export const apaleoCapabilities: MappingCapabilities = {
+  name: "Apaleo API",
+  types: [
+    "reservation.created",
+    "reservation.updated",
+    "reservation.cancelled",
+    "stay.expected",
+    "stay.unit_assigned",
+    "stay.unit_unassigned",
+    "stay.checked_in",
+    "stay.check_in_reverted",
+    "stay.checked_out",
+    "unit.maintenance_scheduled",
+    "unit.maintenance_cancelled",
+  ],
+  dimensions: ["occupancy", "housekeeping", "maintenance", "commercial"],
+  limitations: ["Synchronised from list operations: unit statuses are dated by the fetch, and assignments by the reservation's last modification."],
+};
+
 export function apaleoManifest(options: SyncOptions): ProducerManifest {
-  return liveManifest(options, {
-    name: "Apaleo API (live check)",
-    types: [
-      "reservation.created",
-      "reservation.updated",
-      "reservation.cancelled",
-      "stay.expected",
-      "stay.unit_assigned",
-      "stay.unit_unassigned",
-      "stay.checked_in",
-      "stay.check_in_reverted",
-      "stay.checked_out",
-      "unit.maintenance_scheduled",
-      "unit.maintenance_cancelled",
-    ],
-    dimensions: ["occupancy", "housekeeping", "maintenance", "commercial"],
-    limitations: ["Synchronised from list operations: unit statuses are dated by the fetch, and assignments by the reservation's last modification."],
-  });
+  return liveManifest(options, apaleoCapabilities);
 }
 
 export function syncApaleo(snapshot: ApaleoSnapshot, options: SyncOptions): ApaleoSyncReport {

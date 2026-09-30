@@ -2,7 +2,7 @@
 import { execSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
 
-import { createIdentityRegistry, type HosFact, type IdentityRegistry } from "@hos-ai/sdk";
+import { checkProducer, createIdentityRegistry, type HosFact, type IdentityRegistry } from "@hos-ai/sdk";
 import { Pool } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
@@ -16,7 +16,10 @@ import {
   type MewsResource,
   type MewsWebhook,
 } from "@/lib/hos/mappings/mews";
+import { mewsCapabilities } from "@/lib/hos/mappings/mews-sync";
 import { loadRecording } from "@/lib/hos/mappings/replay";
+import { acknowledge, exportJournal, JournalGap, purgeJournal, readPending } from "@/lib/hos/producer/delivery";
+import { producerManifest } from "@/lib/hos/producer/manifest";
 import { processDelivery, type ProducerKey, readCrosswalk, readJournal } from "@/lib/hos/producer/store";
 
 // These tests need a Postgres database of their own, named by HOS_TEST_DATABASE_URL; the CI provides one. Locally, with
@@ -38,7 +41,7 @@ function delivery({ received_at, webhook, fetched }: RecordedDelivery, at = rece
   };
 }
 
-describe.skipIf(!url)("Producer storage in Postgres", () => {
+describe.skipIf(!url)("Pilot producer in Postgres", () => {
   let pool: Pool;
   beforeAll(() => {
     // The site's own migrations, applied to the test database.
@@ -163,5 +166,84 @@ describe.skipIf(!url)("Producer storage in Postgres", () => {
       return { events: [], state: state! };
     });
     expect(stored).toEqual({ count: 5 });
+  });
+
+  it("delivers every fact at least once, from each consumer's own position", async () => {
+    const key = producer();
+    const [first, second, ...rest] = recording.deliveries;
+    await deliver(key, first);
+    await deliver(key, second);
+    const pending = await readPending(pool, key, "projection");
+    expect(pending).toEqual(await readJournal(pool, key));
+    // A consumer that stopped before acknowledging gets the same facts again.
+    expect(await readPending(pool, key, "projection")).toEqual(pending);
+    const read = pending.at(-1)!.seq;
+    await acknowledge(pool, key, "projection", read);
+    expect(await readPending(pool, key, "projection")).toEqual([]);
+
+    for (const recorded of rest) await deliver(key, recorded);
+    const later = await readPending(pool, key, "projection");
+    expect(later.length).toBeGreaterThan(0);
+    expect(later.every(({ seq }) => seq > read)).toBe(true);
+    // Another consumer reads from its own position: the start of the journal, a page at a time.
+    expect(await readPending(pool, key, "export")).toEqual(await readJournal(pool, key));
+    expect(await readPending(pool, key, "export", 1)).toEqual(pending.slice(0, 1));
+  });
+
+  it("moves a position only forward, and never beyond the journal", async () => {
+    const key = producer();
+    for (const recorded of recording.deliveries) await deliver(key, recorded);
+    const journal = await readJournal(pool, key);
+    await acknowledge(pool, key, "projection", journal.at(-1)!.seq);
+    await acknowledge(pool, key, "projection", journal[0].seq);
+    expect(await readPending(pool, key, "projection")).toEqual([]);
+    await expect(acknowledge(pool, key, "projection", journal.at(-1)!.seq + 1)).rejects.toThrow(/is not in the journal/);
+    await expect(acknowledge(pool, producer(), "projection", 1)).rejects.toThrow(/is not in the journal/);
+  });
+
+  it("exports the journal as JSON Lines that pass the producer check against the producer's manifest", async () => {
+    const key = producer();
+    for (const recorded of recording.deliveries) await deliver(key, recorded);
+    const journal = await readJournal(pool, key);
+    const all = await exportJournal(pool, key);
+    expect(all).toMatchObject({ facts: journal.length, last: journal.at(-1)!.seq, purgedThrough: 0 });
+    expect(all.jsonl).toBe(journal.map(({ line }) => `${line}\n`).join(""));
+
+    const [{ propertyId }] = recording.adapter.properties as Array<{ propertyId: string }>;
+    const manifest = producerManifest({ ...key, propertyId }, mewsCapabilities, { retentionDays: 30 });
+    expect(checkProducer({ manifest, recording: all.jsonl })).toMatchObject({ valid: true });
+
+    // After a position, or recorded since a time.
+    expect((await exportJournal(pool, key, { after: journal[0].seq })).facts).toBe(journal.length - 1);
+    const recorded = (entry: { line: string }) => (JSON.parse(entry.line) as HosFact).hosrecordedat;
+    const since = recorded(journal.at(-1)!);
+    expect((await exportJournal(pool, key, { since })).facts).toBe(journal.filter((entry) => recorded(entry) >= since).length);
+  });
+
+  it("purges expired facts from the start of the journal only, and tells a consumer that missed them", async () => {
+    const key = producer();
+    const [first, second, third] = recording.deliveries;
+    await deliver(key, first, "2026-08-01T09:00:00Z");
+    const read = await readPending(pool, key, "early");
+    await acknowledge(pool, key, "early", read.at(-1)!.seq);
+    await deliver(key, second, "2026-09-29T09:00:00Z");
+    // Recorded before the delivery ahead of it, as an old delivery replayed late would be: it stays as long as that one.
+    await deliver(key, third, "2026-08-02T09:00:00Z");
+    const journal = await readJournal(pool, key);
+    const kept = journal.slice(read.length);
+
+    const now = new Date("2026-09-30T12:00:00Z");
+    const purged = await purgeJournal(pool, key, { retentionDays: 30 }, now);
+    expect(purged).toEqual({ purged: read.length, purgedThrough: read.at(-1)!.seq });
+    expect(await readJournal(pool, key)).toEqual(kept);
+    expect(await purgeJournal(pool, key, { retentionDays: 30 }, now)).toEqual({ purged: 0, purgedThrough: purged.purgedThrough });
+    expect((await exportJournal(pool, key)).purgedThrough).toBe(purged.purgedThrough);
+
+    // The consumer that had read the purged facts carries on; one that had not learns what it missed.
+    expect(await readPending(pool, key, "early")).toEqual(kept);
+    await expect(readPending(pool, key, "late")).rejects.toThrow(JournalGap);
+    await acknowledge(pool, key, "late", purged.purgedThrough);
+    expect(await readPending(pool, key, "late")).toEqual(kept);
+    await expect(purgeJournal(pool, key, { retentionDays: 0 })).rejects.toThrow(/at least 1/);
   });
 });
