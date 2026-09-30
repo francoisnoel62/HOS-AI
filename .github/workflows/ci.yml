@@ -17,6 +17,23 @@ jobs:
     name: Site
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    # The database of the producer storage tests, which fail in the CI without it.
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: hos_ai_test
+          POSTGRES_USER: hos
+          POSTGRES_PASSWORD: hos
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U hos -d hos_ai_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      HOS_TEST_DATABASE_URL: postgres://hos:hos@localhost:5432/hos_ai_test
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
