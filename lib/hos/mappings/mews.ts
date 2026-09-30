@@ -19,7 +19,7 @@ import {
   utc,
 } from "@hos-ai/sdk";
 
-import { type MappingRecording, type MappingResult, type RecordingAdapter, responses, type Unmapped } from "@/lib/hos/mappings/common";
+import { jsonCopy, type MappingRecording, type MappingResult, type RecordingAdapter, responses, type Unmapped } from "@/lib/hos/mappings/common";
 
 // Experimental, unofficial mapping from the Mews Connector API to HOS Events 0.1, written against Mews's public
 // documentation: General Webhooks, Get all reservations (ver 2023-06-06) and Get all resources. It is not affiliated with,
@@ -126,6 +126,16 @@ type PublishedStay = {
 type PublishedUnit = { updatedUtc: string; statuses: Partial<Record<UnitStatusDimension, string>> };
 type PublishedWindow = { updatedUtc: string; unitId: string; cancelled: boolean };
 
+// Everything the adapter remembers, as JSON. An integration stores it with the crosswalk and hands it to the restarted
+// adapter, which carries on from what HOS was told instead of publishing every entity again.
+export type MewsAdapterState = {
+  mapping: "mews";
+  version: 1;
+  stays: Record<string, PublishedStay>;
+  units: Record<string, PublishedUnit>;
+  windows: Record<string, PublishedWindow>;
+};
+
 const reservationStatuses: Partial<Record<MewsServiceOrderState, "tentative" | "confirmed">> = {
   Optional: "tentative",
   Confirmed: "confirmed",
@@ -154,10 +164,14 @@ const resourceStatuses: Record<MewsResourceState, [UnitStatusDimension, string]>
 
 const isNewer = (candidate: string, current: string) => Date.parse(candidate) > Date.parse(current);
 
-export function createMewsAdapter(config: MewsAdapterConfig) {
-  const stays = new Map<string, PublishedStay>();
-  const units = new Map<string, PublishedUnit>();
-  const windows = new Map<string, PublishedWindow>();
+export function createMewsAdapter(config: MewsAdapterConfig, state?: MewsAdapterState) {
+  if (state && (state.mapping !== "mews" || state.version !== 1))
+    throw new Error(`Not a version 1 Mews adapter state: ${state.mapping} ${state.version}.`);
+  // Copies, in and out, so the adapter and whoever stores its state never change each other's objects.
+  const saved = state ? jsonCopy(state) : undefined;
+  const stays = new Map(Object.entries(saved?.stays ?? {}));
+  const units = new Map(Object.entries(saved?.units ?? {}));
+  const windows = new Map(Object.entries(saved?.windows ?? {}));
   const { resolve } = config.identities;
 
   function handle(delivery: MewsDelivery): MappingResult {
@@ -442,7 +456,16 @@ export function createMewsAdapter(config: MewsAdapterConfig) {
     return { events, unmapped };
   }
 
-  return { handle };
+  const snapshot = (): MewsAdapterState =>
+    jsonCopy({
+      mapping: "mews",
+      version: 1,
+      stays: Object.fromEntries(stays),
+      units: Object.fromEntries(units),
+      windows: Object.fromEntries(windows),
+    });
+
+  return { handle, state: snapshot };
 }
 
 // Replays a recording's Mews deliveries: each webhook message with the reservations and resources fetched for it.

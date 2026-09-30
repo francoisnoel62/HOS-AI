@@ -46,3 +46,6 @@ export type MappingRecording = {
 export type RecordingAdapter = (delivery: RecordedDelivery) => MappingResult;
 
 export const responses = <T>(delivery: RecordedDelivery) => delivery.fetched.map((call) => call.response as T);
+
+// A deep copy through JSON, the form in which an integration stores an adapter's state.
+export const jsonCopy = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T;

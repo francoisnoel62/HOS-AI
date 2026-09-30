@@ -19,7 +19,7 @@ import {
   utc,
 } from "@hos-ai/sdk";
 
-import type { MappingRecording, MappingResult, RecordingAdapter, Unmapped } from "@/lib/hos/mappings/common";
+import { jsonCopy, type MappingRecording, type MappingResult, type RecordingAdapter, type Unmapped } from "@/lib/hos/mappings/common";
 
 // Experimental, unofficial mapping from the Apaleo API to HOS Events 0.1, written against Apaleo's published webhook
 // events and its Booking and Inventory API models. It is not affiliated with, reviewed or endorsed by Apaleo. A webhook
@@ -126,6 +126,18 @@ type PublishedStay = {
 };
 
 type Statuses = Partial<Record<UnitStatusDimension, string>>;
+// What HOS has been told about a maintenance window: its unit, and the plan last published.
+type PublishedWindow = { unitId: string; plan: string; cancelled: boolean };
+
+// Everything the adapter remembers, as JSON. An integration stores it with the crosswalk and hands it to the restarted
+// adapter, which carries on from what HOS was told instead of publishing every entity again.
+export type ApaleoAdapterState = {
+  mapping: "apaleo";
+  version: 1;
+  stays: Record<string, PublishedStay>;
+  units: Record<string, Statuses>;
+  windows: Record<string, PublishedWindow>;
+};
 
 // Apaleo's maintenance types already say whether the unit can still be sold: a small repair (OutOfService) leaves it
 // sellable, a bigger one (OutOfOrder) does not, and a construction site (OutOfInventory) leaves the house count.
@@ -140,11 +152,14 @@ const dimensions: UnitStatusDimension[] = ["occupancy", "housekeeping", "mainten
 // Only bedrooms are HOS units; Apaleo also rents parking lots, meeting rooms and event spaces.
 const isBedroom = (unitGroup?: { type?: string }) => !unitGroup?.type || unitGroup.type === "BedRoom";
 
-export function createApaleoAdapter(config: ApaleoAdapterConfig) {
-  const stays = new Map<string, PublishedStay>();
-  const units = new Map<string, Statuses>();
-  // What HOS has been told about each maintenance window: its unit, and the plan last published.
-  const windows = new Map<string, { unitId: string; plan: string; cancelled: boolean }>();
+export function createApaleoAdapter(config: ApaleoAdapterConfig, state?: ApaleoAdapterState) {
+  if (state && (state.mapping !== "apaleo" || state.version !== 1))
+    throw new Error(`Not a version 1 Apaleo adapter state: ${state.mapping} ${state.version}.`);
+  // Copies, in and out, so the adapter and whoever stores its state never change each other's objects.
+  const saved = state ? jsonCopy(state) : undefined;
+  const stays = new Map(Object.entries(saved?.stays ?? {}));
+  const units = new Map(Object.entries(saved?.units ?? {}));
+  const windows = new Map(Object.entries(saved?.windows ?? {}));
   const { resolve } = config.identities;
 
   function handle(delivery: ApaleoDelivery): MappingResult {
@@ -370,7 +385,16 @@ export function createApaleoAdapter(config: ApaleoAdapterConfig) {
     return { events, unmapped };
   }
 
-  return { handle };
+  const snapshot = (): ApaleoAdapterState =>
+    jsonCopy({
+      mapping: "apaleo",
+      version: 1,
+      stays: Object.fromEntries(stays),
+      units: Object.fromEntries(units),
+      windows: Object.fromEntries(windows),
+    });
+
+  return { handle, state: snapshot };
 }
 
 // Replays a recording's Apaleo deliveries: each webhook with the reservation or unit fetched for it.
