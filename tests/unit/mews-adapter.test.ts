@@ -3,7 +3,16 @@ import { replayArrivalReadiness } from "@hos-ai/sdk/reference";
 import { describe, expect, it } from "vitest";
 
 import type { MappingRecording } from "@/lib/hos/mappings/common";
-import { createMewsAdapter, type MewsAdapterConfig, type MewsReservation, type MewsResource, type MewsResourceBlock } from "@/lib/hos/mappings/mews";
+import {
+  createMewsAdapter,
+  type MewsAdapterConfig,
+  type MewsAdapterState,
+  type MewsDelivery,
+  type MewsReservation,
+  type MewsResource,
+  type MewsResourceBlock,
+  type MewsWebhook,
+} from "@/lib/hos/mappings/mews";
 import { loadRecording } from "@/lib/hos/mappings/replay";
 import { loadArrivalScenario } from "@/lib/spec";
 
@@ -11,21 +20,34 @@ const { scenario, manifests } = loadArrivalScenario();
 const recording: MappingRecording = loadRecording("mews");
 const fetched = (delivery: number) =>
   recording.deliveries[delivery].fetched[0].response as { Reservations?: MewsReservation[]; Resources?: MewsResource[] };
+const config = (): MewsAdapterConfig => ({
+  ...(recording.adapter as unknown as Omit<MewsAdapterConfig, "identities">),
+  identities: createIdentityRegistry(recording.adapter.crosswalk),
+});
 
-describe("Mews adapter", () => {
-  const created = recording.deliveries[0].webhook as {
-    EnterpriseId: string;
-    IntegrationId: string;
-    Events: Array<{ Discriminator: string; Value: { Id: string } }>;
-  };
+// Every test runs twice: with one adapter, then with an adapter restarted before each delivery from the state the
+// previous one left, stored as text, as an integration restarts with its crosswalk. Both must publish the same facts.
+describe.each([
+  ["Mews adapter", false],
+  ["Mews adapter, restarted from its stored state before each delivery", true],
+])("%s", (_title, restarts) => {
+  const created = recording.deliveries[0].webhook as MewsWebhook;
   const reservation = fetched(0).Reservations![0];
   const assigned = fetched(1).Reservations![0];
   const room = fetched(2).Resources![0];
-  const adapter = () =>
-    createMewsAdapter({
-      ...(recording.adapter as unknown as Omit<MewsAdapterConfig, "identities">),
-      identities: createIdentityRegistry(recording.adapter.crosswalk),
-    });
+  const adapter = () => {
+    const shared = config();
+    if (!restarts) return createMewsAdapter(shared);
+    let stored: string | undefined;
+    return {
+      handle(delivery: MewsDelivery) {
+        const restarted = createMewsAdapter(shared, stored === undefined ? undefined : (JSON.parse(stored) as MewsAdapterState));
+        const result = restarted.handle(delivery);
+        stored = JSON.stringify(restarted.state());
+        return result;
+      },
+    };
+  };
   const webhook = (Discriminator: string, Id: string, EnterpriseId = created.EnterpriseId) => ({
     EnterpriseId,
     IntegrationId: created.IntegrationId,
@@ -243,5 +265,38 @@ describe("Mews adapter", () => {
     expect(customer.events).toEqual([]);
     expect(customer.unmapped.map((item) => item.event)).toEqual(["CustomerAdded", "CustomerUpdated", "ServiceOrderUpdated"]);
     expect(customer.unmapped[0].reason).toMatch(/pseudonymous guest_id/);
+  });
+});
+
+describe("Mews adapter state", () => {
+  const delivery = (index: number): MewsDelivery => ({
+    received_at: recording.deliveries[index].received_at,
+    webhook: recording.deliveries[index].webhook as MewsWebhook,
+    reservations: fetched(index).Reservations ?? [],
+    resources: fetched(index).Resources ?? [],
+  });
+
+  it("hands out copies, so the stored state and the adapter never change each other", () => {
+    const first = createMewsAdapter(config());
+    expect(first.handle(delivery(0)).events).not.toEqual([]);
+    const state = first.state();
+    const stored = JSON.stringify(state);
+    state.stays = {};
+    expect(JSON.stringify(first.state())).toBe(stored);
+
+    const handed = JSON.parse(stored) as MewsAdapterState;
+    const restarted = createMewsAdapter(config(), handed);
+    expect(restarted.handle(delivery(1)).events.map((event) => event.type)).toEqual(["stay.unit_assigned"]);
+    expect(JSON.stringify(handed)).toBe(stored);
+  });
+
+  it("refuses the state of another mapping or of another version", () => {
+    const state = createMewsAdapter(config()).state();
+    expect(() => createMewsAdapter(config(), { ...state, version: 2 } as unknown as MewsAdapterState)).toThrow(
+      "Not a version 1 Mews adapter state: mews 2.",
+    );
+    expect(() => createMewsAdapter(config(), { ...state, mapping: "apaleo" } as unknown as MewsAdapterState)).toThrow(
+      "Not a version 1 Mews adapter state: apaleo 1.",
+    );
   });
 });

@@ -4,6 +4,8 @@ import { describe, expect, it } from "vitest";
 
 import {
   type ApaleoAdapterConfig,
+  type ApaleoAdapterState,
+  type ApaleoDelivery,
   type ApaleoReservation,
   type ApaleoUnit,
   type ApaleoWebhook,
@@ -18,12 +20,28 @@ const config = recording.adapter as unknown as Omit<ApaleoAdapterConfig, "identi
 const webhook = (index: number) => recording.deliveries[index].webhook as ApaleoWebhook;
 const fetched = <T>(index: number) => recording.deliveries[index].fetched[0].response as T;
 
-describe("Apaleo adapter", () => {
+// Every test runs twice: with one adapter, then with an adapter restarted before each delivery from the state the
+// previous one left, stored as text, as an integration restarts with its crosswalk. Both must publish the same facts.
+describe.each([
+  ["Apaleo adapter", false],
+  ["Apaleo adapter, restarted from its stored state before each delivery", true],
+])("%s", (_title, restarts) => {
   const reservation = fetched<ApaleoReservation>(0);
   const assigned = fetched<ApaleoReservation>(1);
   const unit = fetched<ApaleoUnit>(2);
-  const adapter = (overrides: Partial<ApaleoAdapterConfig> = {}) =>
-    createApaleoAdapter({ ...config, identities: createIdentityRegistry(recording.adapter.crosswalk), ...overrides });
+  const adapter = (overrides: Partial<ApaleoAdapterConfig> = {}) => {
+    const shared = { ...config, identities: createIdentityRegistry(recording.adapter.crosswalk), ...overrides };
+    if (!restarts) return createApaleoAdapter(shared);
+    let stored: string | undefined;
+    return {
+      handle(delivery: ApaleoDelivery) {
+        const restarted = createApaleoAdapter(shared, stored === undefined ? undefined : (JSON.parse(stored) as ApaleoAdapterState));
+        const result = restarted.handle(delivery);
+        stored = JSON.stringify(restarted.state());
+        return result;
+      },
+    };
+  };
   const types = (events: HosFact[]) => events.map((event) => event.type);
   const status = (event: HosFact) => event.data as { dimension?: string; previous?: string; current?: string };
 
@@ -238,5 +256,38 @@ describe("Apaleo adapter", () => {
     expect(
       target.handle({ received_at: "2026-07-30T00:00:00Z", webhook: { ...webhook(0), topic: "system", type: "healthcheck" } }).unmapped[0].reason,
     ).toBe("Health check.");
+  });
+});
+
+describe("Apaleo adapter state", () => {
+  const identities = () => ({ ...config, identities: createIdentityRegistry(recording.adapter.crosswalk) });
+  const delivery = (index: number): ApaleoDelivery => ({
+    received_at: recording.deliveries[index].received_at,
+    webhook: webhook(index),
+    reservation: fetched<ApaleoReservation>(index),
+  });
+
+  it("hands out copies, so the stored state and the adapter never change each other", () => {
+    const first = createApaleoAdapter(identities());
+    expect(first.handle(delivery(0)).events).not.toEqual([]);
+    const state = first.state();
+    const stored = JSON.stringify(state);
+    state.stays = {};
+    expect(JSON.stringify(first.state())).toBe(stored);
+
+    const handed = JSON.parse(stored) as ApaleoAdapterState;
+    const restarted = createApaleoAdapter(identities(), handed);
+    expect(restarted.handle(delivery(1)).events.map((event) => event.type)).toEqual(["stay.unit_assigned"]);
+    expect(JSON.stringify(handed)).toBe(stored);
+  });
+
+  it("refuses the state of another mapping or of another version", () => {
+    const state = createApaleoAdapter(identities()).state();
+    expect(() => createApaleoAdapter(identities(), { ...state, version: 2 } as unknown as ApaleoAdapterState)).toThrow(
+      "Not a version 1 Apaleo adapter state: apaleo 2.",
+    );
+    expect(() => createApaleoAdapter(identities(), { ...state, mapping: "mews" } as unknown as ApaleoAdapterState)).toThrow(
+      "Not a version 1 Apaleo adapter state: mews 1.",
+    );
   });
 });
