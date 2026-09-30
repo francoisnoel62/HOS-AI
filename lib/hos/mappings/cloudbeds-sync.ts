@@ -38,7 +38,7 @@ export type CloudbedsSyncReport = SyncReport<{ reservations: number; rooms: numb
 
 export function cloudbedsManifest(options: SyncOptions): ProducerManifest {
   return liveManifest(options, {
-    name: "Cloudbeds API (live check)",
+    name: "Cloudbeds API",
     types: [
       "reservation.created",
       "reservation.updated",

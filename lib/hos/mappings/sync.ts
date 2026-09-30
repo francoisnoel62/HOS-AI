@@ -42,25 +42,20 @@ export type SyncReport<Fetched> = {
   arrivals: { business_date: string; stays: SyncArrival[] };
 };
 
+// What a PMS mapping publishes, whether it runs as a live check or as the pilot's persistent producer.
+export type MappingCapabilities = {
+  name: string;
+  types: Array<HosFact["type"]>;
+  dimensions: NonNullable<ProducerManifest["events"][number]["dimensions"]>;
+  limitations: string[];
+};
+
 // On a property that runs the PMS alone, the PMS is the authority for everything its mapping publishes.
-export function liveManifest(
-  { source, propertyId }: SyncOptions,
-  {
-    name,
-    types,
-    dimensions,
-    limitations,
-  }: {
-    name: string;
-    types: Array<HosFact["type"]>;
-    dimensions: NonNullable<ProducerManifest["events"][number]["dimensions"]>;
-    limitations: string[];
-  },
-): ProducerManifest {
+export function liveManifest({ source, propertyId }: SyncOptions, { name, types, dimensions, limitations }: MappingCapabilities): ProducerManifest {
   return {
     hosmanifestversion: "0.1",
     producer: source,
-    name,
+    name: `${name} (live check)`,
     organization: { name: "HOS AI experimental mapping" },
     system_role: "pms",
     property_ids: [propertyId],
