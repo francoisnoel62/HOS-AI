@@ -20,6 +20,7 @@ import { mewsCapabilities } from "@/lib/hos/mappings/mews-sync";
 import { loadRecording } from "@/lib/hos/mappings/replay";
 import { acknowledge, exportJournal, JournalGap, purgeJournal, readPending } from "@/lib/hos/producer/delivery";
 import { producerManifest } from "@/lib/hos/producer/manifest";
+import { markStarted, type Poll, pollEvery, pollOnce, type PollOutcome, readSyncStatus } from "@/lib/hos/producer/poll";
 import { processDelivery, type ProducerKey, readCrosswalk, readJournal } from "@/lib/hos/producer/store";
 
 // These tests need a Postgres database of their own, named by HOS_TEST_DATABASE_URL; the CI provides one. Locally, with
@@ -245,5 +246,92 @@ describe.skipIf(!url)("Pilot producer in Postgres", () => {
     await acknowledge(pool, key, "late", purged.purgedThrough);
     expect(await readPending(pool, key, "late")).toEqual(kept);
     await expect(purgeJournal(pool, key, { retentionDays: 0 })).rejects.toThrow(/at least 1/);
+  });
+
+  // A poll that reads a recorded Mews delivery as the source, or fails as a PMS can.
+  const polling =
+    (key: ProducerKey, recorded?: RecordedDelivery): Poll<MewsAdapterState> =>
+    async ({ state, identities, now }) => {
+      if (!recorded) throw new Error("Mews answered 503: Service Unavailable.");
+      const adapter = createMewsAdapter(config(key, identities), state);
+      return { events: adapter.handle(delivery(recorded, now.toISOString())).events, state: adapter.state() };
+    };
+  const at = (minutes: number) => new Date(Date.parse("2026-09-30T08:00:00Z") + minutes * 60_000);
+
+  it("records each poll's outcome per property: the last success, the last error and the failures in a row", async () => {
+    const key = producer();
+    const target = { ...key, propertyId: "prop_mews" };
+    const [first, second] = recording.deliveries;
+
+    expect(await pollOnce(pool, target, polling(key, first), at(0))).toMatchObject({ ok: true });
+    expect(await readSyncStatus(pool, target, { now: at(1) })).toMatchObject({
+      lastAttemptAt: at(0).toISOString(),
+      lastSuccessAt: at(0).toISOString(),
+      lastError: null,
+      consecutiveFailures: 0,
+      stale: false,
+    });
+
+    // A failed poll writes no fact and leaves the last success as it was.
+    const journal = await readJournal(pool, key);
+    expect(await pollOnce(pool, target, polling(key), at(2))).toEqual({ ok: false, error: "Mews answered 503: Service Unavailable." });
+    await pollOnce(pool, target, polling(key), at(4));
+    expect(await readJournal(pool, key)).toEqual(journal);
+    expect(await readSyncStatus(pool, target, { now: at(5) })).toMatchObject({
+      lastAttemptAt: at(4).toISOString(),
+      lastSuccessAt: at(0).toISOString(),
+      lastError: "Mews answered 503: Service Unavailable.",
+      lastErrorAt: at(4).toISOString(),
+      consecutiveFailures: 2,
+    });
+
+    // The next success resets the failures and keeps the last error, for the record.
+    expect(await pollOnce(pool, target, polling(key, second), at(6))).toMatchObject({
+      ok: true,
+      result: { appended: [{ type: "stay.unit_assigned" }] },
+    });
+    expect(await readSyncStatus(pool, target, { now: at(7) })).toMatchObject({
+      lastSuccessAt: at(6).toISOString(),
+      lastError: "Mews answered 503: Service Unavailable.",
+      consecutiveFailures: 0,
+    });
+    // Another property of the producer has a status of its own: never polled, so its facts are stale.
+    expect(await readSyncStatus(pool, { ...key, propertyId: "prop_other" })).toMatchObject({ lastSuccessAt: null, stale: true, resuming: false });
+  });
+
+  it("calls the facts stale after 10 minutes without a successful poll, and resuming from a restart to the next success", async () => {
+    const key = producer();
+    const target = { ...key, propertyId: "prop_mews" };
+    await pollOnce(pool, target, polling(key, recording.deliveries[0]), at(0));
+    expect(await readSyncStatus(pool, target, { now: at(10) })).toMatchObject({ stale: false });
+    expect(await readSyncStatus(pool, target, { now: new Date(at(10).getTime() + 1000) })).toMatchObject({ stale: true });
+
+    await markStarted(pool, target, at(30));
+    expect(await readSyncStatus(pool, target, { now: at(30) })).toMatchObject({ resuming: true, stale: true, startedAt: at(30).toISOString() });
+    await pollOnce(pool, target, polling(key), at(31));
+    expect(await readSyncStatus(pool, target, { now: at(31) })).toMatchObject({ resuming: true, consecutiveFailures: 1 });
+    await pollOnce(pool, target, polling(key, recording.deliveries[1]), at(33));
+    expect(await readSyncStatus(pool, target, { now: at(33) })).toMatchObject({ resuming: false, stale: false });
+  });
+
+  it("polls at its interval until stopped, and carries on after a failed poll", async () => {
+    const key = producer();
+    const target = { ...key, propertyId: "prop_mews" };
+    const [first, second] = recording.deliveries;
+    const sources = [first, undefined, second];
+    const outcomes: PollOutcome[] = [];
+    const stop = new AbortController();
+    let polls = 0;
+    await pollEvery<MewsAdapterState>(pool, target, (context) => polling(key, sources[polls++])(context), {
+      intervalMs: 20,
+      signal: stop.signal,
+      onPoll: (outcome) => {
+        outcomes.push(outcome);
+        if (outcomes.length === sources.length) stop.abort();
+      },
+    });
+    expect(outcomes.map((outcome) => outcome.ok)).toEqual([true, false, true]);
+    expect(await readSyncStatus(pool, target)).toMatchObject({ resuming: false, stale: false, consecutiveFailures: 0 });
+    expect((await readSyncStatus(pool, target)).startedAt).not.toBeNull();
   });
 });
