@@ -10,6 +10,16 @@ export const metadata: Metadata = { title: "Changelog", description: "Published 
 const entries = [
   {
     date: "1 October 2026",
+    title: "The pilot producer signs its manifest, and its consumers check it.",
+    items: [
+      "The producer signs its manifest every day and publishes it with its signature and public keys, as HOS Events 0.1 specifies. HOS 0.1 signs the manifest, not each event.",
+      "A consumer processes a producer's facts only once the manifest verifies with keys its own configuration admits. A manifest altered, expired, signed with a key it does not admit or by another producer counts as no manifest, and none of that producer's facts is applied. Tests run a key rotation, then the revocation of the old key.",
+      "Before reading anything, the producer checks it reads the right property: the Mews tokens must open the expected enterprise, and the Apaleo app must have the read scopes it needs. It only ever reads, over HTTPS.",
+    ],
+    links: [["/docs/events#signed-manifests", "Signed manifests"]],
+  },
+  {
+    date: "1 October 2026",
     title: "The Mews and Apaleo mappings run as a persistent producer.",
     items: [
       "A producer for the Observe pilot polls Mews or Apaleo every 2 minutes, read-only, and keeps what it publishes in a database: the HOS id of each PMS entity, what its adapter has told HOS, and every fact once, as first written. A producer that stops, even killed outright, carries on where it was and never publishes a fact twice with another content.",
