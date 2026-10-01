@@ -45,6 +45,14 @@ export function apaleoManifest(options: SyncOptions): ProducerManifest {
   return liveManifest(options, apaleoCapabilities);
 }
 
+// The unit group embedded in a unit or reservation may omit its type, and the adapter only keeps bedrooms: the unit
+// group list says what each one is.
+export function withUnitGroupTypes(unitGroups: Array<{ id: string; type: string }>) {
+  const types = new Map(unitGroups.map((group) => [group.id, group.type]));
+  return <T extends { unitGroup?: { id: string; type?: string } }>(item: T): T =>
+    item.unitGroup && !item.unitGroup.type ? { ...item, unitGroup: { ...item.unitGroup, type: types.get(item.unitGroup.id) } } : item;
+}
+
 export function syncApaleo(snapshot: ApaleoSnapshot, options: SyncOptions): ApaleoSyncReport {
   let minted = 0;
   const identities = createIdentityRegistry({}, () => String(++minted).padStart(4, "0"));
@@ -58,10 +66,7 @@ export function syncApaleo(snapshot: ApaleoSnapshot, options: SyncOptions): Apal
       identities,
     });
 
-  // The unit group embedded in a unit or reservation may omit its type, and the adapter only keeps bedrooms.
-  const types = new Map(snapshot.unitGroups.map((group) => [group.id, group.type]));
-  const typed = <T extends { unitGroup?: { id: string; type?: string } }>(item: T): T =>
-    item.unitGroup && !item.unitGroup.type ? { ...item, unitGroup: { ...item.unitGroup, type: types.get(item.unitGroup.id) } } : item;
+  const typed = withUnitGroupTypes(snapshot.unitGroups);
   const units = snapshot.units.map(typed);
   const reservations = snapshot.reservations.map(typed);
 
