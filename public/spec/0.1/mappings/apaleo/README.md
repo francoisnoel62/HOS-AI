@@ -119,8 +119,19 @@ The sample hotels had almost no arrivals, so one booking of three double rooms a
 
 Apaleo refuses an `OutOfOrder` maintenance on a unit with a reservation in its range: `422`, "There are already reservations and/or maintenances for the specified unit in the specified range." Only `OutOfService` could be put on the assigned room.
 
+### Pilot producer, 1 October 2026
+
+The mapping also runs as the pilot's persistent producer ([procedure](https://github.com/francoisnoel62/HOS-AI/blob/master/docs/operations/pilot-producer.md)). It polls Apaleo every 2 minutes, read-only:
+
+- the bedroom reservations staying in the window, and those modified since five minutes before the previous poll, so a reservation moved out of the window is still read;
+- the units and unit groups;
+- the maintenances. Apaleo lists no deleted maintenance, so one the producer published that the list no longer has is fetched by id. Apaleo no longer knows a deleted one, which becomes a cancellation, and gives a moved one with its new dates.
+
+The client renews its token, which lives an hour, and waits when Apaleo answers `429`. The producer keeps the crosswalk, the adapter's state and the facts in Postgres, so a restarted producer publishes only what changed.
+
+Against the Munich sample hotel, the first poll published 138 facts. A poll from a new process published none again. The export passed the producer check against the producer's manifest. That hotel had no maintenance, so deleted and moved maintenances are covered by tests only.
+
 ## Not covered yet
 
 - Multi-unit bookings, blocks and groups.
-- Token renewal, rate limits and webhook subscription management in a live integration.
-- Persistence of the crosswalk and of the adapter's published state.
+- Webhook subscription management in a live integration.

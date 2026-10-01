@@ -23,6 +23,7 @@ export default defineConfig({
           environment: "jsdom",
           globals: true,
           setupFiles: ["./tests/setup.ts"],
+          globalSetup: ["./tests/support/database.ts"],
           include: ["tests/unit/**/*.test.ts", "tests/unit/**/*.test.tsx"],
         },
       },

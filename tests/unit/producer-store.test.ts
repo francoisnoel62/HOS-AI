@@ -1,5 +1,4 @@
 // @vitest-environment node
-import { execSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
 
 import { checkProducer, createIdentityRegistry, type HosFact, type IdentityRegistry } from "@hos-ai/sdk";
@@ -7,57 +6,31 @@ import { Pool } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import type { RecordedDelivery } from "@/lib/hos/mappings/common";
-import {
-  createMewsAdapter,
-  type MewsAdapterConfig,
-  type MewsAdapterState,
-  type MewsDelivery,
-  type MewsReservation,
-  type MewsResource,
-  type MewsWebhook,
-} from "@/lib/hos/mappings/mews";
+import { createMewsAdapter, type MewsAdapterState } from "@/lib/hos/mappings/mews";
 import { mewsCapabilities } from "@/lib/hos/mappings/mews-sync";
-import { loadRecording } from "@/lib/hos/mappings/replay";
 import { acknowledge, exportJournal, JournalGap, purgeJournal, readPending } from "@/lib/hos/producer/delivery";
 import { producerManifest } from "@/lib/hos/producer/manifest";
 import { markStarted, type Poll, pollEvery, pollOnce, type PollOutcome, readSyncStatus } from "@/lib/hos/producer/poll";
 import { processDelivery, type ProducerKey, readCrosswalk, readJournal } from "@/lib/hos/producer/store";
+import { mewsAdapterConfig, mewsDelivery as delivery, mewsRecording as recording } from "@/tests/support/mews-recording";
 
-// These tests need a Postgres database of their own, named by HOS_TEST_DATABASE_URL; the CI provides one. Locally, with
-// the Postgres of docker-compose.yml: create it with `docker exec hos-ai-postgres createdb -U hos hos_ai_test`, then set
+// These tests need a Postgres database of their own, named by HOS_TEST_DATABASE_URL; the CI provides one, and
+// tests/support/database.ts applies the migrations to it. Locally, with the Postgres of docker-compose.yml: create it with
+// `docker exec hos-ai-postgres createdb -U hos hos_ai_test`, then set
 // HOS_TEST_DATABASE_URL=postgres://hos:hos@localhost:5432/hos_ai_test.
 const url = process.env.HOS_TEST_DATABASE_URL;
 if (!url && process.env.CI) throw new Error("The CI must set HOS_TEST_DATABASE_URL for the producer storage tests.");
 
-const recording = loadRecording("mews");
-
-// A recorded Mews delivery as the adapter receives it, or as if received at another time.
-function delivery({ received_at, webhook, fetched }: RecordedDelivery, at = received_at): MewsDelivery {
-  const responses = fetched.map((call) => call.response as { Reservations?: MewsReservation[]; Resources?: MewsResource[] });
-  return {
-    received_at: at,
-    webhook: webhook as MewsWebhook,
-    reservations: responses.flatMap((response) => response.Reservations ?? []),
-    resources: responses.flatMap((response) => response.Resources ?? []),
-  };
-}
-
 describe.skipIf(!url)("Pilot producer in Postgres", () => {
   let pool: Pool;
   beforeAll(() => {
-    // The site's own migrations, applied to the test database.
-    execSync("npx tsx scripts/migrate.ts", { env: { ...process.env, DATABASE_URL: url }, stdio: "pipe" });
     pool = new Pool({ connectionString: url });
   });
   afterAll(() => pool?.end());
 
   // Each test has a tenant of its own, so the tests never see each other's rows.
   const producer = (): ProducerKey => ({ tenant: `tenant_${randomUUID().slice(0, 8)}`, source: recording.adapter.source });
-  const config = ({ tenant }: ProducerKey, identities: IdentityRegistry): MewsAdapterConfig => ({
-    ...(recording.adapter as unknown as MewsAdapterConfig),
-    tenant,
-    identities,
-  });
+  const config = ({ tenant }: ProducerKey, identities: IdentityRegistry) => mewsAdapterConfig(tenant, identities);
   // One delivery through a Mews adapter started from the stored state, as the producer runs each delivery.
   const deliver = (key: ProducerKey, recorded: RecordedDelivery, at?: string) =>
     processDelivery<MewsAdapterState>(pool, key, ({ state, identities }) => {

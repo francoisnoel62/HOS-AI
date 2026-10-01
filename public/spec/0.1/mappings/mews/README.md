@@ -128,10 +128,21 @@ The manifest states two limitations: Mews dates assignments and room states by t
 
 Two services of the Gross enterprise named after parking, Hoteligy Parking and Car Park, now count as accommodation, because each has a resource category of a place to stay. The selection is only as good as the property's categories; `MEWS_SERVICE_IDS` overrides it.
 
+### Pilot producer, 30 September 2026
+
+The mapping also runs as the pilot's persistent producer ([procedure](https://github.com/francoisnoel62/HOS-AI/blob/master/docs/operations/pilot-producer.md)). It polls Mews every 2 minutes, read-only:
+
+- the reservations of the window, and those updated since five minutes before the previous poll, so a reservation moved out of the window is still read;
+- the spaces;
+- the resource blocks of the window and those updated since, deleted ones included, so a deleted block becomes a cancellation.
+
+It keeps the crosswalk, the adapter's state and the facts in Postgres, so a restarted producer publishes only what changed. Its manifest declares a 30-day replay and retention instead of the live check's empty crosswalk.
+
+Against the Gross pricing demo enterprise, with a two-day window, the first poll published 2,270 facts. A poll from a new process published none again. The export passed the producer check against the producer's manifest.
+
 ## Not covered yet
 
 - Occupancy from Get resources' occupancy state.
 - A room and its beds as one space: a guest in a whole dorm does not occupy its beds in HOS, nor a guest in a bed the dorm.
 - Parking spots, meeting rooms and desks are units too, since they are spaces. Their resource categories would tell them apart, but the adapter does not read resource category assignments yet.
 - Webhook subscriptions in a live integration.
-- Persistence of the crosswalk and of the adapter's published state.
