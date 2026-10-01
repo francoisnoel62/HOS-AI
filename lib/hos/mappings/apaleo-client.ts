@@ -11,6 +11,8 @@ export type ApaleoClient = {
   // Every page of a list. Past maxPages, onTruncated "warn" returns what it has and "fail" throws: a poll that read part
   // of the changes would never read the rest.
   list<T>(path: string, key: string, query: Record<string, string>): Promise<T[]>;
+  // The scopes Apaleo granted the app's current token.
+  scopes(): Promise<string[]>;
 };
 
 // Apaleo takes times without fractional seconds.
@@ -33,10 +35,13 @@ export function createApaleoClient({
   onTruncated?: "warn" | "fail";
   fetch?: typeof globalThis.fetch;
 }): ApaleoClient {
+  for (const address of [identity, api])
+    if (new URL(address).protocol !== "https:")
+      throw new Error(`Apaleo's addresses must use HTTPS, so the credentials never travel in clear: ${address}.`);
   const pageSize = 200;
   // A 429 waits for Retry-After, or backs off, and retries.
   const retries = 5;
-  let token: { value: string; expiresAt: number } | undefined;
+  let token: { value: string; expiresAt: number; scopes: string[] } | undefined;
 
   // A client credentials token lives an hour: it is renewed a minute before it expires, or when Apaleo refuses it.
   async function accessToken() {
@@ -51,9 +56,18 @@ export function createApaleoClient({
       body: new URLSearchParams({ grant_type: "client_credentials" }),
     });
     if (!response.ok) throw new Error(`The token request answered ${response.status}: ${(await response.text()).slice(0, 300)}`);
-    const granted = (await response.json()) as { access_token: string; expires_in: number };
-    token = { value: granted.access_token, expiresAt: Date.now() + granted.expires_in * 1000 };
+    const granted = (await response.json()) as { access_token: string; expires_in: number; scope?: string };
+    token = {
+      value: granted.access_token,
+      expiresAt: Date.now() + granted.expires_in * 1000,
+      scopes: (granted.scope ?? "").split(" ").filter(Boolean),
+    };
     return token.value;
+  }
+
+  async function scopes() {
+    await accessToken();
+    return token!.scopes;
   }
 
   async function request(path: string, query: Record<string, string>) {
@@ -113,5 +127,5 @@ export function createApaleoClient({
     return items;
   }
 
-  return { get, find, list };
+  return { get, find, list, scopes };
 }

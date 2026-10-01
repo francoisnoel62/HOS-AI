@@ -64,6 +64,7 @@ const options = {
   source: recording.adapter.source,
   tenant: "tenant_pilot",
   propertyId: property.propertyId,
+  enterpriseId: property.enterpriseId,
   days: 2,
   serviceIds: property.accommodationServiceIds,
 };
@@ -140,6 +141,15 @@ describe("Mews polling", () => {
     const unreadable = { ...assigned, ScheduledStartUtc: "not a time" };
     await expect(poll({ reservations: [unreadable] }, first)).rejects.toThrow(`Mews ServiceOrderUpdated ${assigned.Id}: `);
   });
+
+  it("reads nothing when the tokens open another enterprise than the property's", async () => {
+    const mews = fakeMews({ reservations: [assigned] });
+    const elsewhere = { ...options, enterpriseId: "00000000-0000-4000-8000-000000000000" };
+    await expect(mewsPoll(mews.client, elsewhere)({ state: undefined, identities, now: first })).rejects.toThrow(
+      `The Mews tokens open enterprise ${property.enterpriseId}, not 00000000-0000-4000-8000-000000000000: nothing is read from it.`,
+    );
+    expect(mews.requests.map(({ operation }) => operation)).not.toContain("reservations/getAll/2023-06-06");
+  });
 });
 
 describe("Mews client", () => {
@@ -154,6 +164,12 @@ describe("Mews client", () => {
   it("fails a Get all with more pages than allowed, rather than return part of it, when asked to", async () => {
     await expect(client("fail").getAll("reservations/getAll/2023-06-06", "Reservations", {})).rejects.toThrow(
       "reservations/getAll/2023-06-06: more than 2 pages of 1000.",
+    );
+  });
+
+  it("refuses a platform address without HTTPS, so the tokens never travel in clear", () => {
+    expect(() => createMewsClient({ platform: "http://api.mews-demo.com", clientToken: "c", accessToken: "a", client: "test" })).toThrow(
+      "The Mews platform address must use HTTPS",
     );
   });
 });

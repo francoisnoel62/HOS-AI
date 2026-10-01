@@ -43,6 +43,11 @@ const overlapMs = 5 * 60_000;
 // The adapter only checks that the webhooks it is handed name the account it is configured with.
 const accountId = "pilot-producer";
 
+// The scopes the poll reads with: properties, units and unit groups, reservations, maintenances.
+export const apaleoReadScopes = ["setup.read", "reservations.read", "maintenances.read"];
+// The granted scopes beyond reading. The poll only reads, but an app that can write is more than the pilot needs.
+export const apaleoScopesBeyondReading = (scopes: string[]) => scopes.filter((scope) => !scope.endsWith(".read"));
+
 // The latest version of each reservation read twice.
 function latest(...lists: ApaleoReservation[][]) {
   const byId = new Map<string, ApaleoReservation>();
@@ -56,6 +61,10 @@ function latest(...lists: ApaleoReservation[][]) {
 export function apaleoPoll(apaleo: ApaleoClient, options: ApaleoPollOptions): Poll<ApaleoPollState> {
   return async ({ state, identities, now }) => {
     const at = now.getTime();
+    // Apaleo authenticates the app; this checks the token lets it read what the poll reads, before anything is read.
+    const granted = await apaleo.scopes();
+    const lacking = apaleoReadScopes.filter((scope) => !granted.includes(scope));
+    if (lacking.length) throw new Error(`The Apaleo app lacks the scopes ${lacking.join(", ")}: give it ${apaleoReadScopes.join(", ")}.`);
     const property = await apaleo.find<{ id: string; timeZone: string }>(`/inventory/v1/properties/${options.apaleoPropertyId}`);
     if (!property) throw new Error(`Apaleo does not know the property ${options.apaleoPropertyId}.`);
     const scope = { propertyId: property.id };

@@ -17,6 +17,9 @@ export type MewsPollOptions = {
   source: string;
   tenant: string;
   propertyId: string;
+  // The enterprise the tokens must open. Mews authenticates the tokens; this checks they are the property's, so another
+  // enterprise's data is never published as this property's.
+  enterpriseId: string;
   // How many days ahead of today the window of reservations and blocks reaches.
   days: number;
   // Overrides the accommodation services Mews's configuration gives.
@@ -49,6 +52,8 @@ export function mewsPoll(mews: MewsClient, options: MewsPollOptions): Poll<MewsP
   return async ({ state, identities, now }) => {
     const at = now.getTime();
     const { enterprise, accommodation } = await fetchMewsEnterprise(mews, options.serviceIds);
+    if (enterprise.id !== options.enterpriseId)
+      throw new Error(`The Mews tokens open enterprise ${enterprise.id}, not ${options.enterpriseId}: nothing is read from it.`);
     const scope = { EnterpriseIds: [enterprise.id] };
     const window = { StartUtc: iso(at - day), EndUtc: iso(at + (options.days + 1) * day) };
     const since = state?.polledAt
