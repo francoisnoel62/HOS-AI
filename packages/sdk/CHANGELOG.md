@@ -2,6 +2,13 @@
 
 Every notable change to `@hos-ai/sdk`. The versions stay `0.1.0-alpha.N` until HOS 0.1 is final: until then, any release may change the API.
 
+## Unreleased
+
+Not published yet: the versions stay `0.1.0-alpha.N` until the first HOS 0.2 alpha.
+
+- **HOS Commands 0.2, draft `0.2.0-draft.1`**, embedded next to HOS 0.1, which is unchanged: the generated types `Command` (one per type, `StayUnitAssignCommand`, `HousekeepingTaskReprioritizeCommand` and `GuestMessageSendCommand`), `Approval`, `Policy`, `ProducerManifestV02` and the three event types HOS 0.2 adds, `CommandStatusChanged`, `HousekeepingTaskReprioritized` and `GuestMessageSent`; and the validators `validateCommand`, `validateApproval`, `validatePolicy`, `validateEventV02` and `validateManifestV02`.
+- `HOS_SPEC_VERSIONS` lists the draft of each version of the specification. `HOS_SPEC_VERSION` stays the draft of HOS 0.1.
+
 ## 0.1.0-alpha.1 (2026-09-26)
 
 The first release on npm. It implements HOS Core 0.1 and HOS Events 0.1, draft `0.1.0-draft.2`.

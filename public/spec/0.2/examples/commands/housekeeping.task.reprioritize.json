@@ -1,0 +1,41 @@
+{
+  "hoscommandversion": "0.2",
+  "command_id": "cmd_2b81d0a4",
+  "type": "housekeeping.task.reprioritize",
+  "hostenant": "tenant_demo",
+  "hosproperty": "prop_demo",
+  "target": "task:task_5521",
+  "handler": "urn:hos:housekeeping:demo",
+  "idempotency_key": "task_5521-urgent-early-arrival",
+  "requester": "user:staff_k3",
+  "requested_at": "2026-07-14T09:10:00Z",
+  "expires_at": "2026-07-14T10:10:00Z",
+  "evidence": [
+    {
+      "source": "urn:hos:projection:arrival-readiness",
+      "id": "sit_000187"
+    }
+  ],
+  "policy": {
+    "policy_id": "pol_front_office",
+    "version": "2026-10-01"
+  },
+  "preconditions": [
+    {
+      "kind": "task_status",
+      "in": ["open", "in_progress"]
+    },
+    {
+      "kind": "task_priority",
+      "equals": "normal"
+    },
+    {
+      "kind": "facts_fresh",
+      "max_age_seconds": 600
+    }
+  ],
+  "data": {
+    "task_id": "task_5521",
+    "priority": "urgent"
+  }
+}

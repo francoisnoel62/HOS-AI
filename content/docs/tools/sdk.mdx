@@ -377,6 +377,26 @@ The replay matches expected.json.
 
 `projectionSource`, `urn:hos:projection:arrival-readiness`, is the source of the situations the projection raises.
 
+## HOS Commands 0.2, draft
+
+The SDK in the repository embeds the draft of HOS Commands 0.2, `0.2.0-draft.1`, next to HOS 0.1, which it leaves unchanged. **The released SDK does not have it yet:** it comes with the first HOS 0.2 alpha, and until then it is only in the repository. HOS 0.2 is a draft that nobody has reviewed: nothing in HOS writes to a hotel's systems yet.
+
+### HOS_SPEC_VERSIONS
+
+```ts
+HOS_SPEC_VERSIONS: { "0.1": string; "0.2": string }
+```
+
+The draft of each version of the specification the SDK embeds. `HOS_SPEC_VERSION` stays the draft of HOS 0.1.
+
+### validateCommand, validateApproval, validatePolicy, validateEventV02, validateManifestV02
+
+```ts
+validateCommand(document: unknown): boolean  // with validateCommand.errors after a call
+```
+
+The compiled JSON Schema validators of the documents HOS Commands 0.2 adds, in the same form as `validateEvent`: a command, an approval, a policy, an event of the three types HOS Events 0.2 adds, and a producer manifest that may declare commands. The schemas hold what a JSON Schema can: the three command types, the preconditions each requires, the lifecycle a command moves through, and the reasons a command ends with.
+
 ## Types
 
 The SDK exports the TypeScript types of HOS documents, generated from the schemas:

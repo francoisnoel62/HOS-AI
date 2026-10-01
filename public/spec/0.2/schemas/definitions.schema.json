@@ -1,0 +1,97 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:hos:schema:0.2:definitions",
+  "title": "HOS Commands 0.2 definitions",
+  "description": "Draft. The definitions HOS Commands 0.2 adds to HOS Core 0.1, which stays unchanged: command types, the command lifecycle, its reason codes, the references a command, an approval and a policy share, and the preconditions a command may carry.",
+  "$defs": {
+    "commandType": {
+      "enum": ["stay.unit_assign", "housekeeping.task.reprioritize", "guest.message.send"],
+      "description": "The command types of the first series. Every other type is refused: HOS Commands 0.2 defines controlled requests, not a general privilege to automate."
+    },
+    "commandStatus": {
+      "enum": ["proposed", "pending_approval", "approved", "executing", "succeeded", "rejected", "failed", "expired", "cancelled"],
+      "description": "The lifecycle of a command. succeeded, rejected, failed, expired and cancelled are final: a correction is a new command."
+    },
+    "commandReason": {
+      "enum": [
+        "not_permitted",
+        "undeclared_capability",
+        "unverified_manifest",
+        "outside_tenant",
+        "idempotency_conflict",
+        "approval_invalid",
+        "approval_expired",
+        "command_expired",
+        "precondition_failed",
+        "stale_facts",
+        "locked_at_source",
+        "rejected_by_approver",
+        "rejected_by_source",
+        "source_unavailable",
+        "confirmation_mismatch",
+        "cancelled_by_requester",
+        "suspended"
+      ],
+      "description": "Why a command ended without succeeding. rejected means refused before execution (policy, capability, tenant, approver); failed means approved but not achieved."
+    },
+    "commandDigest": {
+      "type": "string",
+      "pattern": "^sha-256:[0-9a-f]{64}$",
+      "description": "sha-256: followed by the SHA-256 of the canonical form (RFC 8785) of a command, in lower-case hexadecimal. An approval carries the digest of the command its approver saw: a command changed afterwards no longer matches."
+    },
+    "policyRef": {
+      "type": "object",
+      "description": "The version of the policy in force when a command or an approval was evaluated.",
+      "required": ["policy_id", "version"],
+      "properties": {
+        "policy_id": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/hosId"
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+        }
+      },
+      "additionalProperties": false
+    },
+    "evidenceRef": {
+      "type": "object",
+      "description": "A fact or a situation a command rests on: where it comes from and its id.",
+      "required": ["source", "id"],
+      "properties": {
+        "source": {
+          "type": "string",
+          "format": "uri"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "requesterRef": {
+      "type": "string",
+      "pattern": "^(?:user|integration):[A-Za-z0-9][A-Za-z0-9._~-]{0,127}$",
+      "description": "Who asks for a command: user (a staff member) or integration (an application, a future agent, which only proposes), with a pseudonymous, tenant-scoped reference. Never a name or contact detail."
+    },
+    "approverRef": {
+      "type": "string",
+      "pattern": "^user:[A-Za-z0-9][A-Za-z0-9._~-]{0,127}$",
+      "description": "Who approves a command: always a person, with a pseudonymous reference. An integration never approves."
+    },
+    "approverRole": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]{0,63}$",
+      "description": "A role of the tenant, such as front_office_manager. A policy names the roles that may approve; the approval records the role its approver decided under."
+    },
+    "preconditionKind": {
+      "enum": ["stay_status", "unit_assignment", "unit_status", "facts_fresh", "task_priority", "task_status"],
+      "description": "The kinds of precondition a command may carry."
+    },
+    "confirmationEventType": {
+      "enum": ["stay.unit_assigned", "housekeeping.task.reprioritized", "guest.message.sent"],
+      "description": "The event types that confirm a command: the facts of the authoritative system that show the effect."
+    }
+  }
+}

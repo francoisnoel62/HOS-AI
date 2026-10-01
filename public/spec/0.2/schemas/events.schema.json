@@ -1,0 +1,471 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:hos:schema:0.2:events",
+  "title": "HOS Events 0.2",
+  "description": "Draft. The three event types HOS Events 0.2 adds to the fifteen of HOS Events 0.1, which stay unchanged and keep hosschemaversion 0.1: the lifecycle of a command, and the two effects no 0.1 event confirms. Facts are immutable. Data objects are closed so that personal or commercial data cannot travel unnoticed. A command.status_changed fact is the record of a transition; the command itself is a document.",
+  "allOf": [
+    {
+      "$ref": "urn:hos:schema:0.2:event-envelope"
+    },
+    {
+      "properties": {
+        "type": {
+          "enum": ["command.status_changed", "housekeeping.task.reprioritized", "guest.message.sent"]
+        }
+      }
+    },
+    {
+      "if": {
+        "required": ["type"],
+        "properties": {
+          "type": {
+            "const": "command.status_changed"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "$ref": "#/$defs/command.status_changed"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": ["type"],
+        "properties": {
+          "type": {
+            "const": "housekeeping.task.reprioritized"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "$ref": "#/$defs/housekeeping.task.reprioritized"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": ["type"],
+        "properties": {
+          "type": {
+            "const": "guest.message.sent"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "$ref": "#/$defs/guest.message.sent"
+          }
+        }
+      }
+    },
+    {
+      "not": {
+        "required": ["hosdatamode"],
+        "properties": {
+          "hosdatamode": {
+            "const": "snapshot"
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "command.status_changed": {
+      "title": "command.status_changed",
+      "description": "A command moved from one status to another. The log of these facts is the record of the command: who decided what, when, and why a command ended without succeeding. A gateway publishes the transitions up to approved, the handler the transitions from executing on. The transition to succeeded names the confirming fact in hoscausationsource and hoscausationid; the confirming fact names the transition to executing.",
+      "x-hos-family": "Command",
+      "x-hos-authority": "Command gateway, then command handler",
+      "type": "object",
+      "required": ["command_id", "command_type", "previous_status", "status"],
+      "properties": {
+        "command_id": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/hosId"
+        },
+        "command_type": {
+          "$ref": "urn:hos:schema:0.2:definitions#/$defs/commandType"
+        },
+        "previous_status": {
+          "oneOf": [
+            {
+              "$ref": "urn:hos:schema:0.2:definitions#/$defs/commandStatus"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The status before; null for the first transition of a command, to proposed."
+        },
+        "status": {
+          "$ref": "urn:hos:schema:0.2:definitions#/$defs/commandStatus"
+        },
+        "reason": {
+          "$ref": "urn:hos:schema:0.2:definitions#/$defs/commandReason",
+          "description": "Why the command ended without succeeding. Required when status is rejected, failed, expired or cancelled, and only then."
+        },
+        "approval_id": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/hosId",
+          "description": "The approval that caused the transition. Required when status is approved, or when the reason is rejected_by_approver."
+        },
+        "command_digest": {
+          "$ref": "urn:hos:schema:0.2:definitions#/$defs/commandDigest",
+          "description": "The digest of the command as it was when the transition happened. It ties the record to the exact command content."
+        },
+        "extensions": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/extensions"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": ["status"],
+            "properties": {
+              "status": {
+                "const": "proposed"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "previous_status": {
+                "type": "null"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "previous_status": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": ["status"],
+            "properties": {
+              "status": {
+                "const": "pending_approval"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "previous_status": {
+                "const": "proposed"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": ["status"],
+            "properties": {
+              "status": {
+                "const": "approved"
+              }
+            }
+          },
+          "then": {
+            "required": ["approval_id"],
+            "properties": {
+              "previous_status": {
+                "const": "pending_approval"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": ["status"],
+            "properties": {
+              "status": {
+                "const": "executing"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "previous_status": {
+                "const": "approved"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": ["status"],
+            "properties": {
+              "status": {
+                "const": "succeeded"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "previous_status": {
+                "const": "executing"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": ["status"],
+            "properties": {
+              "status": {
+                "const": "rejected"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "previous_status": {
+                "enum": ["proposed", "pending_approval"]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": ["status"],
+            "properties": {
+              "status": {
+                "const": "failed"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "previous_status": {
+                "enum": ["approved", "executing"]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": ["status"],
+            "properties": {
+              "status": {
+                "enum": ["expired", "cancelled"]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "previous_status": {
+                "enum": ["proposed", "pending_approval", "approved"]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": ["status"],
+            "properties": {
+              "status": {
+                "const": "rejected"
+              }
+            }
+          },
+          "then": {
+            "required": ["reason"],
+            "properties": {
+              "reason": {
+                "enum": [
+                  "not_permitted",
+                  "undeclared_capability",
+                  "unverified_manifest",
+                  "outside_tenant",
+                  "idempotency_conflict",
+                  "rejected_by_approver",
+                  "precondition_failed",
+                  "stale_facts",
+                  "suspended"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": ["status"],
+            "properties": {
+              "status": {
+                "const": "failed"
+              }
+            }
+          },
+          "then": {
+            "required": ["reason"],
+            "properties": {
+              "reason": {
+                "enum": [
+                  "not_permitted",
+                  "undeclared_capability",
+                  "unverified_manifest",
+                  "outside_tenant",
+                  "approval_invalid",
+                  "precondition_failed",
+                  "stale_facts",
+                  "locked_at_source",
+                  "rejected_by_source",
+                  "source_unavailable",
+                  "confirmation_mismatch"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": ["status"],
+            "properties": {
+              "status": {
+                "const": "expired"
+              }
+            }
+          },
+          "then": {
+            "required": ["reason"],
+            "properties": {
+              "reason": {
+                "enum": ["command_expired", "approval_expired"]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": ["status"],
+            "properties": {
+              "status": {
+                "const": "cancelled"
+              }
+            }
+          },
+          "then": {
+            "required": ["reason"],
+            "properties": {
+              "reason": {
+                "enum": ["cancelled_by_requester", "suspended"]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": ["status"],
+            "properties": {
+              "status": {
+                "enum": ["proposed", "pending_approval", "approved", "executing", "succeeded"]
+              }
+            }
+          },
+          "then": {
+            "not": {
+              "required": ["reason"]
+            }
+          }
+        },
+        {
+          "if": {
+            "required": ["reason"],
+            "properties": {
+              "reason": {
+                "const": "rejected_by_approver"
+              }
+            }
+          },
+          "then": {
+            "required": ["approval_id"]
+          }
+        }
+      ],
+      "additionalProperties": false
+    },
+    "housekeeping.task.reprioritized": {
+      "title": "housekeeping.task.reprioritized",
+      "description": "The priority of a housekeeping task changed. It confirms a housekeeping.task.reprioritize command when it comes from the housekeeping system that is the authority and matches the expected effect. Producers also publish it for changes nobody commanded.",
+      "x-hos-family": "Housekeeping",
+      "x-hos-authority": "Housekeeping system",
+      "type": "object",
+      "required": ["task_id", "previous_priority", "priority"],
+      "properties": {
+        "task_id": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/hosId"
+        },
+        "unit_id": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/hosId"
+        },
+        "stay_id": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/hosId"
+        },
+        "previous_priority": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/taskPriority"
+        },
+        "priority": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/taskPriority"
+        },
+        "due_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The due time of the task after the change, when it has one."
+        },
+        "extensions": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/extensions"
+        }
+      },
+      "additionalProperties": false
+    },
+    "guest.message.sent": {
+      "title": "guest.message.sent",
+      "description": "A message was sent to a guest. Only metadata travels, with the template identifier: the content stays in the messaging system. It confirms a guest.message.send command when it comes from the messaging system that is the authority and matches the expected effect.",
+      "x-hos-family": "Guest communication",
+      "x-hos-authority": "Guest messaging system",
+      "type": "object",
+      "required": ["message_id", "channel", "template_id", "sensitivity"],
+      "properties": {
+        "message_id": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/hosId"
+        },
+        "channel": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/messageChannel"
+        },
+        "template_id": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/hosId"
+        },
+        "guest_id": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/hosId",
+          "description": "Pseudonymous guest, when the producer has a stable guest identity. A producer without one omits it and never derives one from names or contact details."
+        },
+        "stay_id": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/hosId"
+        },
+        "sensitivity": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/sensitivityClass",
+          "description": "Sensitivity class of the message content."
+        },
+        "extensions": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/extensions"
+        }
+      },
+      "additionalProperties": false,
+      "anyOf": [
+        {
+          "required": ["guest_id"]
+        },
+        {
+          "required": ["stay_id"]
+        }
+      ]
+    }
+  }
+}

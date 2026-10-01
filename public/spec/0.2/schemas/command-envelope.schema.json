@@ -1,0 +1,298 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:hos:schema:0.2:command-envelope",
+  "title": "HOS Commands 0.2 envelope",
+  "description": "Draft. A command is a document, never an event: it asks for a future mutation, and its lifecycle is recorded as command.status_changed facts. The envelope is what every command carries: its identity, type, tenant, property, target, handler, idempotency key, requester, expiry, preconditions, evidence and policy. The data of a command is defined by its type. A command is evaluated in full before anything is sent; whatever is not allowed is refused.",
+  "type": "object",
+  "required": [
+    "hoscommandversion",
+    "command_id",
+    "type",
+    "hostenant",
+    "hosproperty",
+    "target",
+    "handler",
+    "idempotency_key",
+    "requester",
+    "requested_at",
+    "expires_at",
+    "preconditions",
+    "evidence",
+    "policy",
+    "data"
+  ],
+  "properties": {
+    "hoscommandversion": {
+      "const": "0.2",
+      "description": "HOS version the command conforms to. A document with this member is a command."
+    },
+    "command_id": {
+      "$ref": "urn:hos:schema:0.1:core#/$defs/hosId",
+      "description": "Identity of the command, unique within its tenant."
+    },
+    "type": {
+      "type": "string",
+      "pattern": "^[a-z]+(?:_[a-z]+)*(?:\\.[a-z]+(?:_[a-z]+)*){1,2}$",
+      "description": "The command type, named domain.resource.verb in the singular."
+    },
+    "hostenant": {
+      "$ref": "urn:hos:schema:0.1:core#/$defs/hosId",
+      "description": "Tenant: the security, policy and data-autonomy boundary. The target and the handler's properties must belong to it."
+    },
+    "hosproperty": {
+      "$ref": "urn:hos:schema:0.1:core#/$defs/hosId",
+      "description": "Property the command acts in."
+    },
+    "target": {
+      "type": "string",
+      "pattern": "^(?:stay|task):[A-Za-z0-9][A-Za-z0-9._~-]{0,127}$",
+      "description": "The typed HOS entity the command acts on, such as stay:stay_1042."
+    },
+    "handler": {
+      "type": "string",
+      "format": "uri",
+      "description": "The system that is the authority for the command and executes it. It must be the producer of a verified manifest that declares the command type with authoritative true."
+    },
+    "idempotency_key": {
+      "$ref": "urn:hos:schema:0.1:core#/$defs/hosId",
+      "description": "With the tenant, the identity of the intent. The same key with the same content returns the existing command; the same key with other content is refused."
+    },
+    "requester": {
+      "$ref": "urn:hos:schema:0.2:definitions#/$defs/requesterRef",
+      "description": "Who asks for the command."
+    },
+    "requested_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "After this instant the command is never sent: it expires."
+    },
+    "preconditions": {
+      "type": "array",
+      "description": "What must hold, on facts fresh enough, when the command is evaluated, and what the handler reads again at the source just before it sends the request.",
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": ["kind", "in"],
+            "properties": {
+              "kind": {
+                "const": "stay_status"
+              },
+              "in": {
+                "type": "array",
+                "minItems": 1,
+                "uniqueItems": true,
+                "items": {
+                  "$ref": "urn:hos:schema:0.1:core#/$defs/stayStatus"
+                }
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": ["kind", "equals"],
+            "properties": {
+              "kind": {
+                "const": "unit_assignment"
+              },
+              "equals": {
+                "oneOf": [
+                  {
+                    "$ref": "urn:hos:schema:0.1:core#/$defs/hosId"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "The unit the stay is assigned to when the command was decided, or null when it has none. It protects a choice made in the meantime, such as a reassignment by the staff."
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": ["kind", "unit_id", "dimension", "in"],
+            "properties": {
+              "kind": {
+                "const": "unit_status"
+              },
+              "unit_id": {
+                "$ref": "urn:hos:schema:0.1:core#/$defs/hosId"
+              },
+              "dimension": {
+                "$ref": "urn:hos:schema:0.1:core#/$defs/unitStatusDimension"
+              },
+              "in": {
+                "type": "array",
+                "minItems": 1,
+                "uniqueItems": true,
+                "items": {
+                  "enum": [
+                    "vacant",
+                    "occupied",
+                    "dirty",
+                    "clean",
+                    "inspected",
+                    "operational",
+                    "out_of_service",
+                    "sellable",
+                    "not_sellable",
+                    "unknown"
+                  ]
+                }
+              }
+            },
+            "allOf": [
+              {
+                "if": {
+                  "required": ["dimension"],
+                  "properties": {
+                    "dimension": {
+                      "const": "occupancy"
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "in": {
+                      "items": {
+                        "$ref": "urn:hos:schema:0.1:core#/$defs/occupancyStatus"
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "required": ["dimension"],
+                  "properties": {
+                    "dimension": {
+                      "const": "housekeeping"
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "in": {
+                      "items": {
+                        "$ref": "urn:hos:schema:0.1:core#/$defs/housekeepingStatus"
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "required": ["dimension"],
+                  "properties": {
+                    "dimension": {
+                      "const": "maintenance"
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "in": {
+                      "items": {
+                        "$ref": "urn:hos:schema:0.1:core#/$defs/maintenanceStatus"
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "required": ["dimension"],
+                  "properties": {
+                    "dimension": {
+                      "const": "commercial"
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "in": {
+                      "items": {
+                        "$ref": "urn:hos:schema:0.1:core#/$defs/commercialStatus"
+                      }
+                    }
+                  }
+                }
+              }
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": ["kind", "max_age_seconds"],
+            "properties": {
+              "kind": {
+                "const": "facts_fresh"
+              },
+              "max_age_seconds": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 86400,
+                "description": "The facts the command rests on come from a synchronisation of the authoritative system that succeeded at most this long before the evaluation."
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": ["kind", "equals"],
+            "properties": {
+              "kind": {
+                "const": "task_priority"
+              },
+              "equals": {
+                "$ref": "urn:hos:schema:0.1:core#/$defs/taskPriority"
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": ["kind", "in"],
+            "properties": {
+              "kind": {
+                "const": "task_status"
+              },
+              "in": {
+                "type": "array",
+                "minItems": 1,
+                "uniqueItems": true,
+                "items": {
+                  "$ref": "urn:hos:schema:0.1:core#/$defs/taskStatus"
+                }
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
+      }
+    },
+    "evidence": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "urn:hos:schema:0.2:definitions#/$defs/evidenceRef"
+      },
+      "description": "The facts and situations the command rests on, which its approver sees before deciding. Provenance is not optional: an action without evidence is refused."
+    },
+    "policy": {
+      "$ref": "urn:hos:schema:0.2:definitions#/$defs/policyRef",
+      "description": "The policy the requester evaluated the command against. The policy in force at each evaluation decides."
+    },
+    "data": {
+      "type": "object",
+      "description": "The payload. Its shape is defined by type. A command carries only what the handler needs: no name, contact detail or message content."
+    }
+  },
+  "additionalProperties": false
+}

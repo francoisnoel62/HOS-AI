@@ -1,0 +1,22 @@
+{
+  "specversion": "1.0",
+  "datacontenttype": "application/json",
+  "hosschemaversion": "0.2",
+  "hostenant": "tenant_demo",
+  "hosproperty": "prop_demo",
+  "hospropertytimezone": "Europe/Paris",
+  "hosbusinessdate": "2026-07-14",
+  "id": "hk-000917",
+  "source": "urn:hos:housekeeping:demo",
+  "type": "housekeeping.task.reprioritized",
+  "time": "2026-07-14T09:12:30Z",
+  "hosrecordedat": "2026-07-14T09:12:31Z",
+  "hossubjects": "task:task_5521 unit:unit_212",
+  "hosactor": "integration:hos_command_handler",
+  "data": {
+    "task_id": "task_5521",
+    "unit_id": "unit_212",
+    "previous_priority": "normal",
+    "priority": "urgent"
+  }
+}

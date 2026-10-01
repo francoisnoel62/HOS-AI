@@ -1,0 +1,137 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:hos:schema:0.2:event-envelope",
+  "title": "HOS Events 0.2 envelope profile",
+  "description": "Draft. The HOS Events 0.1 envelope profile for the event types HOS Events 0.2 adds. CloudEvents 1.0 in structured JSON mode with HOS extension attributes; the only differences from 0.1 are hosschemaversion, which is 0.2, and the command: subject. Event types of HOS Events 0.1 keep their 0.1 envelope: a 0.1 event is the same bytes in a 0.1 and in a 0.2 stream. Attribute names follow CloudEvents rules: lower-case letters and digits, at most 20 characters, scalar values only.",
+  "type": "object",
+  "required": [
+    "specversion",
+    "id",
+    "source",
+    "type",
+    "time",
+    "datacontenttype",
+    "hosschemaversion",
+    "hosrecordedat",
+    "hostenant",
+    "hosproperty",
+    "hospropertytimezone",
+    "hossubjects",
+    "data"
+  ],
+  "propertyNames": {
+    "pattern": "^[a-z0-9]{1,20}$"
+  },
+  "properties": {
+    "specversion": {
+      "const": "1.0",
+      "description": "CloudEvents specification version."
+    },
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Producer-scoped, immutable event identity. With source, it is the duplicate key: a redelivered event keeps its id."
+    },
+    "source": {
+      "type": "string",
+      "format": "uri",
+      "description": "The producer. Must equal the producer declared in its Event Producer manifest."
+    },
+    "type": {
+      "type": "string",
+      "pattern": "^[a-z]+(?:_[a-z]+)*(?:\\.[a-z]+(?:_[a-z]+)*){1,2}$",
+      "description": "Vendor-neutral HOS event type, named domain.resource.past_tense in the singular."
+    },
+    "time": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the fact occurred, when known. Otherwise the best time the producer has, qualified by hostimebasis."
+    },
+    "datacontenttype": {
+      "const": "application/json",
+      "description": "HOS 0.2 data is always JSON."
+    },
+    "dataschema": {
+      "type": "string",
+      "format": "uri",
+      "description": "Optional reference to the schema of data."
+    },
+    "hosschemaversion": {
+      "const": "0.2",
+      "description": "HOS version the event conforms to."
+    },
+    "hosrecordedat": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the HOS implementation (producer or adapter) recorded the event. HOS always carries it."
+    },
+    "hostimebasis": {
+      "enum": ["occurred", "modified", "recorded"],
+      "description": "What time represents. Absent means occurred. modified means the source's last modification of the entity, when it does not date the change itself: the fact occurred at or before time. recorded means the occurrence time is unknown and time is when the producer or adapter recorded the fact."
+    },
+    "hostenant": {
+      "$ref": "urn:hos:schema:0.1:core#/$defs/hosId",
+      "description": "Tenant: the security, policy and data-autonomy boundary."
+    },
+    "hosproperty": {
+      "$ref": "urn:hos:schema:0.1:core#/$defs/hosId",
+      "description": "Property the fact belongs to: the operating context."
+    },
+    "hospropertytimezone": {
+      "$ref": "urn:hos:schema:0.1:core#/$defs/ianaTimezone",
+      "description": "IANA time zone of the Property. Local times are derived from it, never assumed."
+    },
+    "hosbusinessdate": {
+      "type": "string",
+      "format": "date",
+      "description": "Local operating (business) date the fact belongs to, when it matters. It can differ from the calendar date of time."
+    },
+    "hossubjects": {
+      "type": "string",
+      "pattern": "^(?:tenant|property|unit|reservation|stay|task|guest|message|command):[A-Za-z0-9][A-Za-z0-9._~-]{0,127}(?: (?:tenant|property|unit|reservation|stay|task|guest|message|command):[A-Za-z0-9][A-Za-z0-9._~-]{0,127})*$",
+      "description": "Typed HOS entity references implicated by the fact, as space-separated type:id pairs, for example command:cmd_7f3a91c2 stay:stay_1042. A command is a subject only in HOS Events 0.2. A string because CloudEvents attributes cannot hold arrays."
+    },
+    "hosdatamode": {
+      "enum": ["delta", "snapshot"],
+      "description": "How to read data. Absent means delta. A snapshot must be declared here, be allowed for its type and be sensitivity-classified."
+    },
+    "hossensitivity": {
+      "$ref": "urn:hos:schema:0.1:core#/$defs/sensitivityClass",
+      "description": "Sensitivity class of data. Required for snapshots."
+    },
+    "hoscausationsource": {
+      "type": "string",
+      "format": "uri",
+      "description": "Source of the event that caused this one, when known. A command.status_changed to succeeded names the confirming fact; the confirming fact names the command.status_changed to executing."
+    },
+    "hoscausationid": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Id of the event that caused this one, when known. Used with hoscausationsource."
+    },
+    "hosactor": {
+      "type": "string",
+      "pattern": "^(?:user|guest|system|integration):[A-Za-z0-9][A-Za-z0-9._~-]{0,127}$",
+      "description": "Who made the change in the producer, when it knows: user (a staff member), guest, system (the producer itself) or integration (another system through its API), with a pseudonymous, producer-scoped reference, for example user:staff_k3. Never a name or contact detail."
+    },
+    "data": {
+      "type": "object",
+      "description": "The normalized payload. Its shape is defined by type; vendor detail goes in data.extensions under an inverted domain namespace."
+    }
+  },
+  "dependentRequired": {
+    "hoscausationid": ["hoscausationsource"],
+    "hoscausationsource": ["hoscausationid"]
+  },
+  "if": {
+    "required": ["hosdatamode"],
+    "properties": {
+      "hosdatamode": {
+        "const": "snapshot"
+      }
+    }
+  },
+  "then": {
+    "required": ["hossensitivity"]
+  }
+}
