@@ -1,6 +1,6 @@
 # Pilot producer
 
-How to run the pilot's persistent producer, watch it, stop it and resume it. It runs the experimental Mews and Apaleo mappings against one property each, for the arrival scenario that closes HOS 0.1 Observe. It is the pilot's reference implementation: HOS itself requires none of its storage.
+How to run the pilot's persistent producer, watch it, stop it and resume it, and how its consumers come to trust it. It runs the experimental Mews and Apaleo mappings against one property each, for the arrival scenario that closes HOS 0.1 Observe. It is the pilot's reference implementation: HOS itself requires none of its storage.
 
 The producer polls the PMS, read-only, every 2 minutes. It writes what the adapter makes of each poll to Postgres, in one transaction, and consumers read the facts from there. It is a standalone Node process, not a Vercel cron job: the site stays on Vercel's free plan, whose cron jobs run once a day.
 
@@ -78,6 +78,43 @@ Run one producer per tenant, source and property. A second one would not corrupt
 A consumer reads the facts after its position with `readPending`, processes them, then acknowledges the last one with `acknowledge` (`lib/hos/producer/delivery.ts`). If it stops in between, it reads the same facts again, and deduplicates them on source and id. A position only moves forward.
 
 A consumer whose position is behind the purge gets a `JournalGap`: the facts it has not read are gone. Rebuild its view from the producer, then acknowledge the position the error gives, knowingly.
+
+## Trust the producers
+
+A consumer processes a producer's facts only under that producer's manifest, and only once the manifest's signature verifies with keys the consumer admits. Its trust configuration names each producer it admits:
+
+```json
+{
+  "producers": [
+    {
+      "producer": "urn:hos:pms:mews",
+      "manifest": "https://producer.example/.well-known/hos/manifest.json",
+      "keys": "mews-jwks.json",
+      "headers": { "Authorization": "env:MEWS_PRODUCER_TOKEN" }
+    }
+  ]
+}
+```
+
+- `producer` is the source the producer publishes under. Its manifest must name it.
+- `manifest` is a file or an HTTPS URL. The signature is read beside it, ending in `.jws`, unless `signature` gives another location.
+- `keys` is the key set the consumer admits for this producer: inline, a file, or the HTTPS URL of an origin the operator trusts. It is never taken from beside the manifest alone, so a key set published by a source the configuration does not name counts for nothing.
+- `headers` authenticate the URLs. A value `env:NAME` is read from the environment, so secrets stay out of the file.
+
+```sh
+npm run consumer:observe -- --trust trust.json --tenant <tenant> [--ready inspected]
+```
+
+It verifies each manifest, reads every configured producer's facts, and replays them through the arrival-readiness projection under the trusted manifests only. It prints:
+
+- why each manifest is trusted or not;
+- how each producer's facts were handled;
+- whether each property's facts may be stale;
+- the stays expected in the next 24 hours.
+
+It exits with 1 when a manifest is not trusted or a property is stale.
+
+A manifest that cannot be read, fails the checks, is another producer's, has expired, was changed after signing, or was signed with a key the consumer does not admit counts as no manifest. None of that producer's facts is applied: they are undeclared capabilities, as HOS Events 0.1 requires. A producer's fact that its manifest declares without the authority is kept as an observation and changes nothing. `--ready` lists the housekeeping statuses that make a room ready: `inspected` alone for a property that inspects its rooms.
 
 ## Publish the manifest, rotate and revoke keys
 
