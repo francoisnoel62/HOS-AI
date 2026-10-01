@@ -18,18 +18,31 @@ In the `hos_producer` schema of the database (migrations `002` to `004`):
 
 1. Apply the migrations to the producer's database: `DATABASE_URL=… npm run db:migrate`.
 2. Give the producer read-only PMS credentials:
-   - **Mews**: `MEWS_CLIENT_TOKEN` and `MEWS_ACCESS_TOKEN`. `MEWS_PLATFORM_ADDRESS` defaults to Mews's demo environment.
+   - **Mews**: `MEWS_CLIENT_TOKEN` and `MEWS_ACCESS_TOKEN`, and the id of the enterprise they must open. `MEWS_PLATFORM_ADDRESS` defaults to Mews's demo environment.
    - **Apaleo**: `APALEO_CLIENT_ID` and `APALEO_CLIENT_SECRET`, from a simple client (custom app) of the account. Give the app read scopes only: `reservations.read`, `setup.read` and `maintenances.read`.
 3. Choose the tenant and the HOS property id the facts carry. They must stay the same for the whole pilot: the crosswalk, the state and the journal are kept per tenant and source.
+4. Create the producer's signing key and its key set, once per producer. Keep the private key secret: whoever holds it can sign as the producer.
+
+   ```sh
+   npx @hos-ai/cli manifest keygen --key mews-key.json --jwks mews-jwks.json
+   ```
 
 ## Run
 
 ```sh
-npm run producer:poll -- --pms mews --tenant <tenant> --property <property id> --manifest mews-manifest.json
-npm run producer:poll -- --pms apaleo --apaleo-property <Apaleo property id> --tenant <tenant> --property <property id> --manifest apaleo-manifest.json
+npm run producer:poll -- --pms mews --mews-enterprise <enterprise id> --tenant <tenant> --property <property id> \
+  --publish mews-hos --signing-key mews-key.json --jwks mews-jwks.json
+npm run producer:poll -- --pms apaleo --apaleo-property <Apaleo property id> --tenant <tenant> --property <property id> \
+  --publish apaleo-hos --signing-key apaleo-key.json --jwks apaleo-jwks.json
 ```
 
-- `--manifest` writes the producer's manifest. Its replay window and retention come from `--retention-days`, 30 by default, the same value the purge applies.
+- `--publish` writes the producer's manifest, its signature and its key set, as `manifest.json`, `manifest.jws` and `jwks.json`, then signs the manifest again every day. A signature lasts `--signature-days`, 7 by default, so a producer stopped for a few days still has a valid one. The manifest's replay window and retention come from `--retention-days`, 30 by default, the same value the purge applies. `--manifest <file>` writes the manifest alone, unsigned.
+- The producer checks it reads the right property before it reads anything:
+  - **Mews:** it refuses tokens that open another enterprise than `--mews-enterprise`.
+  - **Apaleo:** it refuses an app without the three read scopes, and warns when the app may do more than read.
+
+  Both clients refuse addresses without HTTPS.
+
 - `--days`, 2 by default, is how far ahead of today each poll reads reservations, from yesterday.
 - Add `--inspections` for an Apaleo property that inspects its rooms, so that Clean means inspected.
 - `--once` runs a single poll and exits: 0 when it succeeded, 1 when it failed.
@@ -66,15 +79,30 @@ A consumer reads the facts after its position with `readPending`, processes them
 
 A consumer whose position is behind the purge gets a `JournalGap`: the facts it has not read are gone. Rebuild its view from the producer, then acknowledge the position the error gives, knowingly.
 
+## Publish the manifest, rotate and revoke keys
+
+A consumer trusts the producer's facts through its signed manifest, which declares what it publishes and on what it is the authority. HOS 0.1 signs the manifest, not each event, as FINISH-OBSERVE decided.
+
+- **Publishing.** A public producer serves the `--publish` directory at `/.well-known/hos/` on its HTTPS origin. A private one, as in the pilot, gives its consumers the three files through authenticated URLs or a location they are configured to read. A consumer takes the producer's keys from its own trust configuration, never from beside the manifest alone.
+- **Rotation.**
+  1. Add a new key to the set: `npx @hos-ai/cli manifest keygen --key mews-key-2.json --jwks mews-jwks.json`.
+  2. Restart the producer with `--signing-key mews-key-2.json`. It publishes the set with both keys, and signs with the new one.
+  3. Give the consumers the new key set, if they keep their own copy.
+  4. Once every signature made with the old key has expired, `--signature-days` after the restart, remove the old key from the set and destroy its private key.
+- **Revocation.** Remove a private key that may be exposed from the key set at once, and from every consumer's trust configuration. Whatever it signed then fails verification. Consumers treat that manifest as missing and process none of the producer's facts until a trusted key signs it. Create a new key, restart the producer with it, and give the consumers the new key set.
+
 ## Export and check
 
 ```sh
 npm run producer:export -- --tenant <tenant> --source urn:hos:pms:mews --out mews.jsonl
 npm run producer:export -- --tenant <tenant> --source urn:hos:pms:mews --since 2026-10-01T00:00:00Z --out today.jsonl
-hos conformance producer --manifest mews-manifest.json --stream mews.jsonl
+hos conformance producer --manifest mews-hos/manifest.json --stream mews.jsonl
+hos manifest verify mews-hos/manifest.json --jwks mews-jwks.json
 ```
 
 The export is JSON Lines, the replay format of HOS Events: the whole journal, the facts after a position (`--after`), or those recorded since a time (`--since`). It says when retention has purged the start of the journal.
+
+`hos conformance producer` checks the facts against the manifest, but not the manifest's signature: `hos manifest verify` checks that separately, with the key set the consumers trust.
 
 ## When it fails
 

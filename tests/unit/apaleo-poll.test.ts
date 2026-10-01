@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import type { ApaleoMaintenance, ApaleoReservation, ApaleoUnit } from "@/lib/hos/mappings/apaleo";
 import { type ApaleoClient, createApaleoClient } from "@/lib/hos/mappings/apaleo-client";
 import { loadRecording } from "@/lib/hos/mappings/replay";
-import { apaleoPoll, type ApaleoPollState } from "@/lib/hos/producer/apaleo-poll";
+import { apaleoPoll, type ApaleoPollState, apaleoReadScopes, apaleoScopesBeyondReading } from "@/lib/hos/producer/apaleo-poll";
 
 const recording = loadRecording("apaleo");
 const [property] = recording.adapter.properties as Array<{ apaleoPropertyId: string; propertyId: string; timezone: string; inspections: boolean }>;
@@ -27,6 +27,8 @@ type Source = {
   maintenances?: ApaleoMaintenance[];
   // What Apaleo answers for a maintenance fetched by id: absent ones are unknown, as deleted ones are.
   byId?: Record<string, ApaleoMaintenance>;
+  // The scopes of the app's token: the read scopes the poll needs, unless given.
+  scopes?: string[];
 };
 
 // An Apaleo property that answers what source holds, and records every request.
@@ -51,6 +53,9 @@ function fakeApaleo(source: Source) {
         "/booking/v1/reservations": (query.dateFilter === "Modification" ? source.modifiedReservations : source.reservations) ?? [],
       };
       return answers[path] as T[];
+    },
+    async scopes() {
+      return source.scopes ?? apaleoReadScopes;
     },
   };
   return { client, requests };
@@ -200,5 +205,36 @@ describe("Apaleo client", () => {
     expect(await apaleo.find("/gone")).toBeNull();
     await expect(apaleo.get("/gone")).rejects.toThrow("GET /gone answered 404");
     await expect(apaleo.list("/many", "items", {})).rejects.toThrow("/many: more than 2 pages of 200.");
+  });
+
+  it("tells the scopes Apaleo granted, and refuses addresses without HTTPS", async () => {
+    const fetch = (async () =>
+      Response.json({
+        access_token: "token",
+        expires_in: 3600,
+        scope: "reservations.read setup.read maintenances.manage",
+      })) as typeof globalThis.fetch;
+    const apaleo = createApaleoClient({ identity: "https://identity.test", api: "https://api.test", clientId: "id", clientSecret: "secret", fetch });
+    expect(await apaleo.scopes()).toEqual(["reservations.read", "setup.read", "maintenances.manage"]);
+    expect(() => createApaleoClient({ identity: "http://identity.test", api: "https://api.test", clientId: "id", clientSecret: "secret" })).toThrow(
+      "Apaleo's addresses must use HTTPS",
+    );
+  });
+});
+
+describe("Apaleo session", () => {
+  it("reads nothing when the app lacks a read scope the poll needs", async () => {
+    const apaleo = fakeApaleo({ reservations: [assigned], scopes: ["reservations.read", "setup.read"] });
+    await expect(apaleoPoll(apaleo.client, options)({ state: undefined, identities, now: new Date("2026-07-30T08:30:00Z") })).rejects.toThrow(
+      "The Apaleo app lacks the scopes maintenances.read: give it setup.read, reservations.read, maintenances.read.",
+    );
+    expect(apaleo.requests).toEqual([]);
+  });
+
+  it("names the scopes beyond reading, which the pilot does not need", () => {
+    expect(apaleoScopesBeyondReading(["reservations.read", "setup.read", "reservations.manage", "maintenances.read", "folios.manage"])).toEqual([
+      "reservations.manage",
+      "folios.manage",
+    ]);
   });
 });

@@ -32,6 +32,8 @@ export function createMewsClient({
   onTruncated?: "warn" | "fail";
   fetch?: typeof globalThis.fetch;
 }): MewsClient {
+  if (new URL(platform).protocol !== "https:")
+    throw new Error(`The Mews platform address must use HTTPS, so the tokens never travel in clear: ${platform}.`);
   // Mews allows 1,000 items a page.
   const pageSize = 1000;
   // Mews allows 200 requests per access token in 30 seconds, and everyone who tries the public demo tokens shares them:
