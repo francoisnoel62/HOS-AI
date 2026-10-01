@@ -131,6 +131,8 @@ The client renews its token, which lives an hour, and waits when Apaleo answers 
 
 Against the Munich sample hotel, the first poll published 138 facts. A poll from a new process published none again. The export passed the producer check against the producer's manifest. That hotel had no maintenance, so deleted and moved maintenances are covered by tests only.
 
+Since 1 October 2026, the producer signs its manifest every day, and its consumers apply its facts only once the manifest verifies with keys they admit. Before reading anything, it checks that the app has the scopes `setup.read`, `reservations.read` and `maintenances.read`, and warns when the app may do more than read. The app of this developer account had 40 scopes beyond reading: a pilot needs an app with read scopes only.
+
 ## Not covered yet
 
 - Multi-unit bookings, blocks and groups.

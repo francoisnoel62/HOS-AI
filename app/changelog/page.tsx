@@ -10,6 +10,19 @@ export const metadata: Metadata = { title: "Changelog", description: "Published 
 const entries = [
   {
     date: "1 October 2026",
+    title: "Observe closes on the evidence of demo environments, and Act opens as a draft.",
+    items: [
+      "HOS 0.1 Observe set out to show that systems can share hotel facts with their sources and authority, and that an early arrival in a room not ready can be detected from them. It now has the HOS Core and HOS Events drafts, the hos command and the SDK, three replayable arrival scenarios, and producers for Mews and Apaleo that keep their facts across restarts, sign their manifests and are trusted only through keys their consumers admit. Both ran read-only against the demo environments of Mews and Apaleo.",
+      "One proof is still open: no hotel has run the scenario yet, and no hotel operator, PMS vendor or integrator has reviewed it. The founder closes Observe on this evidence so that work on Act can start, keeps that proof open, and will publish its results when a pilot hotel brings them. We are looking for partner hotels on Mews or Apaleo.",
+      "Act opens as a draft: commands a person approves, starting with assigning a room, tried in a test environment first. Nothing in HOS writes to a hotel's systems yet, and the mappings remain experimental and unofficial.",
+    ],
+    links: [
+      ["/roadmap", "Roadmap"],
+      ["/participate/pilot", "Run a pilot"],
+    ],
+  },
+  {
+    date: "1 October 2026",
     title: "The pilot producer signs its manifest, and its consumers check it.",
     items: [
       "The producer signs its manifest every day and publishes it with its signature and public keys, as HOS Events 0.1 specifies. HOS 0.1 signs the manifest, not each event.",

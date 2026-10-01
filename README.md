@@ -85,15 +85,16 @@ Two packages carry these checks outside the website. [`@hos-ai/cli`](packages/cl
 
 **Early-stage initiative · HOS Core 0.1 and HOS Events 0.1 drafts · Website online at [hos-ai.vercel.app](https://hos-ai.vercel.app)**
 
-| Area                                       | Where it stands                                                                                                                                                                                                    |
-| :----------------------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Website                                    | Deployed from `master`: standard overview, HOS, HTNG and OpenTravel, manifesto, governance, roadmap, documentation status, changelog, live demos and participation pages.                                          |
-| Participation forms                        | Local PostgreSQL persistence, encrypted payloads and filesystem notification records.                                                                                                                              |
-| HOS Core and event model                   | Draft JSON Schemas in [`public/spec/0.1`](public/spec/0.1), documented at `/docs/core` and `/docs/events`.                                                                                                         |
-| Producer manifests and arrival conformance | Draft manifest schema and signing rules, with signing test vectors, and three synthetic arrival scenarios, checked by the unit tests.                                                                              |
-| Mappings and certification                 | Experimental, unofficial Mews, Apaleo and Cloudbeds mappings replay the arrival scenario; Mews and Apaleo have also run read-only against live demo data. No partner-backed or certified integrations are claimed. |
-| Independent stewardship                    | An objective. HOS AI is working toward an independent HOS Foundation; no established foundation is claimed.                                                                                                        |
-| Data Cooperative                           | A future, optional programme, separate from HOS Core. Not active.                                                                                                                                                  |
+| Area                                       | Where it stands                                                                                                                                                                                                                |
+| :----------------------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Website                                    | Deployed from `master`: standard overview, HOS, HTNG and OpenTravel, manifesto, governance, roadmap, documentation status, changelog, live demos and participation pages.                                                      |
+| Participation forms                        | Local PostgreSQL persistence, encrypted payloads and filesystem notification records.                                                                                                                                          |
+| HOS Core and event model                   | Draft JSON Schemas in [`public/spec/0.1`](public/spec/0.1), documented at `/docs/core` and `/docs/events`.                                                                                                                     |
+| Producer manifests and arrival conformance | Draft manifest schema and signing rules, with signing test vectors, and three synthetic arrival scenarios, checked by the unit tests.                                                                                          |
+| Mappings and certification                 | Experimental, unofficial Mews, Apaleo and Cloudbeds mappings replay the arrival scenario; Mews and Apaleo have also run read-only against live demo data. No partner-backed or certified integrations are claimed.             |
+| Pilot producer                             | A read-only producer polls Mews or Apaleo, keeps its facts across restarts and signs its manifest; consumers apply its facts only under a manifest they verify. It has run against demo environments; no hotel takes part yet. |
+| Independent stewardship                    | An objective. HOS AI is working toward an independent HOS Foundation; no established foundation is claimed.                                                                                                                    |
+| Data Cooperative                           | A future, optional programme, separate from HOS Core. Not active.                                                                                                                                                              |
 
 The website is deployed on Vercel from `master`. The participation forms still need a production database, and email delivery, analytics and anti-spam services still need configuration and review. Public release also requires founder decisions and the publisher details still marked "To complete" on the legal pages.
 
@@ -112,17 +113,17 @@ The intended stewardship model is member-led, with one organisation, one vote. T
 
 Progress depends on evidence and operational readiness. Dates are deliberately left open.
 
-| Stage              | Focus                                                                                       | Status                      |
-| :----------------- | :------------------------------------------------------------------------------------------ | :-------------------------- |
-| **01 · Observe**   | Core events, provenance, producer capabilities and a replayable arrival-readiness scenario. | Current specification focus |
-| **02 · Act**       | Declared capabilities and policy-controlled commands with explicit human approval.          | Future                      |
-| **03 · Trust**     | Versioned policies, approval records, audit evidence and bounded permissions.               | Future                      |
-| **04 · Agents**    | Responsible agent manifests and portable operational guarantees.                            | Future                      |
-| **05 · Ecosystem** | Certified profiles, mappings and voluntary interoperable participation.                     | Future                      |
+| Stage              | Focus                                                                                       | Status                                                                                                        |
+| :----------------- | :------------------------------------------------------------------------------------------ | :------------------------------------------------------------------------------------------------------------ |
+| **01 · Observe**   | Core events, provenance, producer capabilities and a replayable arrival-readiness scenario. | Closed on 1 October 2026 on demo-environment evidence; the hotel pilot is open, and partner hotels are wanted |
+| **02 · Act**       | Declared capabilities and policy-controlled commands with explicit human approval.          | Current focus, as a draft                                                                                     |
+| **03 · Trust**     | Versioned policies, approval records, audit evidence and bounded permissions.               | Future                                                                                                        |
+| **04 · Agents**    | Responsible agent manifests and portable operational guarantees.                            | Future                                                                                                        |
+| **05 · Ecosystem** | Certified profiles, mappings and voluntary interoperable participation.                     | Future                                                                                                        |
 
 ## Explore the repository
 
-The website uses **Next.js 16, React 19, TypeScript and Tailwind CSS 4**, with locally owned UI primitives, Lucide icons and a Docker-backed PostgreSQL 17 database for form development.
+The website uses **Next.js 16, React 19, TypeScript and Tailwind CSS 4**, with locally owned UI primitives, Lucide icons and a Docker-backed PostgreSQL 17 database for form development and the pilot producer.
 
 ```text
 app/                 Pages, metadata and form API routes
@@ -131,13 +132,15 @@ lib/content/         Audience messaging and documentation status
 lib/forms/           Validation, encryption, persistence and local outbox
 lib/analytics/       Allowlisted, payload-free browser event signals
 lib/legal.ts         Publisher, host, processor and retention facts behind the legal pages
-lib/hos/mappings/    Experimental PMS mappings and their recordings
+lib/hos/mappings/    Experimental PMS mappings, their recordings and the read-only Mews and Apaleo clients
+lib/hos/producer/    The pilot's persistent producer: storage, delivery, polling, signed manifest
+lib/hos/consumer/    The pilot's consumer side: which producers' manifests it trusts
 lib/spec.ts          Where the site publishes the spec, and loaders for its conformance scenarios
 packages/sdk/        @hos-ai/sdk: HOS types, validation, processing rules, manifest signing and the reference projection
 packages/cli/        @hos-ai/cli: the hos command: validate, conformance run and producer, replay, manifest
 examples/            Implementations outside TypeScript, such as the HOS dispositions in Python
 database/migrations/ PostgreSQL schema migrations
-scripts/             Migration and seed utilities, and the read-only PMS live checks
+scripts/             Migration and seed utilities, the read-only PMS live checks, and the pilot producer and consumer
 public/spec/0.1/     Draft HOS schemas, examples, conformance corpus and mapping recordings
 tests/               Vitest unit tests and Playwright browser/accessibility checks
 docs/operations/     Local operating procedures
