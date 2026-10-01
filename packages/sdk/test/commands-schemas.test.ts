@@ -22,7 +22,7 @@ import {
   type Validator,
 } from "../src/index.ts";
 import { examplesV02 } from "./examples.v02.generated.ts";
-import { listExampleFilesV02, readJsonV02 } from "./spec.ts";
+import { listExampleFilesV02, readJson, readJsonV02 } from "./spec.ts";
 
 // The HOS Commands 0.2 schemas: every published example is valid and typed, and each rule the schemas hold rejects the
 // documents that break it. The readable messages and the rules that span documents are the validator's, in validate.test.ts.
@@ -69,6 +69,16 @@ describe("the HOS 0.2 examples", () => {
   it("do not make a 0.2 event a 0.1 event, nor the reverse", () => {
     expect(validateEvent(transition())).toBe(false);
     expect(validateEventV02(readJsonV02("../0.1/examples/stay.unit_assigned.json"))).toBe(false);
+  });
+
+  it("write out the Core 0.1 enums its preconditions use, exactly as Core 0.1 has them", () => {
+    const core = readJson("schemas/core.schema.json").$defs;
+    const branches = readJsonV02("schemas/command-envelope.schema.json").properties.preconditions.items.oneOf;
+    const branch = (kind: string) =>
+      branches.find((item: { properties: { kind: { const: string } } }) => item.properties.kind.const === kind).properties;
+    expect(branch("stay_status").in.items.enum).toEqual(core.stayStatus.enum);
+    expect(branch("task_status").in.items.enum).toEqual(core.taskStatus.enum);
+    expect(branch("task_priority").equals.enum).toEqual(core.taskPriority.enum);
   });
 
   it("list HOS 0.1 and HOS 0.2 apart", () => {
@@ -199,10 +209,18 @@ const invalid: Change[] = [
     () => ({ ...transition(), data: { ...without(transition().data, "approval_id"), previous_status: "executing", status: "failed" } }),
   ],
   [
+    "a success that names no confirming fact",
+    validateEventV02,
+    () => ({ ...transition(), data: { ...without(transition().data, "approval_id"), previous_status: "executing", status: "succeeded" } }),
+  ],
+  ["an approval by an integration", validateEventV02, () => ({ ...transition(), hosactor: "integration:front_office_assistant" })],
+  [
     "a success with a reason",
     validateEventV02,
     () => ({
       ...transition(),
+      hoscausationsource: "urn:hos:pms:demo",
+      hoscausationid: "pms-000413",
       data: { ...without(transition().data, "approval_id"), previous_status: "executing", status: "succeeded", reason: "suspended" },
     }),
   ],
@@ -332,7 +350,10 @@ describe("the HOS 0.2 schemas accept", () => {
       const data = { ...transition().data, previous_status: previous, status, ...(reason ? { reason } : {}) };
       if (status !== "approved" && reason !== "rejected_by_approver") delete data.approval_id;
       if (reason === "rejected_by_approver") data.approval_id = "apr_55c1d0e9";
-      expect(validateEventV02({ ...transition(), data }), `${previous} to ${status}: ${JSON.stringify(validateEventV02.errors)}`).toBe(true);
+      const causation = status === "succeeded" ? { hoscausationsource: "urn:hos:pms:demo", hoscausationid: "pms-000413" } : {};
+      expect(validateEventV02({ ...transition(), ...causation, data }), `${previous} to ${status}: ${JSON.stringify(validateEventV02.errors)}`).toBe(
+        true,
+      );
     }
   });
 });

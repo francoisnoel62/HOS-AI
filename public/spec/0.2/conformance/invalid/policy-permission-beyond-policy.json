@@ -1,0 +1,28 @@
+{
+  "description": "A permission for a property the policy does not cover: a permission never reaches beyond its policy.",
+  "rule": "commands/default-deny",
+  "document": {
+    "hospolicyversion": "0.2",
+    "policy_id": "pol_front_office",
+    "version": "2026-10-01",
+    "tenant": "tenant_demo",
+    "properties": ["prop_demo"],
+    "permissions": [
+      {
+        "type": "stay.unit_assign",
+        "mode": "approve_and_run",
+        "requesters": ["user:*", "integration:front_office_assistant"],
+        "approver_roles": ["front_office_manager"],
+        "allow_self_approval": false,
+        "command_validity_seconds": 3600,
+        "approval_validity_seconds": 1800,
+        "required_preconditions": ["unit_status"],
+        "limits": {
+          "max_per_hour": 20,
+          "max_per_target_per_day": 3
+        },
+        "properties": ["prop_other"]
+      }
+    ]
+  }
+}

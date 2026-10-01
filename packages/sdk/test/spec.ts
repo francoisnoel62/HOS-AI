@@ -58,6 +58,13 @@ export const loadCases = (folder: "invalid" | "valid"): ConformanceCase[] =>
     .sort()
     .map((file) => ({ file, ...readJson(`conformance/${folder}/${file}`) }));
 
+// The same cases of HOS 0.2: documents of HOS Commands 0.2 and streams of its events.
+export const loadCasesV02 = (folder: "invalid" | "valid"): ConformanceCase[] =>
+  readdirSync(path.join(specDirectoryV02, "conformance", folder))
+    .filter((file) => file.endsWith(".json"))
+    .sort()
+    .map((file) => ({ file, ...readJsonV02(`conformance/${folder}/${file}`) }));
+
 // A signing test vector: a manifest, its detached JWS and the producer's key set, with the verdict expected at a time.
 export type SigningVector = {
   file: string;

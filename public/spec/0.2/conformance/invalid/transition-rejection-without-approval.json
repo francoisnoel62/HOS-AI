@@ -1,0 +1,28 @@
+{
+  "description": "A rejection by an approver that names no approval.",
+  "rule": "commands/lifecycle",
+  "document": {
+    "specversion": "1.0",
+    "datacontenttype": "application/json",
+    "hosschemaversion": "0.2",
+    "hostenant": "tenant_demo",
+    "hosproperty": "prop_demo",
+    "hospropertytimezone": "Europe/Paris",
+    "hosbusinessdate": "2026-07-14",
+    "id": "gw-000042",
+    "source": "urn:hos:gateway:demo",
+    "type": "command.status_changed",
+    "time": "2026-07-14T09:07:12Z",
+    "hosrecordedat": "2026-07-14T09:07:12Z",
+    "hossubjects": "command:cmd_7f3a91c2 stay:stay_1042",
+    "hosactor": "user:manager_a1",
+    "data": {
+      "command_id": "cmd_7f3a91c2",
+      "command_type": "stay.unit_assign",
+      "previous_status": "pending_approval",
+      "status": "rejected",
+      "command_digest": "sha-256:f2fe580a85056adc14bf68409134801426517997d83e8f29f32438b115d983f9",
+      "reason": "rejected_by_approver"
+    }
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "description": "A message sent that carries its content: HOS keeps the template, never the content.",
+  "rule": "events/minimal-data",
+  "document": {
+    "specversion": "1.0",
+    "datacontenttype": "application/json",
+    "hosschemaversion": "0.2",
+    "hostenant": "tenant_demo",
+    "hosproperty": "prop_demo",
+    "hospropertytimezone": "Europe/Paris",
+    "hosbusinessdate": "2026-07-14",
+    "id": "msg-000208",
+    "source": "urn:hos:messaging:demo",
+    "type": "guest.message.sent",
+    "time": "2026-07-14T09:21:40Z",
+    "hosrecordedat": "2026-07-14T09:21:41Z",
+    "hossubjects": "message:msg_7783 stay:stay_1042",
+    "hosactor": "integration:hos_command_handler",
+    "data": {
+      "message_id": "msg_7783",
+      "channel": "sms",
+      "template_id": "tpl_room_ready",
+      "stay_id": "stay_1042",
+      "sensitivity": "confidential",
+      "text": "Your room is ready."
+    }
+  }
+}

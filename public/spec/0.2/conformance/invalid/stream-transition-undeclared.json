@@ -1,0 +1,91 @@
+{
+  "description": "A producer that publishes a transition its manifest does not declare: the gateway covers the transitions up to approved, and not executing.",
+  "rule": "events/declared-capability",
+  "stream": [
+    {
+      "specversion": "1.0",
+      "datacontenttype": "application/json",
+      "hosschemaversion": "0.2",
+      "hostenant": "tenant_demo",
+      "hosproperty": "prop_demo",
+      "hospropertytimezone": "Europe/Paris",
+      "hosbusinessdate": "2026-07-14",
+      "id": "gw-000042",
+      "source": "urn:hos:gateway:demo",
+      "type": "command.status_changed",
+      "time": "2026-07-14T09:07:12Z",
+      "hosrecordedat": "2026-07-14T09:07:12Z",
+      "hossubjects": "command:cmd_7f3a91c2 stay:stay_1042",
+      "hosactor": "user:manager_a1",
+      "data": {
+        "command_id": "cmd_7f3a91c2",
+        "command_type": "stay.unit_assign",
+        "previous_status": "pending_approval",
+        "status": "approved",
+        "approval_id": "apr_55c1d0e9",
+        "command_digest": "sha-256:f2fe580a85056adc14bf68409134801426517997d83e8f29f32438b115d983f9"
+      }
+    },
+    {
+      "specversion": "1.0",
+      "datacontenttype": "application/json",
+      "hosschemaversion": "0.2",
+      "hostenant": "tenant_demo",
+      "hosproperty": "prop_demo",
+      "hospropertytimezone": "Europe/Paris",
+      "hosbusinessdate": "2026-07-14",
+      "id": "gw-exec-1",
+      "source": "urn:hos:gateway:demo",
+      "type": "command.status_changed",
+      "time": "2026-07-14T09:08:00Z",
+      "hosrecordedat": "2026-07-14T09:08:00Z",
+      "hossubjects": "command:cmd_7f3a91c2 stay:stay_1042",
+      "hosactor": "system:hos_command_handler",
+      "data": {
+        "command_id": "cmd_7f3a91c2",
+        "command_type": "stay.unit_assign",
+        "previous_status": "approved",
+        "status": "executing",
+        "command_digest": "sha-256:f2fe580a85056adc14bf68409134801426517997d83e8f29f32438b115d983f9"
+      }
+    }
+  ],
+  "manifests": [
+    {
+      "hosmanifestversion": "0.2",
+      "producer": "urn:hos:gateway:demo",
+      "name": "Synthetic command gateway",
+      "organization": {
+        "name": "HOS AI synthetic corpus"
+      },
+      "system_role": "integration",
+      "property_ids": ["prop_demo"],
+      "events": [
+        {
+          "type": "command.status_changed",
+          "statuses": ["proposed", "pending_approval", "approved", "rejected", "expired", "cancelled"],
+          "authoritative": true,
+          "note": "The gateway publishes every transition up to approved, and the end of a command that is never sent."
+        }
+      ],
+      "delivery": {
+        "mechanisms": ["file"],
+        "guarantee": "at-least-once",
+        "ordering": "per-subject"
+      },
+      "replay": {
+        "supported": true,
+        "window_days": 90,
+        "format": "jsonl"
+      },
+      "retention": {
+        "event_days": 90,
+        "command_days": 90
+      },
+      "limitations": [
+        "Approvers are authenticated by the gateway; approvals are not signed.",
+        "The emergency stop of a tenant cancels the commands that have not been sent."
+      ]
+    }
+  ]
+}

@@ -28,7 +28,88 @@
           "data": {
             "$ref": "#/$defs/command.status_changed"
           }
-        }
+        },
+        "allOf": [
+          {
+            "if": {
+              "required": ["data"],
+              "properties": {
+                "data": {
+                  "required": ["status"],
+                  "properties": {
+                    "status": {
+                      "const": "succeeded"
+                    }
+                  }
+                }
+              }
+            },
+            "then": {
+              "required": ["hoscausationsource", "hoscausationid"]
+            }
+          },
+          {
+            "if": {
+              "required": ["data"],
+              "properties": {
+                "data": {
+                  "required": ["status"],
+                  "properties": {
+                    "status": {
+                      "const": "approved"
+                    }
+                  }
+                }
+              }
+            },
+            "then": {
+              "required": ["hosactor"],
+              "properties": {
+                "hosactor": {
+                  "pattern": "^user:"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "required": ["data"],
+              "properties": {
+                "data": {
+                  "required": ["status"],
+                  "properties": {
+                    "status": {
+                      "const": "rejected"
+                    }
+                  }
+                }
+              }
+            },
+            "then": {
+              "if": {
+                "required": ["data"],
+                "properties": {
+                  "data": {
+                    "required": ["reason"],
+                    "properties": {
+                      "reason": {
+                        "const": "rejected_by_approver"
+                      }
+                    }
+                  }
+                }
+              },
+              "then": {
+                "required": ["hosactor"],
+                "properties": {
+                  "hosactor": {
+                    "pattern": "^user:"
+                  }
+                }
+              }
+            }
+          }
+        ]
       }
     },
     {
@@ -122,6 +203,19 @@
         }
       },
       "allOf": [
+        {
+          "if": {
+            "required": ["status"],
+            "properties": {
+              "status": {
+                "const": "proposed"
+              }
+            }
+          },
+          "then": {
+            "required": ["command_digest"]
+          }
+        },
         {
           "if": {
             "required": ["status"],
