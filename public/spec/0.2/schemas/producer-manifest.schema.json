@@ -1,0 +1,278 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:hos:schema:0.2:producer-manifest",
+  "title": "HOS 0.2 Producer manifest",
+  "description": "Draft. A producer's versioned statement of exactly what it produces, exposes and authoritatively controls. It is the HOS 0.1 Event Producer manifest, with the command types the system accepts and executes as the authority, and the facts that confirm each of them. A system that accepts no command declares none. Public systems publish it at /.well-known/hos/manifest.json; private systems may use a configured authenticated URL. At most one producer is authoritative for a given event type and dimension (or command status) at a property. The manifest carries no signature: its producer signs it with a detached JWS, published beside it at /.well-known/hos/manifest.jws, and publishes its keys at /.well-known/hos/jwks.json. A command is sent only to a handler whose manifest is signed, verified, unexpired and declares the command type with authoritative true.",
+  "type": "object",
+  "required": [
+    "hosmanifestversion",
+    "producer",
+    "name",
+    "organization",
+    "system_role",
+    "property_ids",
+    "events",
+    "delivery",
+    "replay",
+    "retention",
+    "limitations"
+  ],
+  "properties": {
+    "hosmanifestversion": {
+      "const": "0.2"
+    },
+    "producer": {
+      "type": "string",
+      "format": "uri",
+      "description": "Must equal the source attribute of every event the producer emits."
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "organization": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "url": {
+          "type": "string",
+          "format": "uri"
+        }
+      },
+      "additionalProperties": false
+    },
+    "system_role": {
+      "enum": ["pms", "housekeeping", "maintenance", "messaging", "integration", "other"]
+    },
+    "property_ids": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "urn:hos:schema:0.1:core#/$defs/hosId"
+      }
+    },
+    "entities": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "enum": ["Tenant", "Property", "Unit", "MaintenanceWindow", "Reservation", "Stay", "Task", "Guest", "Message"]
+      },
+      "description": "Core entities the producer exposes."
+    },
+    "events": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["type", "authoritative"],
+        "properties": {
+          "type": {
+            "enum": [
+              "reservation.created",
+              "reservation.updated",
+              "reservation.cancelled",
+              "stay.expected",
+              "stay.checked_in",
+              "stay.check_in_reverted",
+              "stay.checked_out",
+              "stay.unit_assigned",
+              "stay.unit_unassigned",
+              "unit.status_changed",
+              "unit.maintenance_scheduled",
+              "unit.maintenance_cancelled",
+              "housekeeping.task.created",
+              "housekeeping.task.completed",
+              "guest.message.received",
+              "command.status_changed",
+              "housekeeping.task.reprioritized",
+              "guest.message.sent"
+            ]
+          },
+          "dimensions": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "$ref": "urn:hos:schema:0.1:core#/$defs/unitStatusDimension"
+            },
+            "description": "For unit.status_changed: the dimensions this declaration covers."
+          },
+          "authoritative": {
+            "type": "boolean",
+            "description": "true when this producer is the system of record for the event type (and dimensions) at the declared properties. Non-authoritative facts are recorded and shown, never merged into the authoritative value."
+          },
+          "snapshot": {
+            "type": "boolean",
+            "description": "true when the producer may send this type in snapshot mode. Snapshots from a producer that does not declare them are ignored."
+          },
+          "note": {
+            "type": "string"
+          },
+          "statuses": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "$ref": "urn:hos:schema:0.2:definitions#/$defs/commandStatus"
+            },
+            "description": "For command.status_changed: the statuses this declaration covers. A gateway declares the transitions up to approved, a handler the transitions from executing on."
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "commands": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "required": ["type", "authoritative", "targets", "preconditions", "idempotency_window_seconds", "confirmation"],
+        "properties": {
+          "type": {
+            "$ref": "urn:hos:schema:0.2:definitions#/$defs/commandType"
+          },
+          "authoritative": {
+            "type": "boolean",
+            "description": "true when this system is the authority that executes the command type at the declared properties. A command is sent only to a handler that declares it authoritative."
+          },
+          "targets": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "enum": ["Stay", "Task"]
+            },
+            "description": "The Core entities the command may target."
+          },
+          "preconditions": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "$ref": "urn:hos:schema:0.2:definitions#/$defs/preconditionKind"
+            },
+            "description": "The kinds of precondition the handler checks at the source just before it sends the request."
+          },
+          "idempotency_window_seconds": {
+            "type": "integer",
+            "minimum": 60,
+            "description": "How long the handler remembers an idempotency key, in seconds."
+          },
+          "confirmation": {
+            "type": "object",
+            "required": ["events", "max_delay_seconds", "attribution"],
+            "properties": {
+              "events": {
+                "type": "array",
+                "minItems": 1,
+                "uniqueItems": true,
+                "items": {
+                  "$ref": "urn:hos:schema:0.2:definitions#/$defs/confirmationEventType"
+                },
+                "description": "The event types of the authoritative system that confirm the command. Each is declared authoritative in events."
+              },
+              "max_delay_seconds": {
+                "type": "integer",
+                "minimum": 1,
+                "description": "How long after the request a confirming fact is awaited before the confirmation is late. A late confirmation does not fail the command: a person decides."
+              },
+              "attribution": {
+                "enum": ["effect", "source"],
+                "description": "How a confirming fact is tied to a command. effect: by the expected effect (the stay, the unit, the window), so an identical change made by hand in the window counts as confirmation: true of the state, not of the author. source: the source system says which application made the change."
+              }
+            },
+            "additionalProperties": false
+          },
+          "limits": {
+            "type": "object",
+            "properties": {
+              "max_per_minute": {
+                "type": "integer",
+                "minimum": 1
+              }
+            },
+            "additionalProperties": false,
+            "description": "Limits the handler enforces on its own, for example those of the system's API."
+          },
+          "note": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "description": "The command types this system accepts and executes. Empty or absent: it accepts none."
+    },
+    "delivery": {
+      "type": "object",
+      "required": ["mechanisms", "guarantee", "ordering"],
+      "properties": {
+        "mechanisms": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": ["webhook", "polling", "stream", "file"]
+          }
+        },
+        "guarantee": {
+          "const": "at-least-once",
+          "description": "HOS delivery is at-least-once; consumers deduplicate on source and id."
+        },
+        "ordering": {
+          "enum": ["none", "per-subject", "total"],
+          "description": "Ordering is never global; it holds only as declared here."
+        }
+      },
+      "additionalProperties": false
+    },
+    "replay": {
+      "type": "object",
+      "required": ["supported"],
+      "properties": {
+        "supported": {
+          "type": "boolean"
+        },
+        "window_days": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "A certified Event Producer profile provides at least 30 days."
+        },
+        "format": {
+          "const": "jsonl",
+          "description": "Replays are JSON Lines: one event per line, in delivery order."
+        }
+      },
+      "additionalProperties": false
+    },
+    "retention": {
+      "type": "object",
+      "required": ["event_days"],
+      "properties": {
+        "event_days": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "command_days": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "How long the command journal is kept, when the producer keeps one. The real retention, never the intended one."
+        }
+      },
+      "additionalProperties": false
+    },
+    "limitations": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "description": "Known gaps, unsupported states and access constraints, stated explicitly. Empty only when there are none."
+    }
+  },
+  "additionalProperties": false
+}

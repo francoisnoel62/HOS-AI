@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:hos:schema:0.2:approval",
+  "title": "HOS Commands 0.2 approval",
+  "description": "Draft. A person's decision on a command: approved or rejected. An approval names a role of the tenant, records who decided and under which role, expires, and carries the digest of the command its approver saw: a command changed afterwards no longer matches, and the approval is invalid. An approval is a document, recorded in the journal beside the command. HOS 0.2 does not sign approvals: the gateway authenticates its approvers, and signatures are left to Trust 0.3.",
+  "type": "object",
+  "required": [
+    "hosapprovalversion",
+    "approval_id",
+    "command_id",
+    "command_digest",
+    "hostenant",
+    "decision",
+    "approver",
+    "approver_role",
+    "decided_at",
+    "policy"
+  ],
+  "properties": {
+    "hosapprovalversion": {
+      "const": "0.2",
+      "description": "HOS version the approval conforms to. A document with this member is an approval."
+    },
+    "approval_id": {
+      "$ref": "urn:hos:schema:0.1:core#/$defs/hosId"
+    },
+    "command_id": {
+      "$ref": "urn:hos:schema:0.1:core#/$defs/hosId",
+      "description": "The command decided on."
+    },
+    "command_digest": {
+      "$ref": "urn:hos:schema:0.2:definitions#/$defs/commandDigest",
+      "description": "The digest of the command its approver saw."
+    },
+    "hostenant": {
+      "$ref": "urn:hos:schema:0.1:core#/$defs/hosId",
+      "description": "Must be the tenant of the command."
+    },
+    "decision": {
+      "enum": ["approved", "rejected"]
+    },
+    "approver": {
+      "$ref": "urn:hos:schema:0.2:definitions#/$defs/approverRef"
+    },
+    "approver_role": {
+      "$ref": "urn:hos:schema:0.2:definitions#/$defs/approverRole"
+    },
+    "decided_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "After this instant an approval no longer authorizes the command. Required for an approval that approves."
+    },
+    "policy": {
+      "$ref": "urn:hos:schema:0.2:definitions#/$defs/policyRef",
+      "description": "The policy in force when the approver decided."
+    }
+  },
+  "if": {
+    "required": ["decision"],
+    "properties": {
+      "decision": {
+        "const": "approved"
+      }
+    }
+  },
+  "then": {
+    "required": ["expires_at"]
+  },
+  "additionalProperties": false
+}

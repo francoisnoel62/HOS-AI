@@ -1,0 +1,132 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:hos:schema:0.2:policy",
+  "title": "HOS Commands 0.2 policy profile",
+  "description": "Draft. The minimal policy HOS Commands 0.2 requires: an allow list of permissions for one tenant, in which anything not permitted is refused. A permission names a command type, the requesters it admits, and a mode: recommend, where a command is proposed and never executed, or approve_and_run, where a person with an admitted role approves and the command is executed. In 0.2 nothing is executed without a human approval. The profile uses the terms of the PRD (tenant, actor, action, target, preconditions, approver role, expiry) so that Trust 0.3 extends it rather than replaces it: a portable policy language, general thresholds and limits, and bounded autonomy are not part of 0.2.",
+  "type": "object",
+  "required": ["hospolicyversion", "policy_id", "version", "tenant", "properties", "permissions"],
+  "properties": {
+    "hospolicyversion": {
+      "const": "0.2",
+      "description": "HOS version the policy conforms to. A document with this member is a policy."
+    },
+    "policy_id": {
+      "$ref": "urn:hos:schema:0.1:core#/$defs/hosId"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
+      "description": "The version of the policy. A command and an approval record the version they were evaluated against."
+    },
+    "tenant": {
+      "$ref": "urn:hos:schema:0.1:core#/$defs/hosId"
+    },
+    "properties": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "urn:hos:schema:0.1:core#/$defs/hosId"
+      },
+      "description": "The properties of the tenant the policy covers."
+    },
+    "permissions": {
+      "type": "array",
+      "description": "What is permitted. A command no permission covers is refused: an empty list refuses everything.",
+      "items": {
+        "type": "object",
+        "required": ["type", "mode", "requesters", "command_validity_seconds"],
+        "properties": {
+          "type": {
+            "$ref": "urn:hos:schema:0.2:definitions#/$defs/commandType"
+          },
+          "properties": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "$ref": "urn:hos:schema:0.1:core#/$defs/hosId"
+            },
+            "description": "The properties the permission covers; absent, all those of the policy."
+          },
+          "mode": {
+            "enum": ["recommend", "approve_and_run"],
+            "description": "recommend: the command is proposed and stays proposed until it expires or is cancelled. approve_and_run: it goes to approval, then runs."
+          },
+          "requesters": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "pattern": "^(?:user|integration):(?:\\*|[A-Za-z0-9][A-Za-z0-9._~-]{0,127})$"
+            },
+            "description": "Who may propose the command: a pseudonymous reference, or user:* or integration:* for any requester of that kind."
+          },
+          "approver_roles": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "$ref": "urn:hos:schema:0.2:definitions#/$defs/approverRole"
+            },
+            "description": "The roles of the tenant that may approve the command."
+          },
+          "allow_self_approval": {
+            "type": "boolean",
+            "description": "Whether the requester may approve their own command. Absent means false."
+          },
+          "command_validity_seconds": {
+            "type": "integer",
+            "minimum": 60,
+            "maximum": 604800,
+            "description": "The longest a command may live between its request and its expiry."
+          },
+          "approval_validity_seconds": {
+            "type": "integer",
+            "minimum": 60,
+            "maximum": 86400,
+            "description": "The longest an approval may live between the decision and its expiry."
+          },
+          "required_preconditions": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "$ref": "urn:hos:schema:0.2:definitions#/$defs/preconditionKind"
+            },
+            "description": "The kinds of precondition a command must carry on top of those its type requires."
+          },
+          "limits": {
+            "type": "object",
+            "properties": {
+              "max_per_hour": {
+                "type": "integer",
+                "minimum": 1,
+                "description": "The most commands of this type that may be proposed for the tenant in an hour."
+              },
+              "max_per_target_per_day": {
+                "type": "integer",
+                "minimum": 1,
+                "description": "The most commands of this type that may target the same entity in a day."
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "if": {
+          "required": ["mode"],
+          "properties": {
+            "mode": {
+              "const": "approve_and_run"
+            }
+          }
+        },
+        "then": {
+          "required": ["approver_roles", "approval_validity_seconds"]
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

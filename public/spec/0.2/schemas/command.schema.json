@@ -1,0 +1,277 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:hos:schema:0.2:command",
+  "title": "HOS Commands 0.2",
+  "description": "Draft. The first series of commands: three controlled requests on the command envelope. No command checks a guest in or out, takes a payment or grants a financial compensation. Data objects are closed so that personal data cannot travel unnoticed. Every command carries the preconditions its type requires; a policy may require more.",
+  "allOf": [
+    {
+      "$ref": "urn:hos:schema:0.2:command-envelope"
+    },
+    {
+      "properties": {
+        "type": {
+          "enum": ["stay.unit_assign", "housekeeping.task.reprioritize", "guest.message.send"]
+        }
+      }
+    },
+    {
+      "if": {
+        "required": ["type"],
+        "properties": {
+          "type": {
+            "const": "stay.unit_assign"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "$ref": "#/$defs/stay.unit_assign"
+          },
+          "target": {
+            "pattern": "^stay:"
+          },
+          "preconditions": {
+            "items": {
+              "properties": {
+                "kind": {
+                  "enum": ["stay_status", "unit_assignment", "unit_status", "facts_fresh"]
+                }
+              }
+            },
+            "allOf": [
+              {
+                "contains": {
+                  "required": ["kind", "in"],
+                  "properties": {
+                    "kind": {
+                      "const": "stay_status"
+                    },
+                    "in": {
+                      "items": {
+                        "const": "expected"
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "contains": {
+                  "required": ["kind"],
+                  "properties": {
+                    "kind": {
+                      "const": "unit_assignment"
+                    }
+                  }
+                }
+              },
+              {
+                "contains": {
+                  "required": ["kind"],
+                  "properties": {
+                    "kind": {
+                      "const": "facts_fresh"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": ["type"],
+        "properties": {
+          "type": {
+            "const": "housekeeping.task.reprioritize"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "$ref": "#/$defs/housekeeping.task.reprioritize"
+          },
+          "target": {
+            "pattern": "^task:"
+          },
+          "preconditions": {
+            "items": {
+              "properties": {
+                "kind": {
+                  "enum": ["task_priority", "task_status", "facts_fresh"]
+                }
+              }
+            },
+            "allOf": [
+              {
+                "contains": {
+                  "required": ["kind"],
+                  "properties": {
+                    "kind": {
+                      "const": "task_priority"
+                    }
+                  }
+                }
+              },
+              {
+                "contains": {
+                  "required": ["kind"],
+                  "properties": {
+                    "kind": {
+                      "const": "facts_fresh"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": ["type"],
+        "properties": {
+          "type": {
+            "const": "guest.message.send"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "$ref": "#/$defs/guest.message.send"
+          },
+          "target": {
+            "pattern": "^stay:"
+          },
+          "preconditions": {
+            "items": {
+              "properties": {
+                "kind": {
+                  "enum": ["stay_status", "facts_fresh"]
+                }
+              }
+            },
+            "allOf": [
+              {
+                "contains": {
+                  "required": ["kind"],
+                  "properties": {
+                    "kind": {
+                      "const": "stay_status"
+                    }
+                  }
+                }
+              },
+              {
+                "contains": {
+                  "required": ["kind"],
+                  "properties": {
+                    "kind": {
+                      "const": "facts_fresh"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "stay.unit_assign": {
+      "title": "stay.unit_assign",
+      "description": "Assign a unit to a stay that has not started. The assignment covers the whole stay, and the unit is not locked: HOS never leaves a lock the guest or the staff did not ask for, and an assignment locked at the source is refused, never unlocked. Its effect is confirmed by a stay.unit_assigned fact of the PMS that is the authority.",
+      "x-hos-authority": "PMS",
+      "type": "object",
+      "required": ["stay_id", "unit_id"],
+      "properties": {
+        "stay_id": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/hosId",
+          "description": "The stay to assign. It must be the stay the command targets."
+        },
+        "unit_id": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/hosId",
+          "description": "The unit to assign."
+        },
+        "reason": {
+          "enum": ["initial_assignment", "upgrade", "room_move", "readiness", "other"],
+          "description": "Why, in the terms of stay.unit_assigned. readiness when the command resolves a room readiness risk."
+        }
+      },
+      "additionalProperties": false
+    },
+    "housekeeping.task.reprioritize": {
+      "title": "housekeeping.task.reprioritize",
+      "description": "Change the priority of a housekeeping task. Its effect is confirmed by a housekeeping.task.reprioritized fact of the housekeeping system that is the authority.",
+      "x-hos-authority": "Housekeeping system",
+      "type": "object",
+      "required": ["task_id", "priority"],
+      "properties": {
+        "task_id": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/hosId",
+          "description": "The task to reprioritize. It must be the task the command targets."
+        },
+        "priority": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/taskPriority",
+          "description": "The new priority."
+        },
+        "due_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "A new due time, when the command also moves it."
+        }
+      },
+      "additionalProperties": false
+    },
+    "guest.message.send": {
+      "title": "guest.message.send",
+      "description": "Send a guest a message from a template of the messaging system. There is no free text: the content stays in the messaging system, which also keeps the consent and the opt-out of the guest. Parameters are bounded, and HOS keeps the template identifier, never the content. Its effect is confirmed by a guest.message.sent fact of the messaging system that is the authority.",
+      "x-hos-authority": "Guest messaging system",
+      "type": "object",
+      "required": ["stay_id", "channel", "template_id"],
+      "properties": {
+        "stay_id": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/hosId",
+          "description": "The stay whose guest receives the message. It must be the stay the command targets."
+        },
+        "channel": {
+          "enum": ["sms", "email", "chat", "messaging_app", "ota_messaging"],
+          "description": "How the message is sent."
+        },
+        "template_id": {
+          "$ref": "urn:hos:schema:0.1:core#/$defs/hosId",
+          "description": "A template of the messaging system, which the hotel wrote and approved."
+        },
+        "parameters": {
+          "type": "object",
+          "maxProperties": 10,
+          "propertyNames": {
+            "pattern": "^[a-z][a-z0-9_]{0,31}$"
+          },
+          "additionalProperties": {
+            "oneOf": [
+              {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9 ._:/+-]{0,63}$"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              }
+            ]
+          },
+          "description": "Values for the template: short, with no name, contact detail or free text. HOS cannot recognise personal data in a short string; the template's author and the messaging system answer for what the template takes."
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

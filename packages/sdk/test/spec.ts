@@ -14,6 +14,17 @@ export const specDirectory = fileURLToPath(new URL("../../../public/spec/0.1/", 
 
 export const readJson = (file: string) => JSON.parse(readFileSync(path.join(specDirectory, file), "utf8"));
 
+// The published HOS 0.2 artefacts, which add HOS Commands 0.2 to the 0.1 ones above.
+export const specDirectoryV02 = fileURLToPath(new URL("../../../public/spec/0.2/", import.meta.url));
+
+export const readJsonV02 = (file: string) => JSON.parse(readFileSync(path.join(specDirectoryV02, file), "utf8"));
+
+export const listExampleFilesV02 = () =>
+  readdirSync(path.join(specDirectoryV02, "examples"), { recursive: true })
+    .map((file) => String(file).replaceAll("\\", "/"))
+    .filter((file) => file.endsWith(".json"))
+    .sort();
+
 export const listExamples = () =>
   readdirSync(path.join(specDirectory, "examples"))
     .filter((file) => file.endsWith(".json"))

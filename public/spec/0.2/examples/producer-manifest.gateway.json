@@ -1,0 +1,36 @@
+{
+  "hosmanifestversion": "0.2",
+  "producer": "urn:hos:gateway:demo",
+  "name": "Synthetic command gateway",
+  "organization": {
+    "name": "HOS AI synthetic corpus"
+  },
+  "system_role": "integration",
+  "property_ids": ["prop_demo"],
+  "events": [
+    {
+      "type": "command.status_changed",
+      "statuses": ["proposed", "pending_approval", "approved", "rejected", "expired", "cancelled"],
+      "authoritative": true,
+      "note": "The gateway publishes every transition up to approved, and the end of a command that is never sent."
+    }
+  ],
+  "delivery": {
+    "mechanisms": ["file"],
+    "guarantee": "at-least-once",
+    "ordering": "per-subject"
+  },
+  "replay": {
+    "supported": true,
+    "window_days": 90,
+    "format": "jsonl"
+  },
+  "retention": {
+    "event_days": 90,
+    "command_days": 90
+  },
+  "limitations": [
+    "Approvers are authenticated by the gateway; approvals are not signed.",
+    "The emergency stop of a tenant cancels the commands that have not been sent."
+  ]
+}
