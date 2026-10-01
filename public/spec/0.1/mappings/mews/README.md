@@ -140,6 +140,8 @@ It keeps the crosswalk, the adapter's state and the facts in Postgres, so a rest
 
 Against the Gross pricing demo enterprise, with a two-day window, the first poll published 2,270 facts. A poll from a new process published none again. The export passed the producer check against the producer's manifest.
 
+Since 1 October 2026, the producer signs its manifest every day, and its consumers apply its facts only once the manifest verifies with keys they admit. Before reading anything, it checks that the tokens open the expected enterprise. Told to expect another enterprise, the producer read nothing from the demo. Told the right one, the signed manifest passed `hos manifest verify`, and a consumer applied all 2,471 facts under it, and none under a copy changed after signing.
+
 ## Not covered yet
 
 - Occupancy from Get resources' occupancy state.
