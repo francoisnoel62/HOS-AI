@@ -229,13 +229,15 @@ npm.cmd run test:e2e
 
 Playwright starts the production server on port `3100`, so **build before running browser tests**. The suite covers key navigation and participation flows, theme switching and automated accessibility checks in desktop and mobile browser profiles. Run `npm.cmd run test:a11y` for the accessibility subset.
 
-The storage tests of the pilot's reference producer need a Postgres database of their own, and are skipped without one. With the database of step 3 running:
+The tests of the pilot's reference producer need a Postgres database of their own, and are skipped without one. Some start the producer as a separate process and kill it outright. With the database of step 3 running:
 
 ```powershell
 docker exec hos-ai-postgres createdb -U hos hos_ai_test
 $env:HOS_TEST_DATABASE_URL = "postgres://hos:hos@localhost:5432/hos_ai_test"
 npm.cmd test
 ```
+
+The producer itself, which polls Mews or Apaleo for the Observe pilot, is run, watched, stopped and resumed as [docs/operations/pilot-producer.md](docs/operations/pilot-producer.md) describes.
 
 To try the SDK and the CLI as a new user would, `npm.cmd run packages:try` packs them, installs them in an empty project and runs `hos` there against the reference implementation and the Python example.
 

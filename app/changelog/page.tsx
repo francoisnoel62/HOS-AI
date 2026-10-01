@@ -9,6 +9,19 @@ export const metadata: Metadata = { title: "Changelog", description: "Published 
 
 const entries = [
   {
+    date: "1 October 2026",
+    title: "The Mews and Apaleo mappings run as a persistent producer.",
+    items: [
+      "A producer for the Observe pilot polls Mews or Apaleo every 2 minutes, read-only, and keeps what it publishes in a database: the HOS id of each PMS entity, what its adapter has told HOS, and every fact once, as first written. A producer that stops, even killed outright, carries on where it was and never publishes a fact twice with another content.",
+      "Systems that receive its facts read them at least once from a position of their own, or as a JSON Lines export kept for 30 days. A synchronisation status says when each property was last read, and calls its facts stale after 10 minutes without a successful poll.",
+      "It ran read-only against Mews's demo enterprise and the sample hotels of an Apaleo developer account. It prepares the Observe pilot; no hotel takes part yet, and the mappings remain experimental and unofficial.",
+    ],
+    links: [
+      ["/demo/mews", "Mews mapping"],
+      ["/demo/apaleo", "Apaleo mapping"],
+    ],
+  },
+  {
     date: "28 September 2026",
     title: "The documentation of the hos command and the SDK is complete.",
     items: [
