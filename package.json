@@ -26,6 +26,7 @@
     "legal:check": "tsx scripts/legal-check.ts",
     "packages:try": "node scripts/try-packages.ts",
     "producer:export": "tsx --env-file-if-exists=.env.local scripts/producer-export.ts",
+    "producer:poll": "tsx --env-file-if-exists=.env.local scripts/producer-poll.ts",
     "producer:status": "tsx --env-file-if-exists=.env.local scripts/producer-status.ts",
     "mews:live": "tsx --env-file-if-exists=.env.local scripts/mews-live.ts",
     "apaleo:live": "tsx --env-file-if-exists=.env.local scripts/apaleo-live.ts",
