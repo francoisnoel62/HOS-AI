@@ -1,0 +1,57 @@
+{
+  "description": "A command without a tenant: the tenant is the boundary of every evaluation.",
+  "rule": "commands/tenant-scope",
+  "document": {
+    "hoscommandversion": "0.2",
+    "command_id": "cmd_7f3a91c2",
+    "type": "stay.unit_assign",
+    "hosproperty": "prop_demo",
+    "handler": "urn:hos:pms:demo",
+    "target": "stay:stay_1042",
+    "idempotency_key": "stay_1042-unit_212-readiness",
+    "requester": "user:staff_k3",
+    "requested_at": "2026-07-14T09:05:00Z",
+    "expires_at": "2026-07-14T10:05:00Z",
+    "evidence": [
+      {
+        "source": "urn:hos:projection:arrival-readiness",
+        "id": "sit_000187"
+      }
+    ],
+    "policy": {
+      "policy_id": "pol_front_office",
+      "version": "2026-10-01"
+    },
+    "preconditions": [
+      {
+        "kind": "stay_status",
+        "in": ["expected"]
+      },
+      {
+        "kind": "unit_assignment",
+        "equals": "unit_204"
+      },
+      {
+        "kind": "unit_status",
+        "unit_id": "unit_212",
+        "dimension": "housekeeping",
+        "in": ["inspected"]
+      },
+      {
+        "kind": "unit_status",
+        "unit_id": "unit_212",
+        "dimension": "maintenance",
+        "in": ["operational"]
+      },
+      {
+        "kind": "facts_fresh",
+        "max_age_seconds": 600
+      }
+    ],
+    "data": {
+      "stay_id": "stay_1042",
+      "unit_id": "unit_212",
+      "reason": "readiness"
+    }
+  }
+}

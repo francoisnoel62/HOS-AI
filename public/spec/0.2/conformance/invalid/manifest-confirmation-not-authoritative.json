@@ -1,0 +1,116 @@
+{
+  "description": "A command confirmed by a fact the system does not hold the authority over.",
+  "rule": "commands/source-confirmation",
+  "document": {
+    "hosmanifestversion": "0.2",
+    "producer": "urn:hos:pms:demo",
+    "name": "Synthetic PMS with commands",
+    "organization": {
+      "name": "HOS AI synthetic corpus"
+    },
+    "system_role": "pms",
+    "property_ids": ["prop_demo"],
+    "entities": ["Reservation", "Stay", "Unit", "Guest"],
+    "events": [
+      {
+        "type": "reservation.created",
+        "authoritative": true
+      },
+      {
+        "type": "reservation.updated",
+        "authoritative": true
+      },
+      {
+        "type": "reservation.cancelled",
+        "authoritative": true
+      },
+      {
+        "type": "stay.expected",
+        "authoritative": true
+      },
+      {
+        "type": "stay.unit_assigned",
+        "authoritative": false
+      },
+      {
+        "type": "stay.checked_in",
+        "authoritative": true
+      },
+      {
+        "type": "stay.check_in_reverted",
+        "authoritative": true
+      },
+      {
+        "type": "stay.checked_out",
+        "authoritative": true
+      },
+      {
+        "type": "stay.unit_unassigned",
+        "authoritative": true
+      },
+      {
+        "type": "unit.maintenance_scheduled",
+        "authoritative": true
+      },
+      {
+        "type": "unit.maintenance_cancelled",
+        "authoritative": true
+      },
+      {
+        "type": "unit.status_changed",
+        "dimensions": ["occupancy", "commercial"],
+        "authoritative": true
+      },
+      {
+        "type": "unit.status_changed",
+        "dimensions": ["housekeeping"],
+        "authoritative": false,
+        "note": "The PMS mirrors housekeeping status; at this property the housekeeping system is the authority."
+      },
+      {
+        "type": "command.status_changed",
+        "statuses": ["executing", "succeeded", "failed"],
+        "authoritative": true,
+        "note": "The handler publishes the transitions from the moment it sends the request."
+      }
+    ],
+    "delivery": {
+      "mechanisms": ["webhook"],
+      "guarantee": "at-least-once",
+      "ordering": "per-subject"
+    },
+    "replay": {
+      "supported": true,
+      "window_days": 30,
+      "format": "jsonl"
+    },
+    "retention": {
+      "event_days": 90,
+      "command_days": 90
+    },
+    "limitations": [
+      "The PMS task module is not a declared source of housekeeping tasks at this property.",
+      "Guest messages are not exposed.",
+      "A stay.unit_assigned fact matches a command by its effect, so an identical change made by hand in the window confirms it too.",
+      "Only stays that have not started can be assigned."
+    ],
+    "commands": [
+      {
+        "type": "stay.unit_assign",
+        "authoritative": true,
+        "targets": ["Stay"],
+        "preconditions": ["stay_status", "unit_assignment", "unit_status", "facts_fresh"],
+        "idempotency_window_seconds": 86400,
+        "confirmation": {
+          "events": ["stay.unit_assigned"],
+          "max_delay_seconds": 600,
+          "attribution": "effect"
+        },
+        "limits": {
+          "max_per_minute": 30
+        },
+        "note": "Assigns for the whole stay, without locking the unit. An assignment locked in the PMS is refused, never unlocked."
+      }
+    ]
+  }
+}

@@ -203,7 +203,7 @@ export type CommandEnvelope<TType extends string, TData> = {
   requested_at: string;
   /** After this instant the command is never sent: it expires. */
   expires_at: string;
-  /** What must hold, on facts fresh enough, when the command is evaluated, and what the handler reads again at the source just before it sends the request. */
+  /** What must hold, on facts fresh enough, when the command is evaluated, and what the handler reads again at the source just before it sends the request. The statuses and priorities listed are those of Core 0.1, written out so that an error names the precondition it is in. */
   preconditions: Array<{
     kind: "stay_status";
     in: StayStatus[];

@@ -72,7 +72,7 @@
     },
     "preconditions": {
       "type": "array",
-      "description": "What must hold, on facts fresh enough, when the command is evaluated, and what the handler reads again at the source just before it sends the request.",
+      "description": "What must hold, on facts fresh enough, when the command is evaluated, and what the handler reads again at the source just before it sends the request. The statuses and priorities listed are those of Core 0.1, written out so that an error names the precondition it is in.",
       "items": {
         "oneOf": [
           {
@@ -87,7 +87,7 @@
                 "minItems": 1,
                 "uniqueItems": true,
                 "items": {
-                  "$ref": "urn:hos:schema:0.1:core#/$defs/stayStatus"
+                  "enum": ["expected", "in_house", "departed", "cancelled"]
                 }
               }
             },
@@ -251,7 +251,7 @@
                 "const": "task_priority"
               },
               "equals": {
-                "$ref": "urn:hos:schema:0.1:core#/$defs/taskPriority"
+                "enum": ["low", "normal", "high", "urgent"]
               }
             },
             "additionalProperties": false
@@ -268,7 +268,7 @@
                 "minItems": 1,
                 "uniqueItems": true,
                 "items": {
-                  "$ref": "urn:hos:schema:0.1:core#/$defs/taskStatus"
+                  "enum": ["open", "in_progress", "completed", "cancelled"]
                 }
               }
             },

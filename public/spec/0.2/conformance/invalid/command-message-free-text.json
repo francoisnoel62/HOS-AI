@@ -1,0 +1,46 @@
+{
+  "description": "A message with free text: only a template of the messaging system travels.",
+  "rule": "commands/minimal-data",
+  "document": {
+    "hoscommandversion": "0.2",
+    "command_id": "cmd_91c4e6d7",
+    "type": "guest.message.send",
+    "hostenant": "tenant_demo",
+    "hosproperty": "prop_demo",
+    "target": "stay:stay_1042",
+    "handler": "urn:hos:messaging:demo",
+    "idempotency_key": "stay_1042-room-ready-notice",
+    "requester": "integration:front_office_assistant",
+    "requested_at": "2026-07-14T09:20:00Z",
+    "expires_at": "2026-07-14T11:20:00Z",
+    "evidence": [
+      {
+        "source": "urn:hos:pms:demo",
+        "id": "pms-000412"
+      }
+    ],
+    "policy": {
+      "policy_id": "pol_front_office",
+      "version": "2026-10-01"
+    },
+    "preconditions": [
+      {
+        "kind": "stay_status",
+        "in": ["expected"]
+      },
+      {
+        "kind": "facts_fresh",
+        "max_age_seconds": 600
+      }
+    ],
+    "data": {
+      "stay_id": "stay_1042",
+      "channel": "sms",
+      "template_id": "tpl_room_ready",
+      "parameters": {
+        "unit_label": "212"
+      },
+      "text": "Your room is ready."
+    }
+  }
+}

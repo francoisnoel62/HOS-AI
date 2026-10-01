@@ -1,6 +1,6 @@
 import { parseArgs } from "node:util";
 
-import { type ProducerManifest, type StreamIssue, validate, validateStream, type ValidationError } from "@hos-ai/sdk";
+import { type DocumentKind, type ProducerManifest, type StreamIssue, validate, validateStream, type ValidationError } from "@hos-ai/sdk";
 
 import { issueLines, plural } from "./format.ts";
 import { exit, type Io } from "./io.ts";
@@ -21,7 +21,7 @@ Options:
 Exit codes: 0 when every file is valid, 1 when one is not, 2 for a usage or read error.
 `;
 
-type DocumentResult = { file: string; valid: boolean; kind: "event" | "situation" | "manifest" | null; name?: string; errors: ValidationError[] };
+type DocumentResult = { file: string; valid: boolean; kind: DocumentKind | null; name?: string; errors: ValidationError[] };
 type StreamResult = { file: string; valid: boolean; kind: "stream"; events: number; issues: StreamIssue[] };
 type Result = DocumentResult | StreamResult;
 

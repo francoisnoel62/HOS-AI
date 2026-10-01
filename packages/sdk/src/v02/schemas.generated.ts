@@ -159,7 +159,7 @@ export const schemasV02: Record<string, AnySchemaObject> = {
       },
       "preconditions": {
         "type": "array",
-        "description": "What must hold, on facts fresh enough, when the command is evaluated, and what the handler reads again at the source just before it sends the request.",
+        "description": "What must hold, on facts fresh enough, when the command is evaluated, and what the handler reads again at the source just before it sends the request. The statuses and priorities listed are those of Core 0.1, written out so that an error names the precondition it is in.",
         "items": {
           "oneOf": [
             {
@@ -177,7 +177,12 @@ export const schemasV02: Record<string, AnySchemaObject> = {
                   "minItems": 1,
                   "uniqueItems": true,
                   "items": {
-                    "$ref": "urn:hos:schema:0.1:core#/$defs/stayStatus"
+                    "enum": [
+                      "expected",
+                      "in_house",
+                      "departed",
+                      "cancelled"
+                    ]
                   }
                 }
               },
@@ -363,7 +368,12 @@ export const schemasV02: Record<string, AnySchemaObject> = {
                   "const": "task_priority"
                 },
                 "equals": {
-                  "$ref": "urn:hos:schema:0.1:core#/$defs/taskPriority"
+                  "enum": [
+                    "low",
+                    "normal",
+                    "high",
+                    "urgent"
+                  ]
                 }
               },
               "additionalProperties": false
@@ -383,7 +393,12 @@ export const schemasV02: Record<string, AnySchemaObject> = {
                   "minItems": 1,
                   "uniqueItems": true,
                   "items": {
-                    "$ref": "urn:hos:schema:0.1:core#/$defs/taskStatus"
+                    "enum": [
+                      "open",
+                      "in_progress",
+                      "completed",
+                      "cancelled"
+                    ]
                   }
                 }
               },
@@ -1063,7 +1078,111 @@ export const schemasV02: Record<string, AnySchemaObject> = {
             "data": {
               "$ref": "#/$defs/command.status_changed"
             }
-          }
+          },
+          "allOf": [
+            {
+              "if": {
+                "required": [
+                  "data"
+                ],
+                "properties": {
+                  "data": {
+                    "required": [
+                      "status"
+                    ],
+                    "properties": {
+                      "status": {
+                        "const": "succeeded"
+                      }
+                    }
+                  }
+                }
+              },
+              "then": {
+                "required": [
+                  "hoscausationsource",
+                  "hoscausationid"
+                ]
+              }
+            },
+            {
+              "if": {
+                "required": [
+                  "data"
+                ],
+                "properties": {
+                  "data": {
+                    "required": [
+                      "status"
+                    ],
+                    "properties": {
+                      "status": {
+                        "const": "approved"
+                      }
+                    }
+                  }
+                }
+              },
+              "then": {
+                "required": [
+                  "hosactor"
+                ],
+                "properties": {
+                  "hosactor": {
+                    "pattern": "^user:"
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "required": [
+                  "data"
+                ],
+                "properties": {
+                  "data": {
+                    "required": [
+                      "status"
+                    ],
+                    "properties": {
+                      "status": {
+                        "const": "rejected"
+                      }
+                    }
+                  }
+                }
+              },
+              "then": {
+                "if": {
+                  "required": [
+                    "data"
+                  ],
+                  "properties": {
+                    "data": {
+                      "required": [
+                        "reason"
+                      ],
+                      "properties": {
+                        "reason": {
+                          "const": "rejected_by_approver"
+                        }
+                      }
+                    }
+                  }
+                },
+                "then": {
+                  "required": [
+                    "hosactor"
+                  ],
+                  "properties": {
+                    "hosactor": {
+                      "pattern": "^user:"
+                    }
+                  }
+                }
+              }
+            }
+          ]
         }
       },
       {
@@ -1168,6 +1287,23 @@ export const schemasV02: Record<string, AnySchemaObject> = {
           }
         },
         "allOf": [
+          {
+            "if": {
+              "required": [
+                "status"
+              ],
+              "properties": {
+                "status": {
+                  "const": "proposed"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "command_digest"
+              ]
+            }
+          },
           {
             "if": {
               "required": [

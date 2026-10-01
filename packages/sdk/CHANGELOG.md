@@ -7,6 +7,7 @@ Every notable change to `@hos-ai/sdk`. The versions stay `0.1.0-alpha.N` until H
 Not published yet: the versions stay `0.1.0-alpha.N` until the first HOS 0.2 alpha.
 
 - **HOS Commands 0.2, draft `0.2.0-draft.1`**, embedded next to HOS 0.1, which is unchanged: the generated types `Command` (one per type, `StayUnitAssignCommand`, `HousekeepingTaskReprioritizeCommand` and `GuestMessageSendCommand`), `Approval`, `Policy`, `ProducerManifestV02` and the three event types HOS 0.2 adds, `CommandStatusChanged`, `HousekeepingTaskReprioritized` and `GuestMessageSent`; and the validators `validateCommand`, `validateApproval`, `validatePolicy`, `validateEventV02` and `validateManifestV02`.
+- **Validation of HOS 0.2**: `validate` recognises a command, an approval, a policy, a manifest of 0.2 and an event of 0.2, and checks what compares two members of a document, with the rules `commands/default-deny`, `commands/preconditions`, `commands/lifecycle` and the others of HOS Commands 0.2. `validateStream` takes the facts of a command. `findDeclaration` and `authority` take manifests and facts of both versions, and `eventStatuses` gives what narrows a declaration: a dimension, or the status of a command.
 - `HOS_SPEC_VERSIONS` lists the draft of each version of the specification. `HOS_SPEC_VERSION` stays the draft of HOS 0.1.
 
 ## 0.1.0-alpha.1 (2026-09-26)

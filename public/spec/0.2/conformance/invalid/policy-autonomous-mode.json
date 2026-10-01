@@ -1,0 +1,19 @@
+{
+  "description": "A permission whose mode executes without a person: bounded autonomy is Trust 0.3, not 0.2.",
+  "rule": "commands/default-deny",
+  "document": {
+    "hospolicyversion": "0.2",
+    "policy_id": "pol_front_office",
+    "version": "2026-10-01",
+    "tenant": "tenant_demo",
+    "properties": ["prop_demo"],
+    "permissions": [
+      {
+        "type": "housekeeping.task.reprioritize",
+        "mode": "bounded_autonomy",
+        "requesters": ["user:*"],
+        "command_validity_seconds": 3600
+      }
+    ]
+  }
+}

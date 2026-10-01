@@ -1,0 +1,226 @@
+{
+  "description": "The facts of a command from approval to execution, each from the producer that declares its status, and a redelivery.",
+  "rule": "commands/lifecycle",
+  "stream": [
+    {
+      "specversion": "1.0",
+      "datacontenttype": "application/json",
+      "hosschemaversion": "0.2",
+      "hostenant": "tenant_demo",
+      "hosproperty": "prop_demo",
+      "hospropertytimezone": "Europe/Paris",
+      "hosbusinessdate": "2026-07-14",
+      "id": "gw-000042",
+      "source": "urn:hos:gateway:demo",
+      "type": "command.status_changed",
+      "time": "2026-07-14T09:07:12Z",
+      "hosrecordedat": "2026-07-14T09:07:12Z",
+      "hossubjects": "command:cmd_7f3a91c2 stay:stay_1042",
+      "hosactor": "user:manager_a1",
+      "data": {
+        "command_id": "cmd_7f3a91c2",
+        "command_type": "stay.unit_assign",
+        "previous_status": "pending_approval",
+        "status": "approved",
+        "approval_id": "apr_55c1d0e9",
+        "command_digest": "sha-256:f2fe580a85056adc14bf68409134801426517997d83e8f29f32438b115d983f9"
+      }
+    },
+    {
+      "specversion": "1.0",
+      "datacontenttype": "application/json",
+      "hosschemaversion": "0.2",
+      "hostenant": "tenant_demo",
+      "hosproperty": "prop_demo",
+      "hospropertytimezone": "Europe/Paris",
+      "hosbusinessdate": "2026-07-14",
+      "id": "pms-exec-1",
+      "source": "urn:hos:pms:demo",
+      "type": "command.status_changed",
+      "time": "2026-07-14T09:08:00Z",
+      "hosrecordedat": "2026-07-14T09:08:00Z",
+      "hossubjects": "command:cmd_7f3a91c2 stay:stay_1042",
+      "hosactor": "system:hos_command_handler",
+      "data": {
+        "command_id": "cmd_7f3a91c2",
+        "command_type": "stay.unit_assign",
+        "previous_status": "approved",
+        "status": "executing",
+        "command_digest": "sha-256:f2fe580a85056adc14bf68409134801426517997d83e8f29f32438b115d983f9"
+      }
+    },
+    {
+      "specversion": "1.0",
+      "datacontenttype": "application/json",
+      "hosschemaversion": "0.2",
+      "hostenant": "tenant_demo",
+      "hosproperty": "prop_demo",
+      "hospropertytimezone": "Europe/Paris",
+      "hosbusinessdate": "2026-07-14",
+      "id": "pms-exec-1",
+      "source": "urn:hos:pms:demo",
+      "type": "command.status_changed",
+      "time": "2026-07-14T09:08:00Z",
+      "hosrecordedat": "2026-07-14T09:08:00Z",
+      "hossubjects": "command:cmd_7f3a91c2 stay:stay_1042",
+      "hosactor": "system:hos_command_handler",
+      "data": {
+        "command_id": "cmd_7f3a91c2",
+        "command_type": "stay.unit_assign",
+        "previous_status": "approved",
+        "status": "executing",
+        "command_digest": "sha-256:f2fe580a85056adc14bf68409134801426517997d83e8f29f32438b115d983f9"
+      }
+    }
+  ],
+  "manifests": [
+    {
+      "hosmanifestversion": "0.2",
+      "producer": "urn:hos:gateway:demo",
+      "name": "Synthetic command gateway",
+      "organization": {
+        "name": "HOS AI synthetic corpus"
+      },
+      "system_role": "integration",
+      "property_ids": ["prop_demo"],
+      "events": [
+        {
+          "type": "command.status_changed",
+          "statuses": ["proposed", "pending_approval", "approved", "rejected", "expired", "cancelled"],
+          "authoritative": true,
+          "note": "The gateway publishes every transition up to approved, and the end of a command that is never sent."
+        }
+      ],
+      "delivery": {
+        "mechanisms": ["file"],
+        "guarantee": "at-least-once",
+        "ordering": "per-subject"
+      },
+      "replay": {
+        "supported": true,
+        "window_days": 90,
+        "format": "jsonl"
+      },
+      "retention": {
+        "event_days": 90,
+        "command_days": 90
+      },
+      "limitations": [
+        "Approvers are authenticated by the gateway; approvals are not signed.",
+        "The emergency stop of a tenant cancels the commands that have not been sent."
+      ]
+    },
+    {
+      "hosmanifestversion": "0.2",
+      "producer": "urn:hos:pms:demo",
+      "name": "Synthetic PMS with commands",
+      "organization": {
+        "name": "HOS AI synthetic corpus"
+      },
+      "system_role": "pms",
+      "property_ids": ["prop_demo"],
+      "entities": ["Reservation", "Stay", "Unit", "Guest"],
+      "events": [
+        {
+          "type": "reservation.created",
+          "authoritative": true
+        },
+        {
+          "type": "reservation.updated",
+          "authoritative": true
+        },
+        {
+          "type": "reservation.cancelled",
+          "authoritative": true
+        },
+        {
+          "type": "stay.expected",
+          "authoritative": true
+        },
+        {
+          "type": "stay.unit_assigned",
+          "authoritative": true
+        },
+        {
+          "type": "stay.checked_in",
+          "authoritative": true
+        },
+        {
+          "type": "stay.check_in_reverted",
+          "authoritative": true
+        },
+        {
+          "type": "stay.checked_out",
+          "authoritative": true
+        },
+        {
+          "type": "stay.unit_unassigned",
+          "authoritative": true
+        },
+        {
+          "type": "unit.maintenance_scheduled",
+          "authoritative": true
+        },
+        {
+          "type": "unit.maintenance_cancelled",
+          "authoritative": true
+        },
+        {
+          "type": "unit.status_changed",
+          "dimensions": ["occupancy", "commercial"],
+          "authoritative": true
+        },
+        {
+          "type": "unit.status_changed",
+          "dimensions": ["housekeeping"],
+          "authoritative": false,
+          "note": "The PMS mirrors housekeeping status; at this property the housekeeping system is the authority."
+        },
+        {
+          "type": "command.status_changed",
+          "statuses": ["executing", "succeeded", "failed"],
+          "authoritative": true,
+          "note": "The handler publishes the transitions from the moment it sends the request."
+        }
+      ],
+      "delivery": {
+        "mechanisms": ["webhook"],
+        "guarantee": "at-least-once",
+        "ordering": "per-subject"
+      },
+      "replay": {
+        "supported": true,
+        "window_days": 30,
+        "format": "jsonl"
+      },
+      "retention": {
+        "event_days": 90,
+        "command_days": 90
+      },
+      "limitations": [
+        "The PMS task module is not a declared source of housekeeping tasks at this property.",
+        "Guest messages are not exposed.",
+        "A stay.unit_assigned fact matches a command by its effect, so an identical change made by hand in the window confirms it too.",
+        "Only stays that have not started can be assigned."
+      ],
+      "commands": [
+        {
+          "type": "stay.unit_assign",
+          "authoritative": true,
+          "targets": ["Stay"],
+          "preconditions": ["stay_status", "unit_assignment", "unit_status", "facts_fresh"],
+          "idempotency_window_seconds": 86400,
+          "confirmation": {
+            "events": ["stay.unit_assigned"],
+            "max_delay_seconds": 600,
+            "attribution": "effect"
+          },
+          "limits": {
+            "max_per_minute": 30
+          },
+          "note": "Assigns for the whole stay, without locking the unit. An assignment locked in the PMS is refused, never unlocked."
+        }
+      ]
+    }
+  ]
+}

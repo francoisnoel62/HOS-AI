@@ -1,0 +1,19 @@
+{
+  "description": "A permission that only recommends: the command stays proposed, with no approver role.",
+  "rule": "commands/default-deny",
+  "document": {
+    "hospolicyversion": "0.2",
+    "policy_id": "pol_front_office",
+    "version": "2026-10-01",
+    "tenant": "tenant_demo",
+    "properties": ["prop_demo"],
+    "permissions": [
+      {
+        "type": "housekeeping.task.reprioritize",
+        "mode": "recommend",
+        "requesters": ["user:*"],
+        "command_validity_seconds": 3600
+      }
+    ]
+  }
+}

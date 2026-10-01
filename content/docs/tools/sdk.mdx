@@ -397,6 +397,18 @@ validateCommand(document: unknown): boolean  // with validateCommand.errors afte
 
 The compiled JSON Schema validators of the documents HOS Commands 0.2 adds, in the same form as `validateEvent`: a command, an approval, a policy, an event of the three types HOS Events 0.2 adds, and a producer manifest that may declare commands. The schemas hold what a JSON Schema can: the three command types, the preconditions each requires, the lifecycle a command moves through, and the reasons a command ends with.
 
+### validate and validateStream, for HOS 0.2
+
+In the repository, `validate` also recognises a command (`hoscommandversion`), an approval (`hosapprovalversion`), a policy (`hospolicyversion`), a manifest of HOS 0.2 and an event of HOS 0.2 (`hosschemaversion` is `0.2`), and says which it is in `result.kind`: `"command"`, `"approval"` or `"policy"`. On top of the schema it checks what compares two members of a document: the target with the data, the expiry with the request, the confirmation a manifest declares with the command it confirms. Its errors name the rules of HOS Commands 0.2, such as `commands/default-deny` or `commands/preconditions`. `validateStream` takes the facts of a command like any others, with the manifests of HOS 0.2.
+
+### eventStatuses
+
+```ts
+eventStatuses(event: HosFact | HosFactV02): Array<UnitStatusDimension | CommandStatus | undefined>
+```
+
+What narrows the declaration a fact falls under: the dimensions a `unit.status_changed` reports, or the status a `command.status_changed` moves to. Most facts have none, and the answer is `[undefined]`. `findDeclaration` and `authority` take this value as their last argument, and a manifest of HOS 0.2 declares the statuses of a gateway or of a handler in `statuses`.
+
 ## Types
 
 The SDK exports the TypeScript types of HOS documents, generated from the schemas:
